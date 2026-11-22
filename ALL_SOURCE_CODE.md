@@ -9,6 +9,7 @@
 
 ## Table of Contents
 - [.github/workflows/deploy.yml](#githubworkflowsdeployyml) — *GitHub Actions CI/CD workflow to build with Node 20 and deploy to GitHub Pages*
+- [.github/workflows/release.yml](#githubworkflowsreleaseyml) — *GitHub Actions workflow to automate GitHub Releases on version tags*
 - [package.json](#packagejson) — *Project dependencies and build scripts*
 - [vite.config.ts](#viteconfigts) — *Vite build configuration with base relative path for GitHub Pages*
 - [tsconfig.json](#tsconfigjson) — *TypeScript compiler configuration*
@@ -95,6 +96,38 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+```
+
+---
+
+## `.github/workflows/release.yml`
+
+*GitHub Actions workflow to automate GitHub Releases on version tags*
+
+```yaml
+name: Publish GitHub Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Publish Release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: public/orthoview3d-source-code.zip
 ```
 
 ---
