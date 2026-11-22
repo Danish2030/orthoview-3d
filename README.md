@@ -1,9 +1,24 @@
 # OrthoView3D 📐
 > **Interactive 3D-to-2D First-Angle Orthographic Projection Visualizer** for first-year B.Tech Engineering Graphics & Design students. Compliant with **ISO 128** and **Bureau of Indian Standards (BIS SP:46)** conventions.
 
+[![Deploy to GitHub Pages](https://github.com/Danish2030/OrthoView3D/actions/workflows/deploy.yml/badge.svg)](https://github.com/Danish2030/OrthoView3D/actions/workflows/deploy.yml)
+[![Live Demo](https://img.shields.io/badge/Live_Demo-GitHub_Pages-brightgreen?logo=github)](https://danish2030.github.io/OrthoView3D/)
+[![Open in StackBlitz](https://developer.stackblitz.com/img/open_in_stackblitz.svg)](https://stackblitz.com/github/Danish2030/OrthoView3D)
+
 ---
 
-## 🚀 Live Demo & Purpose
+## 🌐 Instant Online Access (Zero Installation)
+
+If you or your students have no time to download or run Node.js locally, **OrthoView3D** runs directly in any modern web browser:
+
+- 🚀 **Official Live Web Application:**  
+  👉 **[https://danish2030.github.io/OrthoView3D/](https://danish2030.github.io/OrthoView3D/)**
+- ⚡ **Instant In-Browser Code Sandbox (StackBlitz):**  
+  👉 **[Open in StackBlitz](https://stackblitz.com/github/Danish2030/OrthoView3D)** *(runs full Vite build in browser without installing anything)*
+
+---
+
+## 🚀 Purpose & Curriculum Alignment
 In technical engineering education, understanding how 3D physical objects fold into 2D orthogonal planes is often the steepest conceptual hurdle for students. **OrthoView3D** bridges this spatial reasoning gap by providing a real-time, bi-directional 3D perspective viewport synced with a professional 2D First-Angle Drawing Sheet.
 
 ---
