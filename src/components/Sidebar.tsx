@@ -1,0 +1,772 @@
+import React, { useState } from 'react';
+import {
+  Box,
+  Sliders,
+  Rotate3d,
+  Layers,
+  ChevronLeft,
+  ChevronRight,
+  Sun,
+  Moon,
+  RotateCcw,
+  CornerDownRight,
+  SplitSquareVertical,
+  Hexagon,
+  Pyramid,
+  Cone,
+  CircleDot,
+  Spline,
+  Triangle,
+  Info,
+  Compass,
+  SlidersHorizontal,
+} from 'lucide-react';
+import { SOLID_PRESETS } from '../utils/geometryGenerators';
+import { SNAP_ANGLES } from '../utils/projectionMath';
+import {
+  DisplayOptions,
+  RenderStyle,
+  SolidDimensions,
+  SolidRotation,
+  SolidType,
+  ThemeMode,
+} from '../types';
+
+interface SidebarProps {
+  currentSolid: SolidType;
+  onSelectSolid: (type: SolidType) => void;
+  dimensions: SolidDimensions;
+  onUpdateDimensions: (dim: SolidDimensions) => void;
+  rotation: SolidRotation;
+  onUpdateRotation: (rot: SolidRotation) => void;
+  onResetRotation: () => void;
+  theme: ThemeMode;
+  onToggleTheme: () => void;
+  displayOptions: DisplayOptions;
+  onUpdateDisplayOptions: (opts: DisplayOptions) => void;
+  isCollapsed: boolean;
+  onToggleCollapse: () => void;
+}
+
+export const Sidebar: React.FC<SidebarProps> = ({
+  currentSolid,
+  onSelectSolid,
+  dimensions,
+  onUpdateDimensions,
+  rotation,
+  onUpdateRotation,
+  onResetRotation,
+  theme,
+  onToggleTheme,
+  displayOptions,
+  onUpdateDisplayOptions,
+  isCollapsed,
+  onToggleCollapse,
+}) => {
+  const [activeTab, setActiveTab] = useState<'solids' | 'dimensions' | 'orientation' | 'display'>('solids');
+
+  const isDark = theme === 'blueprint';
+
+  const getSolidIcon = (iconName: string) => {
+    switch (iconName) {
+      case 'CornerDownRight':
+        return <CornerDownRight className="w-4 h-4 text-sky-400" />;
+      case 'SplitSquareVertical':
+        return <SplitSquareVertical className="w-4 h-4 text-sky-400" />;
+      case 'Hexagon':
+        return <Hexagon className="w-4 h-4 text-sky-400" />;
+      case 'Pyramid':
+        return <Pyramid className="w-4 h-4 text-sky-400" />;
+      case 'Cone':
+        return <Cone className="w-4 h-4 text-sky-400" />;
+      case 'CircleDot':
+        return <CircleDot className="w-4 h-4 text-sky-400" />;
+      case 'Spline':
+        return <Spline className="w-4 h-4 text-sky-400" />;
+      case 'Triangle':
+        return <Triangle className="w-4 h-4 text-sky-400" />;
+      default:
+        return <Box className="w-4 h-4 text-sky-400" />;
+    }
+  };
+
+  if (isCollapsed) {
+    return (
+      <div
+        className={`w-14 h-full flex flex-col items-center py-4 border-r select-none transition-colors duration-200 z-30 ${
+          isDark ? 'bg-[#0f172a] border-slate-800' : 'bg-white border-slate-200'
+        }`}
+      >
+        <button
+          onClick={onToggleCollapse}
+          title="Expand Control Panel"
+          className={`p-2.5 rounded-lg mb-6 transition-all ${
+            isDark ? 'hover:bg-slate-800 text-sky-400' : 'hover:bg-slate-100 text-blue-600'
+          }`}
+        >
+          <ChevronRight className="w-5 h-5" />
+        </button>
+
+        <div className="flex flex-col gap-4">
+          <button
+            onClick={() => {
+              onToggleCollapse();
+              setActiveTab('solids');
+            }}
+            title="Engineering Solids"
+            className="p-2 rounded hover:bg-slate-800 text-slate-400 hover:text-sky-400"
+          >
+            <Box className="w-5 h-5" />
+          </button>
+          <button
+            onClick={() => {
+              onToggleCollapse();
+              setActiveTab('dimensions');
+            }}
+            title="Parametric Dimensions"
+            className="p-2 rounded hover:bg-slate-800 text-slate-400 hover:text-sky-400"
+          >
+            <Sliders className="w-5 h-5" />
+          </button>
+          <button
+            onClick={() => {
+              onToggleCollapse();
+              setActiveTab('orientation');
+            }}
+            title="Orientation & Inclination"
+            className="p-2 rounded hover:bg-slate-800 text-slate-400 hover:text-sky-400"
+          >
+            <Rotate3d className="w-5 h-5" />
+          </button>
+          <button
+            onClick={() => {
+              onToggleCollapse();
+              setActiveTab('display');
+            }}
+            title="Display Options"
+            className="p-2 rounded hover:bg-slate-800 text-slate-400 hover:text-sky-400"
+          >
+            <Layers className="w-5 h-5" />
+          </button>
+        </div>
+
+        <div className="mt-auto">
+          <button
+            onClick={onToggleTheme}
+            title={isDark ? 'Switch to Drawing Sheet (White)' : 'Switch to CAD Blueprint (Dark)'}
+            className="p-2.5 rounded-lg text-amber-400 hover:bg-slate-800"
+          >
+            {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5 text-slate-700" />}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <aside
+      className={`w-80 h-full flex flex-col border-r select-none transition-colors duration-200 z-30 ${
+        isDark ? 'bg-[#0f172a] border-slate-800 text-slate-200' : 'bg-white border-slate-200 text-slate-800'
+      }`}
+    >
+      {/* Sidebar Header */}
+      <div className="px-4 py-3.5 border-b border-slate-700/50 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <SlidersHorizontal className="w-4 h-4 text-sky-400" />
+          <span className="font-mono font-bold text-xs tracking-wider uppercase">
+            CONTROL PALETTE
+          </span>
+        </div>
+        <button
+          onClick={onToggleCollapse}
+          title="Collapse Sidebar"
+          className="p-1 rounded hover:bg-slate-800 text-slate-400 hover:text-white transition-colors"
+        >
+          <ChevronLeft className="w-4 h-4" />
+        </button>
+      </div>
+
+      {/* Tabs */}
+      <div className="grid grid-cols-4 border-b border-slate-700/50 p-1 text-[11px] font-mono">
+        <button
+          onClick={() => setActiveTab('solids')}
+          className={`py-1.5 rounded transition-all text-center flex flex-col items-center gap-1 ${
+            activeTab === 'solids'
+              ? isDark
+                ? 'bg-sky-500/20 text-sky-300 font-bold border border-sky-500/30'
+                : 'bg-blue-50 text-blue-700 font-bold border border-blue-200'
+              : 'text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          <Box className="w-3.5 h-3.5" />
+          <span>Solids</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('dimensions')}
+          className={`py-1.5 rounded transition-all text-center flex flex-col items-center gap-1 ${
+            activeTab === 'dimensions'
+              ? isDark
+                ? 'bg-sky-500/20 text-sky-300 font-bold border border-sky-500/30'
+                : 'bg-blue-50 text-blue-700 font-bold border border-blue-200'
+              : 'text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          <Sliders className="w-3.5 h-3.5" />
+          <span>Dimens</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('orientation')}
+          className={`py-1.5 rounded transition-all text-center flex flex-col items-center gap-1 ${
+            activeTab === 'orientation'
+              ? isDark
+                ? 'bg-sky-500/20 text-sky-300 font-bold border border-sky-500/30'
+                : 'bg-blue-50 text-blue-700 font-bold border border-blue-200'
+              : 'text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          <Rotate3d className="w-3.5 h-3.5" />
+          <span>Rotate</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('display')}
+          className={`py-1.5 rounded transition-all text-center flex flex-col items-center gap-1 ${
+            activeTab === 'display'
+              ? isDark
+                ? 'bg-sky-500/20 text-sky-300 font-bold border border-sky-500/30'
+                : 'bg-blue-50 text-blue-700 font-bold border border-blue-200'
+              : 'text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          <Layers className="w-3.5 h-3.5" />
+          <span>Display</span>
+        </button>
+      </div>
+
+      {/* Tab Body */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-5 custom-scrollbar">
+        {/* TAB 1: SOLIDS PRESETS */}
+        {activeTab === 'solids' && (
+          <div className="space-y-3">
+            <div className="text-[11px] font-mono font-semibold text-slate-400 uppercase tracking-wider flex items-center justify-between">
+              <span>Standard Engineering Solids</span>
+              <span className="text-[10px] text-sky-400">{SOLID_PRESETS.length} models</span>
+            </div>
+
+            <div className="grid grid-cols-1 gap-2">
+              {SOLID_PRESETS.map((preset) => {
+                const isSelected = currentSolid === preset.id;
+                return (
+                  <button
+                    key={preset.id}
+                    onClick={() => onSelectSolid(preset.id)}
+                    className={`p-3 rounded-lg border text-left transition-all flex items-start gap-3 ${
+                      isSelected
+                        ? isDark
+                          ? 'bg-sky-950/40 border-sky-400 shadow-[0_0_15px_rgba(56,189,248,0.25)]'
+                          : 'bg-blue-50 border-blue-500 shadow-sm'
+                        : isDark
+                        ? 'bg-slate-900/60 border-slate-800 hover:border-slate-700 hover:bg-slate-800/50'
+                        : 'bg-slate-50 border-slate-200 hover:border-slate-300 hover:bg-slate-100'
+                    }`}
+                  >
+                    <div
+                      className={`p-2 rounded-md ${
+                        isSelected
+                          ? isDark
+                            ? 'bg-sky-500/20 text-sky-300'
+                            : 'bg-blue-100 text-blue-700'
+                          : isDark
+                          ? 'bg-slate-800 text-slate-400'
+                          : 'bg-slate-200 text-slate-600'
+                      }`}
+                    >
+                      {getSolidIcon(preset.iconName)}
+                    </div>
+
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between">
+                        <span
+                          className={`font-mono text-xs font-bold truncate ${
+                            isSelected
+                              ? isDark
+                                ? 'text-sky-300'
+                                : 'text-blue-700'
+                              : isDark
+                              ? 'text-slate-200'
+                              : 'text-slate-800'
+                          }`}
+                        >
+                          {preset.name}
+                        </span>
+                        <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-slate-800 text-slate-400">
+                          {preset.category}
+                        </span>
+                      </div>
+                      <p className="text-[10px] text-slate-400 mt-1 line-clamp-2 leading-tight">
+                        {preset.description}
+                      </p>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* TAB 2: PARAMETRIC DIMENSIONS */}
+        {activeTab === 'dimensions' && (
+          <div className="space-y-4">
+            <div className="text-[11px] font-mono font-semibold text-slate-400 uppercase tracking-wider flex items-center justify-between">
+              <span>Parametric Dimensions</span>
+              <span className="text-[10px] text-amber-400">All in millimeters (mm)</span>
+            </div>
+
+            {/* Length (L) */}
+            <div className="p-3 rounded-lg border border-slate-800 bg-slate-900/40 space-y-2">
+              <div className="flex items-center justify-between text-xs font-mono">
+                <span className="font-bold text-red-400 flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-red-400" />
+                  Length (L) [X-axis]
+                </span>
+                <span className="font-bold text-sky-400">{dimensions.length} mm</span>
+              </div>
+              <input
+                type="range"
+                min="20"
+                max="100"
+                step="2"
+                value={dimensions.length}
+                onChange={(e) =>
+                  onUpdateDimensions({ ...dimensions, length: Number(e.target.value) })
+                }
+                className="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-red-500"
+              />
+              <div className="flex justify-between text-[10px] text-slate-500 font-mono">
+                <span>20 mm</span>
+                <span>60 mm</span>
+                <span>100 mm</span>
+              </div>
+            </div>
+
+            {/* Width / Depth (W) */}
+            <div className="p-3 rounded-lg border border-slate-800 bg-slate-900/40 space-y-2">
+              <div className="flex items-center justify-between text-xs font-mono">
+                <span className="font-bold text-blue-400 flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-blue-400" />
+                  Width / Depth (W) [Z-axis]
+                </span>
+                <span className="font-bold text-sky-400">{dimensions.width} mm</span>
+              </div>
+              <input
+                type="range"
+                min="20"
+                max="100"
+                step="2"
+                value={dimensions.width}
+                onChange={(e) =>
+                  onUpdateDimensions({ ...dimensions, width: Number(e.target.value) })
+                }
+                className="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-500"
+              />
+              <div className="flex justify-between text-[10px] text-slate-500 font-mono">
+                <span>20 mm</span>
+                <span>50 mm</span>
+                <span>100 mm</span>
+              </div>
+            </div>
+
+            {/* Height (H) */}
+            <div className="p-3 rounded-lg border border-slate-800 bg-slate-900/40 space-y-2">
+              <div className="flex items-center justify-between text-xs font-mono">
+                <span className="font-bold text-emerald-400 flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400" />
+                  Height (H) [Y-axis]
+                </span>
+                <span className="font-bold text-sky-400">{dimensions.height} mm</span>
+              </div>
+              <input
+                type="range"
+                min="20"
+                max="100"
+                step="2"
+                value={dimensions.height}
+                onChange={(e) =>
+                  onUpdateDimensions({ ...dimensions, height: Number(e.target.value) })
+                }
+                className="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-emerald-500"
+              />
+              <div className="flex justify-between text-[10px] text-slate-500 font-mono">
+                <span>20 mm</span>
+                <span>50 mm</span>
+                <span>100 mm</span>
+              </div>
+            </div>
+
+            {/* Quick Dimension Ratios */}
+            <div className="pt-2 border-t border-slate-800 flex items-center justify-between">
+              <span className="text-[11px] font-mono text-slate-400">Quick Presets:</span>
+              <div className="flex gap-1.5">
+                <button
+                  onClick={() => onUpdateDimensions({ length: 60, width: 40, height: 50 })}
+                  className="px-2 py-1 text-[10px] font-mono bg-slate-800 hover:bg-slate-700 rounded text-slate-300"
+                >
+                  60×40×50
+                </button>
+                <button
+                  onClick={() => onUpdateDimensions({ length: 50, width: 50, height: 50 })}
+                  className="px-2 py-1 text-[10px] font-mono bg-slate-800 hover:bg-slate-700 rounded text-slate-300"
+                >
+                  Cube 50³
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* TAB 3: ORIENTATION / INCLINATION */}
+        {activeTab === 'orientation' && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between text-[11px] font-mono font-semibold text-slate-400 uppercase tracking-wider">
+              <span>Inclination / Rotation</span>
+              <button
+                onClick={onResetRotation}
+                className="text-[10px] text-amber-400 hover:underline flex items-center gap-1"
+              >
+                <RotateCcw className="w-3 h-3" />
+                Reset (0,0,0)
+              </button>
+            </div>
+
+            {/* Rotate X */}
+            <div className="p-3 rounded-lg border border-slate-800 bg-slate-900/40 space-y-2">
+              <div className="flex items-center justify-between text-xs font-mono">
+                <span className="font-bold text-red-400">Tilt X (θ to HP)</span>
+                <span className="font-bold text-sky-400">{rotation.x}°</span>
+              </div>
+              <input
+                type="range"
+                min="0"
+                max="360"
+                step="1"
+                value={rotation.x}
+                onChange={(e) =>
+                  onUpdateRotation({ ...rotation, x: Number(e.target.value) })
+                }
+                className="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-red-500"
+              />
+              <div className="flex gap-1 flex-wrap pt-1">
+                {SNAP_ANGLES.map((angle) => (
+                  <button
+                    key={angle}
+                    onClick={() => onUpdateRotation({ ...rotation, x: angle })}
+                    className={`px-1.5 py-0.5 text-[9px] font-mono rounded ${
+                      rotation.x === angle
+                        ? 'bg-red-500 text-white font-bold'
+                        : 'bg-slate-800 text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    {angle}°
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Rotate Y */}
+            <div className="p-3 rounded-lg border border-slate-800 bg-slate-900/40 space-y-2">
+              <div className="flex items-center justify-between text-xs font-mono">
+                <span className="font-bold text-emerald-400">Spin Y (Azimuth)</span>
+                <span className="font-bold text-sky-400">{rotation.y}°</span>
+              </div>
+              <input
+                type="range"
+                min="0"
+                max="360"
+                step="1"
+                value={rotation.y}
+                onChange={(e) =>
+                  onUpdateRotation({ ...rotation, y: Number(e.target.value) })
+                }
+                className="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-emerald-500"
+              />
+              <div className="flex gap-1 flex-wrap pt-1">
+                {SNAP_ANGLES.map((angle) => (
+                  <button
+                    key={angle}
+                    onClick={() => onUpdateRotation({ ...rotation, y: angle })}
+                    className={`px-1.5 py-0.5 text-[9px] font-mono rounded ${
+                      rotation.y === angle
+                        ? 'bg-emerald-500 text-white font-bold'
+                        : 'bg-slate-800 text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    {angle}°
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Rotate Z */}
+            <div className="p-3 rounded-lg border border-slate-800 bg-slate-900/40 space-y-2">
+              <div className="flex items-center justify-between text-xs font-mono">
+                <span className="font-bold text-blue-400">Tilt Z (φ to VP)</span>
+                <span className="font-bold text-sky-400">{rotation.z}°</span>
+              </div>
+              <input
+                type="range"
+                min="0"
+                max="360"
+                step="1"
+                value={rotation.z}
+                onChange={(e) =>
+                  onUpdateRotation({ ...rotation, z: Number(e.target.value) })
+                }
+                className="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-500"
+              />
+              <div className="flex gap-1 flex-wrap pt-1">
+                {SNAP_ANGLES.map((angle) => (
+                  <button
+                    key={angle}
+                    onClick={() => onUpdateRotation({ ...rotation, z: angle })}
+                    className={`px-1.5 py-0.5 text-[9px] font-mono rounded ${
+                      rotation.z === angle
+                        ? 'bg-blue-500 text-white font-bold'
+                        : 'bg-slate-800 text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    {angle}°
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* TAB 4: ADVANCED GRAPHICS & PEDAGOGY TOGGLES */}
+        {activeTab === 'display' && (
+          <div className="space-y-4">
+            <div className="text-[11px] font-mono font-semibold text-slate-400 uppercase tracking-wider">
+              Drafting & Render Styles
+            </div>
+
+            {/* 3D Material / Shading Style */}
+            <div className="p-3 rounded-lg border border-slate-800 bg-slate-900/40 space-y-2">
+              <div className="text-xs font-mono font-bold text-slate-200">
+                3D CAD Material Finish
+              </div>
+              <div className="grid grid-cols-3 gap-1.5 pt-1">
+                {(['aluminum', 'steel', 'polymer', 'glass', 'anodized'] as RenderStyle[]).map((style) => (
+                  <button
+                    key={style}
+                    onClick={() =>
+                      onUpdateDisplayOptions({ ...displayOptions, renderStyle: style })
+                    }
+                    className={`py-1.5 px-2 rounded border text-[10px] font-mono uppercase font-bold transition-all ${
+                      displayOptions.renderStyle === style
+                        ? 'bg-sky-500 text-slate-950 border-sky-400 shadow'
+                        : 'bg-slate-800 border-slate-700 text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    {style}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Transfer Method: 45° Miter vs Compass Arcs */}
+            <div className="p-3 rounded-lg border border-slate-800 bg-slate-900/40 space-y-2">
+              <div className="text-xs font-mono font-bold text-slate-200">
+                Quadrant 4 Depth Transfer
+              </div>
+              <div className="grid grid-cols-2 gap-2 pt-1">
+                <button
+                  onClick={() =>
+                    onUpdateDisplayOptions({ ...displayOptions, transferMethod: 'miter' })
+                  }
+                  className={`py-1.5 px-2 rounded border text-xs font-mono flex items-center justify-center gap-1.5 transition-all ${
+                    displayOptions.transferMethod === 'miter'
+                      ? 'bg-sky-950 border-sky-500 text-sky-300 font-bold'
+                      : 'bg-slate-800 border-slate-700 text-slate-400'
+                  }`}
+                >
+                  <span>45° Miter Line</span>
+                </button>
+                <button
+                  onClick={() =>
+                    onUpdateDisplayOptions({ ...displayOptions, transferMethod: 'compass' })
+                  }
+                  className={`py-1.5 px-2 rounded border text-xs font-mono flex items-center justify-center gap-1.5 transition-all ${
+                    displayOptions.transferMethod === 'compass'
+                      ? 'bg-sky-950 border-sky-500 text-sky-300 font-bold'
+                      : 'bg-slate-800 border-slate-700 text-slate-400'
+                  }`}
+                >
+                  <Compass className="w-3.5 h-3.5" />
+                  <span>Compass Arcs</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Hidden Lines (Dashed) */}
+            <div className="p-3 rounded-lg border border-slate-800 bg-slate-900/40 flex items-center justify-between">
+              <div>
+                <div className="text-xs font-mono font-bold text-slate-200">
+                  Hidden Lines (Dashed)
+                </div>
+                <div className="text-[10px] text-slate-400 mt-0.5">
+                  Renders occluded edges behind solid faces
+                </div>
+              </div>
+              <input
+                type="checkbox"
+                checked={displayOptions.showHiddenLines}
+                onChange={(e) =>
+                  onUpdateDisplayOptions({
+                    ...displayOptions,
+                    showHiddenLines: e.target.checked,
+                  })
+                }
+                className="w-4 h-4 accent-amber-500 cursor-pointer"
+              />
+            </div>
+
+            {/* Dimension Callout Lines */}
+            <div className="p-3 rounded-lg border border-slate-800 bg-slate-900/40 flex items-center justify-between">
+              <div>
+                <div className="text-xs font-mono font-bold text-slate-200">
+                  Dimension Lines (L, W, H)
+                </div>
+                <div className="text-[10px] text-slate-400 mt-0.5">
+                  BIS SP:46 aligned dimension arrows & text
+                </div>
+              </div>
+              <input
+                type="checkbox"
+                checked={displayOptions.showDimensions}
+                onChange={(e) =>
+                  onUpdateDisplayOptions({
+                    ...displayOptions,
+                    showDimensions: e.target.checked,
+                  })
+                }
+                className="w-4 h-4 accent-red-500 cursor-pointer"
+              />
+            </div>
+
+            {/* Observer Sight Arrows */}
+            <div className="p-3 rounded-lg border border-slate-800 bg-slate-900/40 flex items-center justify-between">
+              <div>
+                <div className="text-xs font-mono font-bold text-slate-200">
+                  Observer Sight Arrows
+                </div>
+                <div className="text-[10px] text-slate-400 mt-0.5">
+                  Visual sight-rays pointing to FV, TV, LHSV
+                </div>
+              </div>
+              <input
+                type="checkbox"
+                checked={displayOptions.showSightArrows}
+                onChange={(e) =>
+                  onUpdateDisplayOptions({
+                    ...displayOptions,
+                    showSightArrows: e.target.checked,
+                  })
+                }
+                className="w-4 h-4 accent-emerald-500 cursor-pointer"
+              />
+            </div>
+
+            {/* Center Lines */}
+            <div className="p-3 rounded-lg border border-slate-800 bg-slate-900/40 flex items-center justify-between">
+              <div>
+                <div className="text-xs font-mono font-bold text-slate-200">
+                  Axis & Center Lines
+                </div>
+                <div className="text-[10px] text-slate-400 mt-0.5">
+                  BIS Type G dash-dot symmetry axes
+                </div>
+              </div>
+              <input
+                type="checkbox"
+                checked={displayOptions.showCenterLines}
+                onChange={(e) =>
+                  onUpdateDisplayOptions({
+                    ...displayOptions,
+                    showCenterLines: e.target.checked,
+                  })
+                }
+                className="w-4 h-4 accent-red-500 cursor-pointer"
+              />
+            </div>
+
+            {/* Alignment / Projector Lines */}
+            <div className="p-3 rounded-lg border border-slate-800 bg-slate-900/40 flex items-center justify-between">
+              <div>
+                <div className="text-xs font-mono font-bold text-slate-200">
+                  Alignment Projectors
+                </div>
+                <div className="text-[10px] text-slate-400 mt-0.5">
+                  Faint rays connecting FV, TV, and LHSV
+                </div>
+              </div>
+              <input
+                type="checkbox"
+                checked={displayOptions.showProjectors}
+                onChange={(e) =>
+                  onUpdateDisplayOptions({
+                    ...displayOptions,
+                    showProjectors: e.target.checked,
+                  })
+                }
+                className="w-4 h-4 accent-sky-500 cursor-pointer"
+              />
+            </div>
+
+            {/* Theme Toggle Button Card */}
+            <div className="p-3 rounded-lg border border-slate-800 bg-slate-900/40 space-y-2">
+              <div className="text-xs font-mono font-bold text-slate-200">
+                Visual Drafting Theme
+              </div>
+              <div className="grid grid-cols-2 gap-2 pt-1">
+                <button
+                  onClick={() => theme !== 'blueprint' && onToggleTheme()}
+                  className={`p-2 rounded border text-xs font-mono flex items-center justify-center gap-1.5 transition-all ${
+                    isDark
+                      ? 'bg-sky-950 border-sky-500 text-sky-300 font-bold shadow'
+                      : 'bg-slate-800 border-slate-700 text-slate-400'
+                  }`}
+                >
+                  <Moon className="w-3.5 h-3.5" />
+                  <span>CAD Blueprint</span>
+                </button>
+
+                <button
+                  onClick={() => theme !== 'paper' && onToggleTheme()}
+                  className={`p-2 rounded border text-xs font-mono flex items-center justify-center gap-1.5 transition-all ${
+                    !isDark
+                      ? 'bg-white border-blue-600 text-blue-700 font-bold shadow'
+                      : 'bg-slate-800 border-slate-700 text-slate-400'
+                  }`}
+                >
+                  <Sun className="w-3.5 h-3.5" />
+                  <span>Drawing Sheet</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Footer Info Box */}
+      <div className="p-3 border-t border-slate-700/50 text-[10px] font-mono text-slate-500 flex items-center justify-between">
+        <span className="flex items-center gap-1">
+          <Info className="w-3.5 h-3.5 text-sky-400" />
+          <span>BIS SP:46 / ISO 128</span>
+        </span>
+        <span>v1.1.0</span>
+      </div>
+    </aside>
+  );
+};

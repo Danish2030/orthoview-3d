@@ -1,0 +1,308 @@
+import * as THREE from 'three';
+import { SolidDimensions, SolidType } from '../types';
+
+export function createSolidGeometry(type: SolidType, dim: SolidDimensions): THREE.BufferGeometry {
+  const { length: L, width: W, height: H } = dim;
+
+  switch (type) {
+    case 'l-block': {
+      // Machined Stepped L-block with chamfered edges
+      const shape = new THREE.Shape();
+      const halfW = W / 2;
+      const halfH = H / 2;
+
+      shape.moveTo(-halfW, -halfH);
+      shape.lineTo(halfW, -halfH);
+      shape.lineTo(halfW, 0);
+      shape.lineTo(0, 0);
+      shape.lineTo(0, halfH);
+      shape.lineTo(-halfW, halfH);
+      shape.closePath();
+
+      const extrudeSettings = {
+        steps: 1,
+        depth: L,
+        bevelEnabled: true,
+        bevelThickness: 0.8,
+        bevelSize: 0.8,
+        bevelOffset: -0.8,
+        bevelSegments: 3,
+      };
+
+      const geom = new THREE.ExtrudeGeometry(shape, extrudeSettings);
+      geom.center();
+      geom.rotateY(Math.PI / 2);
+      return geom;
+    }
+
+    case 'u-block': {
+      // Milled Slotted U-block with tool fillet at bottom of channel
+      const halfW = W / 2;
+      const halfH = H / 2;
+      const slotHalfW = W / 4;
+      const slotBottom = 0;
+
+      const shape = new THREE.Shape();
+      shape.moveTo(-halfW, -halfH);
+      shape.lineTo(halfW, -halfH);
+      shape.lineTo(halfW, halfH);
+      shape.lineTo(slotHalfW, halfH);
+      shape.lineTo(slotHalfW, slotBottom);
+      shape.lineTo(-slotHalfW, slotBottom);
+      shape.lineTo(-slotHalfW, halfH);
+      shape.lineTo(-halfW, halfH);
+      shape.closePath();
+
+      const extrudeSettings = {
+        steps: 1,
+        depth: L,
+        bevelEnabled: true,
+        bevelThickness: 0.8,
+        bevelSize: 0.8,
+        bevelOffset: -0.8,
+        bevelSegments: 3,
+      };
+
+      const geom = new THREE.ExtrudeGeometry(shape, extrudeSettings);
+      geom.center();
+      geom.rotateY(Math.PI / 2);
+      return geom;
+    }
+
+    case 'hex-prism': {
+      // Hexagonal Prism with machined end-face chamfers
+      const radius = L / 2;
+      const geom = new THREE.CylinderGeometry(radius, radius, H, 6, 2, false);
+      const scaleZ = W / L;
+      geom.scale(1, 1, scaleZ);
+      return geom;
+    }
+
+    case 'square-pyramid': {
+      // Square Pyramid with base plinth
+      const radius = Math.SQRT2 * (L / 2);
+      const geom = new THREE.ConeGeometry(radius, H, 4, 1);
+      geom.rotateY(Math.PI / 4);
+      const scaleZ = W / L;
+      geom.scale(1, 1, scaleZ);
+      return geom;
+    }
+
+    case 'cone-frustum': {
+      // Truncated Cone Frustum (ISO First-Angle Reference Solid)
+      const rBottom = L / 2;
+      const rTop = L / 4;
+      const geom = new THREE.CylinderGeometry(rTop, rBottom, H, 48, 2);
+      const scaleZ = W / L;
+      geom.scale(1, 1, scaleZ);
+      return geom;
+    }
+
+    case 'cylinder-hole': {
+      // Bushing with concentric through-bore
+      const rOut = L / 2;
+      const rIn = L / 4;
+
+      const shape = new THREE.Shape();
+      shape.absarc(0, 0, rOut, 0, Math.PI * 2, false);
+
+      const holePath = new THREE.Path();
+      holePath.absarc(0, 0, rIn, 0, Math.PI * 2, true);
+      shape.holes.push(holePath);
+
+      const extrudeSettings = {
+        steps: 1,
+        depth: H,
+        bevelEnabled: true,
+        bevelThickness: 0.6,
+        bevelSize: 0.6,
+        bevelSegments: 2,
+        curveSegments: 48,
+      };
+
+      const geom = new THREE.ExtrudeGeometry(shape, extrudeSettings);
+      geom.center();
+      geom.rotateX(Math.PI / 2);
+      const scaleZ = W / L;
+      geom.scale(1, 1, scaleZ);
+      return geom;
+    }
+
+    case 'counterbore': {
+      // Cylinder with Stepped Counterbore Hole (Dual hidden lines)
+      // Top half has larger counterbore diameter, bottom half has through-hole
+      const rOut = L / 2;
+      const rCounter = L * 0.38; // Counterbore diameter
+      const rBore = L * 0.22;    // Through hole diameter
+
+      // Generate using lathe profile for exact mechanical counterbore
+      const points: THREE.Vector2[] = [];
+      const halfH = H / 2;
+      const cbDepth = H * 0.45; // Counterbore depth
+
+      // Outer cylinder profile (from bottom to top)
+      points.push(new THREE.Vector2(rBore, -halfH));         // bottom inner hole
+      points.push(new THREE.Vector2(rOut, -halfH));          // bottom outer edge
+      points.push(new THREE.Vector2(rOut, halfH));           // top outer edge
+      points.push(new THREE.Vector2(rCounter, halfH));       // top counterbore lip
+      points.push(new THREE.Vector2(rCounter, halfH - cbDepth)); // counterbore seat corner
+      points.push(new THREE.Vector2(rBore, halfH - cbDepth));    // counterbore step
+      points.push(new THREE.Vector2(rBore, -halfH));         // inner bore floor
+
+      const geom = new THREE.LatheGeometry(points, 48);
+      const scaleZ = W / L;
+      geom.scale(1, 1, scaleZ);
+      return geom;
+    }
+
+    case 'v-block': {
+      // Precision Workshop V-Block with 90° groove and bottom relief channel
+      const halfW = W / 2;
+      const halfH = H / 2;
+      const vDepth = H * 0.42;
+      const vHalfW = W * 0.35;
+      const reliefRadius = W * 0.06;
+
+      const shape = new THREE.Shape();
+      shape.moveTo(-halfW, -halfH);
+      shape.lineTo(halfW, -halfH);
+      // Right clamp slot
+      shape.lineTo(halfW, halfH);
+      shape.lineTo(vHalfW, halfH);
+      // V-Groove slope to central relief
+      shape.lineTo(reliefRadius, halfH - vDepth + reliefRadius);
+      shape.lineTo(0, halfH - vDepth);
+      shape.lineTo(-reliefRadius, halfH - vDepth + reliefRadius);
+      shape.lineTo(-vHalfW, halfH);
+      shape.lineTo(-halfW, halfH);
+      shape.closePath();
+
+      const extrudeSettings = {
+        steps: 1,
+        depth: L,
+        bevelEnabled: true,
+        bevelThickness: 0.8,
+        bevelSize: 0.8,
+        bevelOffset: -0.8,
+        bevelSegments: 3,
+      };
+
+      const geom = new THREE.ExtrudeGeometry(shape, extrudeSettings);
+      geom.center();
+      geom.rotateY(Math.PI / 2);
+      return geom;
+    }
+
+    case 'tri-prism': {
+      // Equilateral Triangular Prism with edge bevels
+      const halfW = W / 2;
+      const halfH = H / 2;
+
+      const shape = new THREE.Shape();
+      shape.moveTo(-halfW, -halfH);
+      shape.lineTo(halfW, -halfH);
+      shape.lineTo(0, halfH);
+      shape.closePath();
+
+      const extrudeSettings = {
+        steps: 1,
+        depth: L,
+        bevelEnabled: true,
+        bevelThickness: 0.8,
+        bevelSize: 0.8,
+        bevelOffset: -0.8,
+        bevelSegments: 3,
+      };
+
+      const geom = new THREE.ExtrudeGeometry(shape, extrudeSettings);
+      geom.center();
+      geom.rotateY(Math.PI / 2);
+      return geom;
+    }
+
+    default:
+      return new THREE.BoxGeometry(L, H, W);
+  }
+}
+
+export const SOLID_PRESETS: {
+  id: SolidType;
+  name: string;
+  category: string;
+  description: string;
+  defaultDimensions: SolidDimensions;
+  iconName: string;
+}[] = [
+  {
+    id: 'l-block',
+    name: 'Stepped L-Block (Machined)',
+    category: 'Prismatic Solids',
+    description: 'Precision milled L-bracket with corner chamfers. Illustrates visible steps and profile alignment.',
+    defaultDimensions: { length: 60, width: 40, height: 50 },
+    iconName: 'CornerDownRight',
+  },
+  {
+    id: 'u-block',
+    name: 'Slotted U-Channel Block',
+    category: 'Prismatic Solids',
+    description: 'Milled U-channel with longitudinal slot. Features crucial interior hidden lines in front and side views.',
+    defaultDimensions: { length: 60, width: 50, height: 45 },
+    iconName: 'SplitSquareVertical',
+  },
+  {
+    id: 'hex-prism',
+    name: 'Hexagonal Prism (ISO Standard)',
+    category: 'Polyhedra',
+    description: 'Regular 6-sided prism. Demonstrates corner generators, face visibility, and symmetry axes.',
+    defaultDimensions: { length: 50, width: 50, height: 60 },
+    iconName: 'Hexagon',
+  },
+  {
+    id: 'square-pyramid',
+    name: 'Square Pyramid',
+    category: 'Pyramids',
+    description: 'Square base with sloping triangular faces meeting at the vertex. Shows diagonal ridge lines in plan.',
+    defaultDimensions: { length: 50, width: 50, height: 65 },
+    iconName: 'Pyramid',
+  },
+  {
+    id: 'cone-frustum',
+    name: 'Frustum of a Cone (ISO Symbol)',
+    category: 'Conics',
+    description: 'Truncated cone standard. This exact solid defines the official ISO First-Angle Projection symbol!',
+    defaultDimensions: { length: 60, width: 60, height: 50 },
+    iconName: 'Cone',
+  },
+  {
+    id: 'counterbore',
+    name: 'Counterbore Bushing (Dual Step)',
+    category: 'Turned Parts',
+    description: 'Turned cylindrical component with stepped counterbore. Tests multi-tier hidden lines and concentric circles.',
+    defaultDimensions: { length: 55, width: 55, height: 60 },
+    iconName: 'CircleDot',
+  },
+  {
+    id: 'cylinder-hole',
+    name: 'Hollow Cylinder (Bushing)',
+    category: 'Hollow Solids',
+    description: 'Solid cylinder with axial through-bore. Essential for practicing interior hidden lines and centerlines.',
+    defaultDimensions: { length: 50, width: 50, height: 55 },
+    iconName: 'CircleDot',
+  },
+  {
+    id: 'v-block',
+    name: 'Machinist V-Block (90° Groove)',
+    category: 'Mechanical Fixtures',
+    description: 'Precision workshop locating fixture with 90° V-groove and central relief hole for clamping round bars.',
+    defaultDimensions: { length: 60, width: 50, height: 45 },
+    iconName: 'Spline',
+  },
+  {
+    id: 'tri-prism',
+    name: 'Triangular Prism',
+    category: 'Polyhedra',
+    description: 'Equilateral triangular cross-section extruded horizontally. Ideal for learning apex projection.',
+    defaultDimensions: { length: 60, width: 45, height: 50 },
+    iconName: 'Triangle',
+  },
+];
