@@ -1,9 +1,10 @@
 # OrthoView3D — Complete Master Source Code
 
 > **Project Name:** OrthoView3D  
+> **Repository:** https://github.com/Danish2030/orthoview-3d  
+> **Live Web App:** https://danish2030.github.io/orthoview-3d/  
 > **Standard:** ISO 128 / BIS SP:46:2003 First-Angle Orthographic Projection Visualizer  
 > **Target Audience:** First-Year B.Tech / B.E. Engineering Graphics & CAD Students  
-> **Live Web App:** https://danish2030.github.io/OrthoView3D/  
 
 ---
 
@@ -144,7 +145,7 @@ jobs:
   "name": "orthoview-3d",
   "private": true,
   "version": "1.0.0",
-  "homepage": "https://danish2030.github.io/OrthoView3D/",
+  "homepage": "https://danish2030.github.io/orthoview-3d/",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -1482,7 +1483,7 @@ export const Header: React.FC<HeaderProps> = ({
 
   const handleShareLink = () => {
     const shareUrl = window.location.origin.includes('localhost') || window.location.origin.includes('127.0.0.1')
-      ? 'https://danish2030.github.io/OrthoView3D/'
+      ? 'https://danish2030.github.io/orthoview-3d/'
       : window.location.href;
     
     if (navigator.clipboard && navigator.clipboard.writeText) {
@@ -1623,7 +1624,7 @@ export const Header: React.FC<HeaderProps> = ({
 
         {/* GitHub Repository Link */}
         <a
-          href="https://github.com/Danish2030/OrthoView3D"
+          href="https://github.com/Danish2030/orthoview-3d"
           target="_blank"
           rel="noopener noreferrer"
           title="View on GitHub"
@@ -4866,9 +4867,9 @@ export const QuizModal: React.FC<QuizModalProps> = ({ isOpen, onClose, theme }) 
 # OrthoView3D 📐
 > **Interactive 3D-to-2D First-Angle Orthographic Projection Visualizer** for first-year B.Tech Engineering Graphics & Design students. Compliant with **ISO 128** and **Bureau of Indian Standards (BIS SP:46)** conventions.
 
-[![Deploy to GitHub Pages](https://github.com/Danish2030/OrthoView3D/actions/workflows/deploy.yml/badge.svg)](https://github.com/Danish2030/OrthoView3D/actions/workflows/deploy.yml)
-[![Live Demo](https://img.shields.io/badge/Live_Demo-GitHub_Pages-brightgreen?logo=github)](https://danish2030.github.io/OrthoView3D/)
-[![Open in StackBlitz](https://developer.stackblitz.com/img/open_in_stackblitz.svg)](https://stackblitz.com/github/Danish2030/OrthoView3D)
+[![Deploy to GitHub Pages](https://github.com/Danish2030/orthoview-3d/actions/workflows/deploy.yml/badge.svg)](https://github.com/Danish2030/orthoview-3d/actions/workflows/deploy.yml)
+[![Live Demo](https://img.shields.io/badge/Live_Demo-GitHub_Pages-brightgreen?logo=github)](https://danish2030.github.io/orthoview-3d/)
+[![Open in StackBlitz](https://developer.stackblitz.com/img/open_in_stackblitz.svg)](https://stackblitz.com/github/Danish2030/orthoview-3d)
 
 ---
 
@@ -4877,9 +4878,9 @@ export const QuizModal: React.FC<QuizModalProps> = ({ isOpen, onClose, theme }) 
 If you or your students have no time to download or run Node.js locally, **OrthoView3D** runs directly in any modern web browser:
 
 - 🚀 **Official Live Web Application:**  
-  👉 **[https://danish2030.github.io/OrthoView3D/](https://danish2030.github.io/OrthoView3D/)**
+  👉 **[https://danish2030.github.io/orthoview-3d/](https://danish2030.github.io/orthoview-3d/)**
 - ⚡ **Instant In-Browser Code Sandbox (StackBlitz):**  
-  👉 **[Open in StackBlitz](https://stackblitz.com/github/Danish2030/OrthoView3D)** *(runs full Vite build in browser without installing anything)*
+  👉 **[Open in StackBlitz](https://stackblitz.com/github/Danish2030/orthoview-3d)** *(runs full Vite build in browser without installing anything)*
 
 ---
 

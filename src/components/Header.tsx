@@ -39,7 +39,7 @@ export const Header: React.FC<HeaderProps> = ({
 
   const handleShareLink = () => {
     const shareUrl = window.location.origin.includes('localhost') || window.location.origin.includes('127.0.0.1')
-      ? 'https://danish2030.github.io/OrthoView3D/'
+      ? 'https://danish2030.github.io/orthoview-3d/'
       : window.location.href;
     
     if (navigator.clipboard && navigator.clipboard.writeText) {
@@ -180,7 +180,7 @@ export const Header: React.FC<HeaderProps> = ({
 
         {/* GitHub Repository Link */}
         <a
-          href="https://github.com/Danish2030/OrthoView3D"
+          href="https://github.com/Danish2030/orthoview-3d"
           target="_blank"
           rel="noopener noreferrer"
           title="View on GitHub"
