@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Download,
   BookOpen,
@@ -7,6 +7,9 @@ import {
   Box,
   Sparkles,
   Archive,
+  Share2,
+  Check,
+  Github
 } from 'lucide-react';
 import { SolidDimensions, ThemeMode } from '../types';
 
@@ -32,6 +35,24 @@ export const Header: React.FC<HeaderProps> = ({
   isExporting,
 }) => {
   const isDark = theme === 'blueprint';
+  const [copied, setCopied] = useState(false);
+
+  const handleShareLink = () => {
+    const shareUrl = window.location.origin.includes('localhost') || window.location.origin.includes('127.0.0.1')
+      ? 'https://danish2030.github.io/OrthoView3D/'
+      : window.location.href;
+    
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(shareUrl).then(() => {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2200);
+      }).catch(() => {
+        prompt('Copy live application link:', shareUrl);
+      });
+    } else {
+      prompt('Copy live application link:', shareUrl);
+    }
+  };
 
   const handleDownloadZip = () => {
     const a = document.createElement('a');
@@ -140,6 +161,37 @@ export const Header: React.FC<HeaderProps> = ({
           <Archive className="w-3.5 h-3.5 text-emerald-400" />
           <span className="hidden md:inline">Download</span> ZIP
         </button>
+
+        {/* Share Live Online Link */}
+        <button
+          onClick={handleShareLink}
+          title="Copy Live Online Application Link"
+          className={`px-3 py-1.5 text-xs font-mono font-medium rounded-lg border flex items-center gap-1.5 transition-all ${
+            copied
+              ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/60'
+              : isDark
+              ? 'bg-sky-950/40 hover:bg-sky-950/70 text-sky-300 border-sky-800/60'
+              : 'bg-sky-50 hover:bg-sky-100 text-sky-800 border-sky-200'
+          }`}
+        >
+          {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Share2 className="w-3.5 h-3.5 text-sky-400" />}
+          <span>{copied ? 'Link Copied!' : 'Share Live Link'}</span>
+        </button>
+
+        {/* GitHub Repository Link */}
+        <a
+          href="https://github.com/Danish2030/OrthoView3D"
+          target="_blank"
+          rel="noopener noreferrer"
+          title="View on GitHub"
+          className={`p-2 rounded-lg border transition-all flex items-center justify-center ${
+            isDark
+              ? 'bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border-slate-700'
+              : 'bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-black border-slate-300'
+          }`}
+        >
+          <Github className="w-4 h-4" />
+        </a>
 
         {/* Export Sheet Button */}
         <button

@@ -3,7 +3,7 @@
 > **Project Name:** OrthoView3D  
 > **Standard:** ISO 128 / BIS SP:46:2003 First-Angle Orthographic Projection Visualizer  
 > **Target Audience:** First-Year B.Tech / B.E. Engineering Graphics & CAD Students  
-> **Generated:** Production-Grade Master Source Code Release  
+> **Live Web App:** https://danish2030.github.io/OrthoView3D/  
 
 ---
 
@@ -25,7 +25,7 @@
 - [src/utils/geometryGenerators.ts](#srcutilsgeometrygeneratorsts) — *3D parametric CAD geometry generators with chamfers and fillets*
 - [src/utils/projectionMath.ts](#srcutilsprojectionmathts) — *2D projection bounding box calculations and snap angles*
 - [src/utils/exportDrawingSheet.ts](#srcutilsexportdrawingsheetts) — *High-resolution canvas composite exporter for PNG download*
-- [src/components/Header.tsx](#srccomponentsheadertsx) — *Top navigation bar with export buttons and modal triggers*
+- [src/components/Header.tsx](#srccomponentsheadertsx) — *Top navigation bar with export buttons, live link sharing, and modal triggers*
 - [src/components/Sidebar.tsx](#srccomponentssidebartsx) — *CAD control sidebar with solid selector, dimensions, orientation, and materials*
 - [src/components/Viewport3D.tsx](#srccomponentsviewport3dtsx) — *Interactive Three.js 3D viewport with OrbitControls, studio lighting, materials, and sight arrows*
 - [src/components/ViewCube.tsx](#srccomponentsviewcubetsx) — *Interactive 3D CSS orientation ViewCube with camera snap and live tracking*
@@ -34,7 +34,7 @@
 - [src/components/TitleBlock.tsx](#srccomponentstitleblocktsx) — *Mechanical engineering institutional title block with tolerances and projection symbol*
 - [src/components/TheoryModal.tsx](#srccomponentstheorymodaltsx) — *First-Angle projection interactive theory and reference modal*
 - [src/components/QuizModal.tsx](#srccomponentsquizmodaltsx) — *Interactive 6-question engineering graphics mastery quiz*
-- [README.md](#readmemd) — *Project overview, ISO standard references, and local setup guide*
+- [README.md](#readmemd) — *Project overview, live demo links, ISO standard references, and local setup guide*
 
 ---
 
@@ -43,6 +43,7 @@
 *GitHub Actions CI/CD workflow to build with Node 20 and deploy to GitHub Pages*
 
 ```yaml
+
 name: Deploy to GitHub Pages
 
 on:
@@ -96,6 +97,7 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+
 ```
 
 ---
@@ -128,6 +130,7 @@ jobs:
         with:
           generate_release_notes: true
           files: public/orthoview3d-source-code.zip
+
 ```
 
 ---
@@ -141,6 +144,7 @@ jobs:
   "name": "orthoview-3d",
   "private": true,
   "version": "1.0.0",
+  "homepage": "https://danish2030.github.io/OrthoView3D/",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -1434,10 +1438,10 @@ export async function exportSheetAsPNG({
 
 ## `src/components/Header.tsx`
 
-*Top navigation bar with export buttons and modal triggers*
+*Top navigation bar with export buttons, live link sharing, and modal triggers*
 
 ```tsx
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Download,
   BookOpen,
@@ -1446,6 +1450,9 @@ import {
   Box,
   Sparkles,
   Archive,
+  Share2,
+  Check,
+  Github
 } from 'lucide-react';
 import { SolidDimensions, ThemeMode } from '../types';
 
@@ -1471,6 +1478,24 @@ export const Header: React.FC<HeaderProps> = ({
   isExporting,
 }) => {
   const isDark = theme === 'blueprint';
+  const [copied, setCopied] = useState(false);
+
+  const handleShareLink = () => {
+    const shareUrl = window.location.origin.includes('localhost') || window.location.origin.includes('127.0.0.1')
+      ? 'https://danish2030.github.io/OrthoView3D/'
+      : window.location.href;
+    
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(shareUrl).then(() => {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2200);
+      }).catch(() => {
+        prompt('Copy live application link:', shareUrl);
+      });
+    } else {
+      prompt('Copy live application link:', shareUrl);
+    }
+  };
 
   const handleDownloadZip = () => {
     const a = document.createElement('a');
@@ -1579,6 +1604,37 @@ export const Header: React.FC<HeaderProps> = ({
           <Archive className="w-3.5 h-3.5 text-emerald-400" />
           <span className="hidden md:inline">Download</span> ZIP
         </button>
+
+        {/* Share Live Online Link */}
+        <button
+          onClick={handleShareLink}
+          title="Copy Live Online Application Link"
+          className={`px-3 py-1.5 text-xs font-mono font-medium rounded-lg border flex items-center gap-1.5 transition-all ${
+            copied
+              ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/60'
+              : isDark
+              ? 'bg-sky-950/40 hover:bg-sky-950/70 text-sky-300 border-sky-800/60'
+              : 'bg-sky-50 hover:bg-sky-100 text-sky-800 border-sky-200'
+          }`}
+        >
+          {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Share2 className="w-3.5 h-3.5 text-sky-400" />}
+          <span>{copied ? 'Link Copied!' : 'Share Live Link'}</span>
+        </button>
+
+        {/* GitHub Repository Link */}
+        <a
+          href="https://github.com/Danish2030/OrthoView3D"
+          target="_blank"
+          rel="noopener noreferrer"
+          title="View on GitHub"
+          className={`p-2 rounded-lg border transition-all flex items-center justify-center ${
+            isDark
+              ? 'bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border-slate-700'
+              : 'bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-black border-slate-300'
+          }`}
+        >
+          <Github className="w-4 h-4" />
+        </a>
 
         {/* Export Sheet Button */}
         <button
@@ -4804,15 +4860,30 @@ export const QuizModal: React.FC<QuizModalProps> = ({ isOpen, onClose, theme }) 
 
 ## `README.md`
 
-*Project overview, ISO standard references, and local setup guide*
+*Project overview, live demo links, ISO standard references, and local setup guide*
 
 ```markdown
 # OrthoView3D 📐
 > **Interactive 3D-to-2D First-Angle Orthographic Projection Visualizer** for first-year B.Tech Engineering Graphics & Design students. Compliant with **ISO 128** and **Bureau of Indian Standards (BIS SP:46)** conventions.
 
+[![Deploy to GitHub Pages](https://github.com/Danish2030/OrthoView3D/actions/workflows/deploy.yml/badge.svg)](https://github.com/Danish2030/OrthoView3D/actions/workflows/deploy.yml)
+[![Live Demo](https://img.shields.io/badge/Live_Demo-GitHub_Pages-brightgreen?logo=github)](https://danish2030.github.io/OrthoView3D/)
+[![Open in StackBlitz](https://developer.stackblitz.com/img/open_in_stackblitz.svg)](https://stackblitz.com/github/Danish2030/OrthoView3D)
+
 ---
 
-## 🚀 Live Demo & Purpose
+## 🌐 Instant Online Access (Zero Installation)
+
+If you or your students have no time to download or run Node.js locally, **OrthoView3D** runs directly in any modern web browser:
+
+- 🚀 **Official Live Web Application:**  
+  👉 **[https://danish2030.github.io/OrthoView3D/](https://danish2030.github.io/OrthoView3D/)**
+- ⚡ **Instant In-Browser Code Sandbox (StackBlitz):**  
+  👉 **[Open in StackBlitz](https://stackblitz.com/github/Danish2030/OrthoView3D)** *(runs full Vite build in browser without installing anything)*
+
+---
+
+## 🚀 Purpose & Curriculum Alignment
 In technical engineering education, understanding how 3D physical objects fold into 2D orthogonal planes is often the steepest conceptual hurdle for students. **OrthoView3D** bridges this spatial reasoning gap by providing a real-time, bi-directional 3D perspective viewport synced with a professional 2D First-Angle Drawing Sheet.
 
 ---
