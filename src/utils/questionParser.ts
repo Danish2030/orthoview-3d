@@ -11,18 +11,6 @@ import {
 import { SOLID_PRESETS } from './geometryGenerators';
 import { Q1_DEFAULT_LINE, Q2_DEFAULT_PLANOMETRIC } from './examBank';
 
-export interface ParsedLineQuestion {
-  params: LineProblemParams;
-  notes: string[];
-  confidence: 'high' | 'medium';
-}
-
-export interface ParsedPlanometricQuestion {
-  params: PlanometricParams;
-  notes: string[];
-  confidence: 'high' | 'medium';
-}
-
 export interface ParsedQuestionResult {
   targetModule: StudioModule;
   solidType: SolidType;
@@ -34,6 +22,18 @@ export interface ParsedQuestionResult {
   planometricParams?: PlanometricParams;
   confidence: 'high' | 'medium' | 'low';
   notes: string[];
+}
+
+export interface ParsedLineQuestion {
+  params: LineProblemParams;
+  notes: string[];
+  confidence: 'high' | 'medium' | 'low';
+}
+
+export interface ParsedPlanometricQuestion {
+  params: PlanometricParams;
+  notes: string[];
+  confidence: 'high' | 'medium' | 'low';
 }
 
 const clampDim = (val: number): number => Math.max(15, Math.min(150, Math.round(val)));
@@ -76,124 +76,100 @@ export function parseLineQuestion(rawQuestion: string): ParsedLineQuestion {
   let matches = 0;
 
   // 1. True Length
-  const tlRaw = extractNumber(text, [
-    /(?:line|segment)\s*(?:ab|pq|cd|ef|mn)?\s*(?:is|of)?\s*(\d+(?:\.\d+)?)\s*mm/,
-    /(\d+(?:\.\d+)?)\s*mm\s*(?:long|true\s*length)/,
+  const tlMatch = extractNumber(text, [
+    /line\s*(?:[a-z]{1,2})?\s*(?:of\s*length|is|has\s*length)?\s*(\d+(?:\.\d+)?)\s*mm/,
+    /(\d+(?:\.\d+)?)\s*mm\s*(?:long|true\s*length|length)/,
     /(?:true\s*length|tl|length)\s*(?:=|of|is|:)?\s*(\d+(?:\.\d+)?)\s*(?:mm)?/,
   ]);
-  const trueLength = Math.max(20, Math.min(110, Math.round(tlRaw ?? Q1_DEFAULT_LINE.trueLength)));
-  if (tlRaw !== null) {
+  const trueLength = Math.max(20, Math.min(110, Math.round(tlMatch ?? Q1_DEFAULT_LINE.trueLength)));
+  if (tlMatch !== null) {
     matches++;
     notes.push(`True Length (TL) = ${trueLength} mm`);
+  }
+
+  // 2. End A distances from HP and VP
+  // Check "X mm above HP and Y mm in front of VP" or "X mm and Y mm above HP and in front of VP respectively"
+  let distHP: number | null = null;
+  let distVP: number | null = null;
+
+  const respDist = text.match(
+    /(\d+(?:\.\d+)?)\s*(?:mm)?\s*and\s*(\d+(?:\.\d+)?)\s*(?:mm)?\s*above\s*(?:the\s*)?(?:hp|h\.p\.)\s*and\s*(?:in\s*front\s*of|infront\s*of|before)\s*(?:the\s*)?(?:vp|v\.p\.)/
+  );
+  if (respDist) {
+    distHP = parseFloat(respDist[1]);
+    distVP = parseFloat(respDist[2]);
+    matches += 2;
   } else {
-    notes.push(`True Length defaulted to ${trueLength} mm`);
-  }
-
-  // 2. End A above HP
-  const endAInHP = /(?:end\s*(?:a|p)?|one\s*(?:of\s*its\s*)?ends?)\s*(?:is\s*)?(?:in|on)\s*(?:the\s*)?(?:hp|h\.p\.)/.test(text);
-  const distHPRaw = endAInHP
-    ? 0
-    : extractNumber(text, [
+    if (/(?:end|point|a|p)?\s*(?:is\s*)?(?:in|on|lies\s*in|lies\s*on|resting\s*on)\s*(?:the\s*)?(?:hp|h\.p\.)/.test(text)) {
+      distHP = 0;
+      matches++;
+    } else {
+      distHP = extractNumber(text, [
         /(\d+(?:\.\d+)?)\s*mm\s*above\s*(?:the\s*)?(?:hp|h\.p\.)/,
-        /(?:above\s*hp|d_hp|hp\s*dist(?:ance)?)\s*(?:=|is|:)?\s*(\d+(?:\.\d+)?)/,
+        /(?:above\s*(?:the\s*)?(?:hp|h\.p\.)|d_?hp|dist(?:ance)?\s*(?:from|above)\s*hp)\s*(?:=|is|of|:)?\s*(\d+(?:\.\d+)?)/,
       ]);
-  const distHP = Math.max(0, Math.min(50, Math.round(distHPRaw ?? 15)));
-  if (distHPRaw !== null) {
-    matches++;
-    notes.push(`End A above HP = ${distHP} mm`);
+      if (distHP !== null) matches++;
+    }
+
+    if (/(?:end|point|a|p)?\s*(?:is\s*)?(?:in|on|lies\s*in|lies\s*on)\s*(?:the\s*)?(?:vp|v\.p\.)/.test(text)) {
+      distVP = 0;
+      matches++;
+    } else {
+      distVP = extractNumber(text, [
+        /(\d+(?:\.\d+)?)\s*mm\s*(?:in\s*front\s*of|infront\s*of|before)\s*(?:the\s*)?(?:vp|v\.p\.)/,
+        /(?:in\s*front\s*of\s*(?:the\s*)?(?:vp|v\.p\.)|d_?vp|dist(?:ance)?\s*(?:from|in\s*front\s*of)\s*vp)\s*(?:=|is|of|:)?\s*(\d+(?:\.\d+)?)/,
+      ]);
+      if (distVP !== null) matches++;
+    }
   }
 
-  // 3. End A in front of VP
-  const endAInVP = /(?:end\s*(?:a|p)?|one\s*(?:of\s*its\s*)?ends?)\s*(?:is\s*)?(?:in|on)\s*(?:the\s*)?(?:vp|v\.p\.)/.test(text);
-  const distVPRaw = endAInVP
-    ? 0
-    : extractNumber(text, [
-        /(\d+(?:\.\d+)?)\s*mm\s*in\s*front\s*of\s*(?:the\s*)?(?:vp|v\.p\.)/,
-        /(\d+(?:\.\d+)?)\s*mm\s*infront\s*of\s*(?:the\s*)?(?:vp|v\.p\.)/,
-        /(?:in\s*front\s*of\s*vp|d_vp|vp\s*dist(?:ance)?)\s*(?:=|is|:)?\s*(\d+(?:\.\d+)?)/,
-      ]);
-  const distVP = Math.max(0, Math.min(50, Math.round(distVPRaw ?? 30)));
-  if (distVPRaw !== null) {
-    matches++;
-    notes.push(`End A in front of VP = ${distVP} mm`);
-  }
+  const finalHP = Math.max(0, Math.min(50, Math.round(distHP ?? 15)));
+  const finalVP = Math.max(0, Math.min(50, Math.round(distVP ?? 30)));
+  notes.push(`End A: ${finalHP} mm above HP, ${finalVP} mm in front of VP`);
 
-  // 4. Inclination to HP (theta) — supports explicit angle, parallel/perpendicular, or End B height
+  // 3. True inclinations theta (HP) and phi (VP)
   let thetaHP: number | null = null;
-  if (/parallel\s*to\s*(?:the\s*)?(?:hp|h\.p\.)/.test(text)) {
-    thetaHP = 0;
-  } else if (/perpendicular\s*to\s*(?:the\s*)?(?:hp|h\.p\.)/.test(text)) {
-    thetaHP = 80;
+  let phiVP: number | null = null;
+
+  // Handle "inclined at 30° and 45° to HP and VP respectively"
+  const respAngles = text.match(
+    /(\d+(?:\.\d+)?)\s*(?:°|deg|degrees?)?\s*and\s*(\d+(?:\.\d+)?)\s*(?:°|deg|degrees?)\s*(?:to|with)\s*(?:the\s*)?(?:hp|h\.p\.)\s*and\s*(?:the\s*)?(?:vp|v\.p\.)/
+  );
+  if (respAngles) {
+    thetaHP = parseFloat(respAngles[1]);
+    phiVP = parseFloat(respAngles[2]);
+    matches += 2;
   } else {
     thetaHP = extractNumber(text, [
       /(\d+(?:\.\d+)?)\s*(?:°|deg|degrees?)\s*(?:to|with)\s*(?:the\s*)?(?:hp|h\.p\.|horizontal\s*plane)/,
-      /(?:theta|θ)\s*(?:=|is|:)?\s*(\d+(?:\.\d+)?)/,
+      /(?:theta|θ|hp\s*angle)\s*(?:=|is|of|:)?\s*(\d+(?:\.\d+)?)/,
     ]);
-  }
+    if (thetaHP !== null) matches++;
 
-  // Fallback: compute theta from End B distance above HP or Top View length
-  if (thetaHP === null) {
-    const endBHP = extractNumber(text, [
-      /(?:end\s*(?:b|q)|other\s*end)\s*(?:is\s*)?(\d+(?:\.\d+)?)\s*mm\s*above\s*(?:the\s*)?(?:hp|h\.p\.)/,
-    ]);
-    const tvLen = extractNumber(text, [
-      /(?:top\s*view|plan)\s*(?:length|measures?|is)?\s*(?:=|of|:)?\s*(\d+(?:\.\d+)?)\s*mm/,
-    ]);
-    if (endBHP !== null && endBHP >= distHP && endBHP - distHP <= trueLength) {
-      thetaHP = Math.round((Math.asin((endBHP - distHP) / trueLength) * 180) / Math.PI);
-      notes.push(`Derived θ = ${thetaHP}° from End B (${endBHP} mm above HP)`);
-    } else if (tvLen !== null && tvLen <= trueLength) {
-      thetaHP = Math.round((Math.acos(tvLen / trueLength) * 180) / Math.PI);
-      notes.push(`Derived θ = ${thetaHP}° from Top View length (${tvLen} mm)`);
-    }
-  }
-
-  // 5. Inclination to VP (phi) — supports explicit angle, parallel/perpendicular, End B VP dist, or FV length
-  let phiVP: number | null = null;
-  if (/parallel\s*to\s*(?:the\s*)?(?:vp|v\.p\.)/.test(text)) {
-    phiVP = 0;
-  } else if (/perpendicular\s*to\s*(?:the\s*)?(?:vp|v\.p\.)/.test(text)) {
-    phiVP = 80;
-  } else {
     phiVP = extractNumber(text, [
       /(\d+(?:\.\d+)?)\s*(?:°|deg|degrees?)\s*(?:to|with)\s*(?:the\s*)?(?:vp|v\.p\.|vertical\s*plane)/,
-      /(?:phi|φ)\s*(?:=|is|:)?\s*(\d+(?:\.\d+)?)/,
+      /(?:phi|φ|vp\s*angle)\s*(?:=|is|of|:)?\s*(\d+(?:\.\d+)?)/,
     ]);
-  }
-
-  if (phiVP === null) {
-    const endBVP = extractNumber(text, [
-      /(?:end\s*(?:b|q)|other\s*end)\s*(?:is\s*)?(?:.*?\s+and\s+)?(\d+(?:\.\d+)?)\s*mm\s*in\s*front\s*of\s*(?:the\s*)?(?:vp|v\.p\.)/,
-    ]);
-    const fvLen = extractNumber(text, [
-      /(?:front\s*view|elevation)\s*(?:length|measures?|is)?\s*(?:=|of|:)?\s*(\d+(?:\.\d+)?)\s*mm/,
-    ]);
-    if (endBVP !== null && endBVP >= distVP && endBVP - distVP <= trueLength) {
-      phiVP = Math.round((Math.asin((endBVP - distVP) / trueLength) * 180) / Math.PI);
-      notes.push(`Derived φ = ${phiVP}° from End B (${endBVP} mm in front of VP)`);
-    } else if (fvLen !== null && fvLen <= trueLength) {
-      phiVP = Math.round((Math.acos(fvLen / trueLength) * 180) / Math.PI);
-      notes.push(`Derived φ = ${phiVP}° from Front View length (${fvLen} mm)`);
-    }
+    if (phiVP !== null) matches++;
   }
 
   const finalTheta = Math.max(0, Math.min(80, Math.round(thetaHP ?? 30)));
   const finalPhi = Math.max(0, Math.min(80, Math.round(phiVP ?? 45)));
-
-  if (thetaHP !== null) matches++;
-  if (phiVP !== null) matches++;
   notes.push(`Inclinations: θ = ${finalTheta}° to HP, φ = ${finalPhi}° to VP`);
+
+  const confidence: 'high' | 'medium' | 'low' =
+    matches >= 3 ? 'high' : matches >= 1 ? 'medium' : 'low';
 
   return {
     params: {
       trueLength,
-      distHP,
-      distVP,
+      distHP: finalHP,
+      distVP: finalVP,
       thetaHP: finalTheta,
       phiVP: finalPhi,
     },
     notes,
-    confidence: matches >= 3 ? 'high' : 'medium',
+    confidence,
   };
 }
 
@@ -201,13 +177,75 @@ export function parsePlanometricQuestion(rawQuestion: string): ParsedPlanometric
   const text = rawQuestion.trim().toLowerCase();
   const notes: string[] = [];
 
-  // Exact match for Q2 24EST1004-C
-  if (
-    text.includes('25/25/25') &&
-    text.includes('20/10/10') &&
-    text.includes('30/20/20')
-  ) {
-    notes.push('Matched 24EST1004-C Q2 exact planometric layout (100×50 base + 3 blocks)');
+  // 1. Extract Base Plate dimensions (e.g., "base 100x50", "100 x 50 mm", "base of 120 by 60")
+  let baseX = 100;
+  let baseY = 50;
+  let baseMatched = false;
+
+  const basePair = text.match(
+    /(?:base(?:\s*plate)?|plan|plate|rectangle|floor)\s*(?:of|is|=|:)?\s*(\d+(?:\.\d+)?)\s*(?:mm)?\s*(?:x|×|by|\*)\s*(\d+(?:\.\d+)?)\s*(?:mm)?/
+  );
+  if (basePair) {
+    baseX = Math.max(20, Math.min(180, Math.round(parseFloat(basePair[1]))));
+    baseY = Math.max(20, Math.min(120, Math.round(parseFloat(basePair[2]))));
+    baseMatched = true;
+  } else {
+    // Fallback: look for a standalone 2D pair (not part of a 3D triple)
+    const pair2D = text.match(/(?<![/\d])(\d{2,3})\s*(?:mm)?\s*[x×]\s*(\d{2,3})(?!\s*[x×/]\s*\d)/);
+    if (pair2D) {
+      baseX = Math.max(20, Math.min(180, Math.round(parseFloat(pair2D[1]))));
+      baseY = Math.max(20, Math.min(120, Math.round(parseFloat(pair2D[2]))));
+      baseMatched = true;
+    }
+  }
+  notes.push(`Base Plate: ${baseX} × ${baseY} mm`);
+
+  // 2. Extract all 3D block specifications:
+  // Supports: "25/25/25", "X/Y/Z = 25/25/25", "30x20x20", "30×20×20", optionally with "at (x, y)" or position keywords
+  const blockRegex =
+    /(?:(?:block|box|prism|cube)\s*[a-z0-9]?\s*(?:of|=|:)?\s*)?(?:x\/y\/z\s*=\s*)?(\d+(?:\.\d+)?)\s*([/x×*])\s*(\d+(?:\.\d+)?)\s*\2\s*(\d+(?:\.\d+)?)(?:\s*mm)?(?:\s*(?:at|@)\s*\(?\s*(?:x\s*=\s*)?(\d+(?:\.\d+)?)\s*,\s*(?:y\s*=\s*)?(\d+(?:\.\d+)?)\s*\)?)?(?:\s*(?:in|at|on)?\s*(top[-\s]?left|top[-\s]?right|bottom[-\s]?left|bottom[-\s]?right|center|centre))?/g;
+
+  const rawBlocks: {
+    dx: number;
+    dy: number;
+    dz: number;
+    explicitX?: number;
+    explicitY?: number;
+    anchor?: string;
+  }[] = [];
+
+  let m: RegExpExecArray | null;
+  while ((m = blockRegex.exec(text)) !== null) {
+    const dx = Math.max(5, Math.min(baseX, Math.round(parseFloat(m[1]))));
+    const dy = Math.max(5, Math.min(baseY, Math.round(parseFloat(m[3]))));
+    const dz = Math.max(5, Math.min(100, Math.round(parseFloat(m[4]))));
+    const explicitX = m[5] !== undefined ? Math.round(parseFloat(m[5])) : undefined;
+    const explicitY = m[6] !== undefined ? Math.round(parseFloat(m[6])) : undefined;
+    const anchor = m[7]?.replace(/\s+/g, '-');
+    rawBlocks.push({ dx, dy, dz, explicitX, explicitY, anchor });
+  }
+
+  // Also check for "cube of 30mm" if not matched as triple
+  if (rawBlocks.length === 0) {
+    const cubeMatch = text.match(/cube\s*(?:of\s*(?:side|edge)?\s*)?(\d+(?:\.\d+)?)\s*mm/);
+    if (cubeMatch) {
+      const s = Math.max(10, Math.min(Math.min(baseX, baseY), Math.round(parseFloat(cubeMatch[1]))));
+      rawBlocks.push({ dx: s, dy: s, dz: s, anchor: 'center' });
+    }
+  }
+
+  // Check if it matches the exact Q2 exam problem (100x50 + 25/25/25, 20/10/10, 30/20/20)
+  const isQ2Exact =
+    baseX === 100 &&
+    baseY === 50 &&
+    rawBlocks.length === 3 &&
+    rawBlocks[0].dx === 25 &&
+    rawBlocks[1].dx === 20 &&
+    rawBlocks[2].dx === 30 &&
+    rawBlocks.every((b) => b.explicitX === undefined && !b.anchor);
+
+  if (isQ2Exact) {
+    notes.push('Matched 24EST1004-C Q2 exact 3-block layout');
     return {
       params: Q2_DEFAULT_PLANOMETRIC,
       notes,
@@ -215,100 +253,73 @@ export function parsePlanometricQuestion(rawQuestion: string): ParsedPlanometric
     };
   }
 
-  // 1. Extract base plate dimensions (e.g. "base 120 x 60", "100x50 mm base", "plan 80 by 50")
-  let baseX = 100;
-  let baseY = 50;
-  const baseMatch =
-    text.match(/(?:base|plate|plan|rectangle|floor)\s*(?:of|size|:)?\s*(\d+(?:\.\d+)?)\s*(?:mm)?\s*(?:x|×|by|\*)\s*(\d+(?:\.\d+)?)/) ||
-    text.match(/(\d+(?:\.\d+)?)\s*(?:mm)?\s*(?:x|×|by|\*)\s*(\d+(?:\.\d+)?)\s*(?:mm)?\s*(?:base|plate|plan|rectangle)/);
-
-  if (baseMatch) {
-    baseX = Math.max(30, Math.min(180, Math.round(parseFloat(baseMatch[1]))));
-    baseY = Math.max(25, Math.min(120, Math.round(parseFloat(baseMatch[2]))));
-    notes.push(`Detected base plate: ${baseX} × ${baseY} mm`);
-  } else {
-    notes.push(`Base plate defaulted to ${baseX} × ${baseY} mm`);
-  }
-
-  // 2. Extract all X/Y/Z or LxWxH block triplets
-  const blockRegex =
-    /(?:x\/y\/z\s*=\s*)?(\d+(?:\.\d+)?)\s*(?:\/|x|×)\s*(\d+(?:\.\d+)?)\s*(?:\/|x|×)\s*(\d+(?:\.\d+)?)(?:\s*(?:at|pos|@)\s*\(?\s*(\d+(?:\.\d+)?)\s*,\s*(\d+(?:\.\d+)?)\s*\)?)?/g;
-
-  const extractedBlocks: PlanometricBlock[] = [];
-  let match: RegExpExecArray | null;
-  let cursorX = 0;
-  let cursorY = 0;
-
-  while ((match = blockRegex.exec(text)) !== null) {
-    const dx = Math.max(5, Math.min(baseX, Math.round(parseFloat(match[1]))));
-    const dy = Math.max(5, Math.min(baseY, Math.round(parseFloat(match[2]))));
-    const dz = Math.max(5, Math.min(90, Math.round(parseFloat(match[3]))));
-
-    const idx = extractedBlocks.length;
-    let posX = match[4] !== undefined ? Math.round(parseFloat(match[4])) : 0;
-    let posY = match[5] !== undefined ? Math.round(parseFloat(match[5])) : 0;
-
-    if (match[4] === undefined) {
-      // Smart layout placement across base corners if explicit (x,y) isn't specified
-      const surrounding = text.slice(Math.max(0, match.index - 24), Math.min(text.length, match.index + match[0].length + 24));
-      if (surrounding.includes('top-left') || surrounding.includes('top left')) {
-        posX = 0;
-        posY = Math.max(0, baseY - dy);
-      } else if (surrounding.includes('top-right') || surrounding.includes('top right')) {
-        posX = Math.max(0, baseX - dx);
-        posY = Math.max(0, baseY - dy);
-      } else if (surrounding.includes('bottom-right') || surrounding.includes('bottom right')) {
-        posX = Math.max(0, baseX - dx);
-        posY = 0;
-      } else if (surrounding.includes('bottom-left') || surrounding.includes('bottom left')) {
-        posX = 0;
-        posY = 0;
-      } else if (surrounding.includes('center') || surrounding.includes('centre')) {
-        posX = Math.max(0, Math.round((baseX - dx) / 2));
-        posY = Math.max(0, Math.round((baseY - dy) / 2));
-      } else {
-        // Auto-pack without overlapping
-        if (cursorX + dx > baseX) {
-          cursorX = 0;
-          cursorY = Math.min(Math.max(0, baseY - dy), cursorY + dy + 5);
-        }
-        posX = cursorX;
-        posY = idx === 0 ? Math.max(0, baseY - dy) : cursorY;
-        cursorX += dx + 8;
-      }
-    }
-
-    posX = Math.max(0, Math.min(baseX - dx, posX));
-    posY = Math.max(0, Math.min(baseY - dy, posY));
-
-    const letter = String.fromCharCode(65 + (idx % 26));
-    extractedBlocks.push({
-      id: `pb-${idx + 1}`,
-      label: `Block ${letter} (${dx}/${dy}/${dz})`,
-      x: posX,
-      y: posY,
-      dx,
-      dy,
-      dz,
-    });
-  }
-
-  if (extractedBlocks.length === 0) {
-    notes.push('No X/Y/Z block triplets detected — loaded default Q2 blocks');
+  if (rawBlocks.length === 0) {
+    notes.push('No explicit X/Y/Z blocks detected — loaded Q2 reference layout');
     return {
       params: { ...Q2_DEFAULT_PLANOMETRIC, baseX, baseY },
       notes,
-      confidence: 'medium',
+      confidence: baseMatched ? 'medium' : 'low',
     };
   }
 
-  notes.push(`Parsed ${extractedBlocks.length} block(s) accurately onto ${baseX}×${baseY} mm plan`);
+  // Place blocks cleanly with explicit coords, anchor keywords, or smart non-overlapping corner/row packing
+  const blocks: PlanometricBlock[] = [];
+  let cursorX = 0;
+
+  rawBlocks.forEach((rb, idx) => {
+    let x = 0;
+    let y = 0;
+
+    if (rb.explicitX !== undefined && rb.explicitY !== undefined) {
+      x = Math.max(0, Math.min(baseX - rb.dx, rb.explicitX));
+      y = Math.max(0, Math.min(baseY - rb.dy, rb.explicitY));
+    } else if (rb.anchor === 'top-left') {
+      x = 0;
+      y = Math.max(0, baseY - rb.dy);
+    } else if (rb.anchor === 'top-right') {
+      x = Math.max(0, baseX - rb.dx);
+      y = Math.max(0, baseY - rb.dy);
+    } else if (rb.anchor === 'bottom-left') {
+      x = 0;
+      y = 0;
+    } else if (rb.anchor === 'bottom-right') {
+      x = Math.max(0, baseX - rb.dx);
+      y = 0;
+    } else if (rb.anchor === 'center' || rb.anchor === 'centre') {
+      x = Math.max(0, Math.round((baseX - rb.dx) / 2));
+      y = Math.max(0, Math.round((baseY - rb.dy) / 2));
+    } else {
+      // Auto-pack neatly across the base plate without overlap
+      if (idx === 0) {
+        x = 0;
+        y = Math.max(0, baseY - rb.dy);
+        cursorX = rb.dx + 10;
+      } else if (idx === rawBlocks.length - 1 && rb.dx <= baseX - cursorX + 10) {
+        x = Math.max(0, baseX - rb.dx);
+        y = 0;
+      } else {
+        x = Math.max(0, Math.min(baseX - rb.dx, cursorX));
+        y = Math.max(0, Math.round((baseY - rb.dy) / 2));
+        cursorX = x + rb.dx + 5;
+      }
+    }
+
+    const letter = String.fromCharCode(65 + (idx % 26));
+    blocks.push({
+      id: `b-${idx + 1}`,
+      label: `Block ${letter} (${rb.dx}/${rb.dy}/${rb.dz})`,
+      x,
+      y,
+      dx: rb.dx,
+      dy: rb.dy,
+      dz: rb.dz,
+    });
+  });
+
+  notes.push(`Parsed ${blocks.length} block${blocks.length > 1 ? 's' : ''} with accurate 45°/45° Z-extrusion`);
+
   return {
-    params: {
-      baseX,
-      baseY,
-      blocks: extractedBlocks,
-    },
+    params: { baseX, baseY, blocks },
     notes,
     confidence: 'high',
   };
@@ -319,13 +330,17 @@ export function parseEngineeringQuestion(rawQuestion: string): ParsedQuestionRes
   const notes: string[] = [];
 
   // Route 1: Planometric Projection
-  if (text.includes('planometric') || text.includes('x/y/z')) {
+  if (text.includes('planometric') || text.includes('planimetry') || text.includes('x/y/z')) {
     const plano = parsePlanometricQuestion(rawQuestion);
     return {
       targetModule: 'planometric',
       solidType: 'l-block',
-      solidName: `Planometric (${plano.params.baseX}×${plano.params.baseY} mm)`,
-      dimensions: { length: plano.params.baseX, width: plano.params.baseY, height: 25 },
+      solidName: `Planometric (${plano.params.baseX}×${plano.params.baseY}, ${plano.params.blocks.length} blocks)`,
+      dimensions: {
+        length: plano.params.baseX,
+        width: plano.params.baseY,
+        height: plano.params.blocks[0]?.dz ?? 25,
+      },
       rotation: { x: 0, y: 0, z: 0 },
       sideViewMode: 'left',
       planometricParams: plano.params,
@@ -349,21 +364,18 @@ export function parseEngineeringQuestion(rawQuestion: string): ParsedQuestionRes
     !text.includes('cone') &&
     !text.includes('block')
   ) {
-    const line = parseLineQuestion(rawQuestion);
+    const lineParsed = parseLineQuestion(rawQuestion);
+    const lp = lineParsed.params;
     return {
       targetModule: 'lines',
       solidType: 'l-block',
-      solidName: `Straight Line AB (${line.params.trueLength} mm)`,
-      dimensions: {
-        length: line.params.trueLength,
-        width: line.params.distVP,
-        height: line.params.distHP,
-      },
-      rotation: { x: line.params.thetaHP, y: line.params.phiVP, z: 0 },
+      solidName: `Straight Line AB (${lp.trueLength} mm)`,
+      dimensions: { length: lp.trueLength, width: lp.distVP, height: lp.distHP },
+      rotation: { x: lp.thetaHP, y: lp.phiVP, z: 0 },
       sideViewMode: 'left',
-      lineParams: line.params,
-      confidence: line.confidence,
-      notes: ['Routed to Straight Line & Traces Solver (Module 1)', ...line.notes],
+      lineParams: lp,
+      confidence: lineParsed.confidence,
+      notes: ['Routed to Straight Line & Traces Solver (Module 1)', ...lineParsed.notes],
     };
   }
 
@@ -403,7 +415,9 @@ export function parseEngineeringQuestion(rawQuestion: string): ParsedQuestionRes
     notes.push('Switched Side View projection to Right-Hand Side View (RHSV)');
   }
 
-  const tripleMatch = text.match(/(\d+(?:\.\d+)?)\s*(?:mm)?\s*[x×*]\s*(\d+(?:\.\d+)?)\s*(?:mm)?\s*[x×*]\s*(\d+(?:\.\d+)?)\s*(?:mm)?/);
+  const tripleMatch = text.match(
+    /(\d+(?:\.\d+)?)\s*(?:mm)?\s*[x×*]\s*(\d+(?:\.\d+)?)\s*(?:mm)?\s*[x×*]\s*(\d+(?:\.\d+)?)\s*(?:mm)?/
+  );
   if (tripleMatch) {
     length = clampDim(parseFloat(tripleMatch[1]));
     width = clampDim(parseFloat(tripleMatch[2]));
@@ -449,7 +463,7 @@ export function parseEngineeringQuestion(rawQuestion: string): ParsedQuestionRes
 
   let rotX = 0;
   let rotY = 0;
-  let rotZ = 0;
+  const rotZ = 0;
 
   const hpAngle = extractNumber(text, [
     /(?:inclined|tilted|angle|makes)\s*(?:at|by|of|an\s*angle\s*of)?\s*(\d+(?:\.\d+)?)\s*(?:°|deg|degrees?)\s*(?:to|with)\s*(?:the\s*)?(?:hp|h\.p\.|horizontal\s*plane)/,
