@@ -1,7 +1,8 @@
-import React, { useMemo, useRef } from 'react';
-import { Download, RotateCcw, AlertTriangle, CheckCircle2, Ruler } from 'lucide-react';
+import React, { useMemo, useRef, useState } from 'react';
+import { Download, RotateCcw, AlertTriangle, CheckCircle2, Ruler, Wand2 } from 'lucide-react';
 import { LineProblemParams, ThemeMode } from '../types';
 import { Q1_DEFAULT_LINE } from '../utils/examBank';
+import { parseLineQuestion } from '../utils/questionParser';
 
 interface LineSolverStudioProps {
   params: LineProblemParams;
@@ -18,6 +19,16 @@ export const LineSolverStudio: React.FC<LineSolverStudioProps> = ({
 }) => {
   const isDark = theme === 'blueprint';
   const svgRef = useRef<SVGSVGElement | null>(null);
+  const [questionText, setQuestionText] = useState('');
+  const [parsedFeedback, setParsedFeedback] = useState<string[] | null>(null);
+
+  const handleSolveLineQuestion = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!questionText.trim()) return;
+    const result = parseLineQuestion(questionText);
+    onChangeParams(result.params);
+    setParsedFeedback(result.notes);
+  };
 
   const calc = useMemo(() => {
     const { trueLength: TL, distHP: zA, distVP: yA, thetaHP: thetaDeg, phiVP: phiDeg } = params;
@@ -142,6 +153,60 @@ export const LineSolverStudio: React.FC<LineSolverStudioProps> = ({
               </span>
             </div>
           )}
+
+          {/* Ask a Straight Line Question Box */}
+          <form onSubmit={handleSolveLineQuestion} className="p-3.5 rounded-2xl glass-card space-y-2.5">
+            <div className="flex items-center justify-between text-xs font-semibold">
+              <span className="flex items-center gap-1.5">
+                <Wand2 className="w-3.5 h-3.5 opacity-80" />
+                Ask a Line Question
+              </span>
+              <span className="text-[10px] opacity-55">Auto-Plot</span>
+            </div>
+            <textarea
+              rows={2}
+              value={questionText}
+              onChange={(e) => setQuestionText(e.target.value)}
+              placeholder="e.g. Line AB 75 mm long, end A 15 mm above HP & 20 mm in front of VP, inclined 35° to HP & 40° to VP..."
+              className="w-full p-2.5 text-[11px] rounded-xl glass-input resize-none"
+            />
+            <div className="flex flex-wrap gap-1.5">
+              {[
+                {
+                  label: 'Q1 (60mm, 30°/45°)',
+                  q: 'A line AB 60 mm long has one end in HP and 30 mm in front of VP, inclined at 30 degrees to HP and 45 degrees to VP.',
+                },
+                {
+                  label: '75mm, 15/20, 35°/40°',
+                  q: 'A line PQ 75 mm long has end P 15 mm above HP and 20 mm in front of VP, inclined at 35 degrees to HP and 40 degrees to VP.',
+                },
+              ].map((s) => (
+                <button
+                  key={s.label}
+                  type="button"
+                  onClick={() => setQuestionText(s.q)}
+                  className="px-2 py-0.5 rounded-full glass-pill text-[10px] opacity-80 hover:opacity-100 cursor-pointer"
+                >
+                  {s.label}
+                </button>
+              ))}
+            </div>
+            <button
+              type="submit"
+              disabled={!questionText.trim()}
+              className="w-full py-2 rounded-full glass-pill-active text-[11px] font-semibold flex items-center justify-center gap-1.5 disabled:opacity-45 cursor-pointer"
+            >
+              <Wand2 className="w-3 h-3" />
+              <span>Solve &amp; Draw Accurate Locus</span>
+            </button>
+            {parsedFeedback && (
+              <div className="pt-1.5 border-t border-current/10 text-[10px] opacity-70 space-y-0.5">
+                {parsedFeedback.map((note, idx) => (
+                  <div key={idx}>• {note}</div>
+                ))}
+              </div>
+            )}
+          </form>
 
           {/* Numeric + Slider Controls */}
           <div className="space-y-3">
