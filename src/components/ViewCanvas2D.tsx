@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { SolidDimensions, SolidRotation, ThemeMode } from '../types';
 
 interface ViewCanvas2DProps {
-  viewType: 'front' | 'top' | 'leftSide';
+  viewType: 'front' | 'top' | 'leftSide' | 'rightSide';
   geometry: THREE.BufferGeometry;
   dimensions: SolidDimensions;
   rotation: SolidRotation;
@@ -16,7 +16,7 @@ interface ViewCanvas2DProps {
   planeName: string;
   quadrant: string;
   dimensionsSummary: string;
-  onCanvasReady?: (type: 'front' | 'top' | 'leftSide', canvas: HTMLCanvasElement) => void;
+  onCanvasReady?: (type: 'front' | 'top' | 'leftSide' | 'rightSide', canvas: HTMLCanvasElement) => void;
 }
 
 export const ViewCanvas2D: React.FC<ViewCanvas2DProps> = ({
@@ -180,7 +180,7 @@ export const ViewCanvas2D: React.FC<ViewCanvas2DProps> = ({
       camera.position.set(0, camDistance, 0);
       camera.up.set(0, 0, -1);
       camera.lookAt(0, 0, 0);
-    } else {
+    } else if (viewType === 'leftSide') {
       camera = new THREE.OrthographicCamera(
         (frustumSize * aspect) / 2,
         (-frustumSize * aspect) / 2,
@@ -190,6 +190,18 @@ export const ViewCanvas2D: React.FC<ViewCanvas2DProps> = ({
         1000
       );
       camera.position.set(-camDistance, 0, 0);
+      camera.up.set(0, 1, 0);
+      camera.lookAt(0, 0, 0);
+    } else {
+      camera = new THREE.OrthographicCamera(
+        (-frustumSize * aspect) / 2,
+        (frustumSize * aspect) / 2,
+        frustumSize / 2,
+        -frustumSize / 2,
+        1,
+        1000
+      );
+      camera.position.set(camDistance, 0, 0);
       camera.up.set(0, 1, 0);
       camera.lookAt(0, 0, 0);
     }
@@ -303,7 +315,7 @@ export const ViewCanvas2D: React.FC<ViewCanvas2DProps> = ({
             </>
           )}
 
-          {viewType === 'leftSide' && (
+          {(viewType === 'leftSide' || viewType === 'rightSide') && (
             <>
               <div className="absolute bottom-5 flex items-center gap-1 text-[10px] font-semibold tabular-nums opacity-75">
                 <span>◄── W = {dimensions.width} mm ──►</span>

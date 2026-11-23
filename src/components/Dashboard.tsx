@@ -14,17 +14,19 @@ import {
   Send,
   Calendar,
   Sliders,
+  Ruler,
+  Layers,
 } from 'lucide-react';
 import {
   SavedQuestionRecord,
   SolidDimensions,
   SolidRotation,
   SolidType,
+  StudioModule,
   ThemeMode,
   UserProfile,
 } from '../types';
 import { SOLID_PRESETS } from '../utils/geometryGenerators';
-import { parseEngineeringQuestion } from '../utils/questionParser';
 
 interface DashboardProps {
   user: UserProfile;
@@ -35,17 +37,12 @@ interface DashboardProps {
   savedQuestions: SavedQuestionRecord[];
   onSignOut: () => void;
   onGoHome: () => void;
-  onOpenStudio: () => void;
+  onOpenStudio: (mod?: StudioModule) => void;
   onOpenSolverModal: () => void;
   onOpenTheory: () => void;
   onOpenQuiz: () => void;
   onLoadRecord: (record: SavedQuestionRecord) => void;
-  onQuickSolveQuestion: (params: {
-    question: string;
-    solidType: SolidType;
-    dimensions: SolidDimensions;
-    rotation: SolidRotation;
-  }) => void;
+  onQuickSolveQuestion: (question: string) => void;
 }
 
 export const Dashboard: React.FC<DashboardProps> = ({
@@ -81,13 +78,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const handleInlineSolve = (e: React.FormEvent) => {
     e.preventDefault();
     if (!quickQuestion.trim()) return;
-    const parsed = parseEngineeringQuestion(quickQuestion);
-    onQuickSolveQuestion({
-      question: quickQuestion.trim(),
-      solidType: parsed.solidType,
-      dimensions: parsed.dimensions,
-      rotation: parsed.rotation,
-    });
+    onQuickSolveQuestion(quickQuestion.trim());
     setQuickQuestion('');
   };
 
@@ -141,13 +132,31 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 <span className="truncate">Overview</span>
               </button>
               <button
-                onClick={onOpenStudio}
+                onClick={() => onOpenStudio('orthographic')}
                 className={`px-3.5 py-2.5 rounded-full flex items-center gap-2.5 transition-colors cursor-pointer ${
                   isDark ? 'text-zinc-400 hover:bg-white/10 hover:text-white' : 'text-zinc-600 hover:bg-black/5 hover:text-black'
                 }`}
               >
                 <Sliders className="w-4 h-4 shrink-0" />
-                <span className="truncate">3D Studio</span>
+                <span className="truncate">Solids &amp; Ortho</span>
+              </button>
+              <button
+                onClick={() => onOpenStudio('lines')}
+                className={`px-3.5 py-2.5 rounded-full flex items-center gap-2.5 transition-colors cursor-pointer ${
+                  isDark ? 'text-zinc-400 hover:bg-white/10 hover:text-white' : 'text-zinc-600 hover:bg-black/5 hover:text-black'
+                }`}
+              >
+                <Ruler className="w-4 h-4 shrink-0" />
+                <span className="truncate">Line Solver</span>
+              </button>
+              <button
+                onClick={() => onOpenStudio('planometric')}
+                className={`px-3.5 py-2.5 rounded-full flex items-center gap-2.5 transition-colors cursor-pointer ${
+                  isDark ? 'text-zinc-400 hover:bg-white/10 hover:text-white' : 'text-zinc-600 hover:bg-black/5 hover:text-black'
+                }`}
+              >
+                <Layers className="w-4 h-4 shrink-0" />
+                <span className="truncate">Planometric</span>
               </button>
               <button
                 onClick={onOpenSolverModal}
@@ -222,7 +231,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
             <div className="flex flex-wrap items-center gap-2">
               {/* Studio Quick Launch Pill */}
               <button
-                onClick={onOpenStudio}
+                onClick={() => onOpenStudio('orthographic')}
                 className="pl-1.5 pr-4 py-1.5 rounded-full glass-pill flex items-center gap-2 text-xs font-medium cursor-pointer"
               >
                 <span
@@ -391,7 +400,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                   Active Solid Preview
                 </span>
                 <button
-                  onClick={onOpenStudio}
+                  onClick={() => onOpenStudio('orthographic')}
                   className="px-3 py-1 rounded-full bg-white/10 hover:bg-white/20 text-[11px] font-medium flex items-center gap-1 transition-colors cursor-pointer"
                 >
                   <span>Open</span>

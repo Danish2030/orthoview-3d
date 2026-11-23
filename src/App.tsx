@@ -3,6 +3,8 @@ import { Header } from './components/Header';
 import { Sidebar } from './components/Sidebar';
 import { Viewport3D } from './components/Viewport3D';
 import { OrthographicSheet } from './components/OrthographicSheet';
+import { LineSolverStudio } from './components/LineSolverStudio';
+import { PlanometricStudio } from './components/PlanometricStudio';
 import { TheoryModal } from './components/TheoryModal';
 import { QuizModal } from './components/QuizModal';
 import { QuestionSolverModal } from './components/QuestionSolverModal';
@@ -11,13 +13,19 @@ import { Dashboard } from './components/Dashboard';
 import { AuthModal } from './components/AuthModal';
 import { createSolidGeometry, SOLID_PRESETS } from './utils/geometryGenerators';
 import { exportSheetAsPNG } from './utils/exportDrawingSheet';
+import { parseEngineeringQuestion } from './utils/questionParser';
+import { Q1_DEFAULT_LINE, Q2_DEFAULT_PLANOMETRIC } from './utils/examBank';
 import {
   AppView,
   DisplayOptions,
+  LineProblemParams,
+  PlanometricParams,
   SavedQuestionRecord,
+  SideViewMode,
   SolidDimensions,
   SolidRotation,
   SolidType,
+  StudioModule,
   ThemeMode,
   UserProfile,
 } from './types';
@@ -25,35 +33,51 @@ import {
 const DEFAULT_SAVED_QUESTIONS: SavedQuestionRecord[] = [
   {
     id: 'q-1',
-    title: 'Hexagonal Prism (30° HP)',
-    question: 'Hexagonal prism of base 40mm and height 75mm inclined at 30 degrees to HP.',
-    solidType: 'hex-prism',
-    dimensions: { length: 40, width: 40, height: 75 },
-    rotation: { x: 30, y: 0, z: 0 },
-    createdAt: 'Sample',
+    title: 'Q1: Line AB (60mm, 30° HP / 45° VP)',
+    question: 'Line AB 60mm, end A in HP & 30mm in front of VP, 30° HP, 45° VP.',
+    module: 'lines',
+    solidType: 'l-block',
+    dimensions: { length: 60, width: 30, height: 0 },
+    rotation: { x: 30, y: 45, z: 0 },
+    lineParams: Q1_DEFAULT_LINE,
+    createdAt: 'Module 1',
   },
   {
     id: 'q-2',
-    title: 'Stepped L-Block (80×45×60)',
-    question: 'Front, top, and left side views of a stepped L-block 80x45x60mm.',
+    title: 'Q2: Planometric (100×50 + 3 Blocks)',
+    question: 'Planometric view 100x50mm base with 25/25/25, 20/10/10, 30/20/20 blocks.',
+    module: 'planometric',
     solidType: 'l-block',
-    dimensions: { length: 80, width: 45, height: 60 },
+    dimensions: { length: 100, width: 50, height: 25 },
     rotation: { x: 0, y: 0, z: 0 },
-    createdAt: 'Sample',
+    planometricParams: Q2_DEFAULT_PLANOMETRIC,
+    createdAt: 'Module 1',
   },
   {
     id: 'q-3',
-    title: 'Square Pyramid (25° VP)',
-    question: 'Square pyramid of base 50mm and height 70mm inclined at 25 degrees to VP.',
-    solidType: 'square-pyramid',
-    dimensions: { length: 50, width: 50, height: 70 },
-    rotation: { x: 0, y: 25, z: 0 },
-    createdAt: 'Sample',
+    title: 'Q3: Hexagonal Pyramid (45° HP / 40° VP)',
+    question: 'Hexagonal pyramid resting on corner, slant edge 45° HP, axis 40° VP.',
+    module: 'orthographic',
+    solidType: 'hex-pyramid',
+    dimensions: { length: 50, width: 50, height: 60 },
+    rotation: { x: 45, y: 40, z: 0 },
+    sideViewMode: 'left',
+    createdAt: 'Module 2',
+  },
+  {
+    id: 'q-9',
+    title: 'Q9: Slotted Bracket (FV, TV & RHSV)',
+    question: 'Machined bracket 100x64x75mm with Right-Hand Side View.',
+    module: 'orthographic',
+    solidType: 'machined-bracket',
+    dimensions: { length: 100, width: 64, height: 75 },
+    rotation: { x: 0, y: 0, z: 0 },
+    sideViewMode: 'right',
+    createdAt: 'Module 5',
   },
 ];
 
 export function App() {
-  // User & Navigation State
   const [user, setUser] = useState<UserProfile | null>(() => {
     try {
       const saved = localStorage.getItem('orthoview-user');
@@ -64,13 +88,15 @@ export function App() {
   });
 
   const [view, setView] = useState<AppView>('landing');
+  const [activeModule, setActiveModule] = useState<StudioModule>('orthographic');
   const [isAuthOpen, setIsAuthOpen] = useState<boolean>(false);
   const [authContext, setAuthContext] = useState<string | undefined>(undefined);
   const [pendingAction, setPendingAction] = useState<'dashboard' | 'solver' | null>(null);
+  const [phase2Banner, setPhase2Banner] = useState<string | null>(null);
 
   const [savedQuestions, setSavedQuestions] = useState<SavedQuestionRecord[]>(() => {
     try {
-      const raw = localStorage.getItem('orthoview-questions');
+      const raw = localStorage.getItem('orthoview-questions-v3');
       if (raw) {
         const parsed = JSON.parse(raw) as SavedQuestionRecord[];
         if (Array.isArray(parsed) && parsed.length > 0) return parsed;
@@ -81,7 +107,11 @@ export function App() {
     return DEFAULT_SAVED_QUESTIONS;
   });
 
-  // Active Solid & Parameters
+  // Module 1 State: Straight Lines & Planometric
+  const [lineParams, setLineParams] = useState<LineProblemParams>(Q1_DEFAULT_LINE);
+  const [planometricParams, setPlanometricParams] = useState<PlanometricParams>(Q2_DEFAULT_PLANOMETRIC);
+
+  // Module 2 & 5 State: Orthographic & Solids
   const [currentSolid, setCurrentSolid] = useState<SolidType>('l-block');
   const [dimensions, setDimensions] = useState<SolidDimensions>({
     length: 60,
@@ -135,7 +165,7 @@ export function App() {
 
   useEffect(() => {
     try {
-      localStorage.setItem('orthoview-questions', JSON.stringify(savedQuestions));
+      localStorage.setItem('orthoview-questions-v3', JSON.stringify(savedQuestions));
     } catch {
       // ignore
     }
@@ -154,6 +184,7 @@ export function App() {
     showCenterLines: true,
     renderStyle: 'aluminum',
     transferMethod: 'miter',
+    sideViewMode: 'left',
     unfoldProgress: 0,
     showHatching: false,
     showContactShadow: true,
@@ -208,47 +239,71 @@ export function App() {
     }
   };
 
-  const saveQuestionToHistory = (
-    solidType: SolidType,
-    nextDims: SolidDimensions,
-    nextRot: SolidRotation,
-    questionText?: string
-  ) => {
-    const preset = SOLID_PRESETS.find((p) => p.id === solidType) || SOLID_PRESETS[0];
-    const newRecord: SavedQuestionRecord = {
-      id: `q-${Date.now()}`,
-      title: `${preset.name.split('(')[0].trim()} (${nextDims.length}×${nextDims.width}×${nextDims.height})`,
-      question:
-        questionText ||
-        `${preset.name} ${nextDims.length}x${nextDims.width}x${nextDims.height}mm`,
-      solidType,
-      dimensions: nextDims,
-      rotation: nextRot,
-      createdAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-    };
-    setSavedQuestions((prev) => [newRecord, ...prev].slice(0, 12));
-  };
-
   const handleApplyQuestionSolution = ({
+    targetModule,
     solidType,
     dimensions: nextDims,
     rotation: nextRot,
+    sideViewMode,
+    lineParams: nextLine,
+    planometricParams: nextPlano,
+    questionText,
+    phase2Note,
     exportAfter,
   }: {
+    targetModule: StudioModule;
     solidType: SolidType;
     dimensions: SolidDimensions;
     rotation: SolidRotation;
+    sideViewMode?: SideViewMode;
+    lineParams?: LineProblemParams;
+    planometricParams?: PlanometricParams;
+    questionText?: string;
+    phase2Note?: string;
     exportAfter?: boolean;
   }) => {
-    setCurrentSolid(solidType);
-    setDimensions(nextDims);
-    setRotation(nextRot);
-    saveQuestionToHistory(solidType, nextDims, nextRot);
+    setActiveModule(targetModule);
+    setPhase2Banner(phase2Note || null);
+
+    if (targetModule === 'lines' && nextLine) {
+      setLineParams(nextLine);
+    } else if (targetModule === 'planometric' && nextPlano) {
+      setPlanometricParams(nextPlano);
+    } else {
+      setCurrentSolid(solidType);
+      setDimensions(nextDims);
+      setRotation(nextRot);
+      if (sideViewMode) {
+        setDisplayOptions((prev) => ({ ...prev, sideViewMode }));
+      }
+    }
+
+    const preset = SOLID_PRESETS.find((p) => p.id === solidType) || SOLID_PRESETS[0];
+    const newRecord: SavedQuestionRecord = {
+      id: `q-${Date.now()}`,
+      title:
+        questionText && questionText.length <= 42
+          ? questionText
+          : targetModule === 'lines'
+          ? `Line AB (${nextLine?.trueLength ?? 60}mm)`
+          : targetModule === 'planometric'
+          ? `Planometric (${nextPlano?.baseX ?? 100}×${nextPlano?.baseY ?? 50})`
+          : `${preset.name.split('(')[0].trim()} (${nextDims.length}×${nextDims.width}×${nextDims.height})`,
+      question: questionText || preset.name,
+      module: targetModule,
+      solidType,
+      dimensions: nextDims,
+      rotation: nextRot,
+      sideViewMode,
+      lineParams: nextLine,
+      planometricParams: nextPlano,
+      createdAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    };
+    setSavedQuestions((prev) => [newRecord, ...prev].slice(0, 12));
     setView('studio');
 
-    if (exportAfter) {
+    if (exportAfter && targetModule === 'orthographic') {
       setTimeout(() => {
-        const preset = SOLID_PRESETS.find((p) => p.id === solidType) || SOLID_PRESETS[0];
         exportSheetAsPNG({
           canvases: canvasesRef.current,
           solidName: preset.name,
@@ -261,28 +316,36 @@ export function App() {
     }
   };
 
-  const handleQuickSolveFromDashboard = ({
-    question,
-    solidType,
-    dimensions: nextDims,
-    rotation: nextRot,
-  }: {
-    question: string;
-    solidType: SolidType;
-    dimensions: SolidDimensions;
-    rotation: SolidRotation;
-  }) => {
-    setCurrentSolid(solidType);
-    setDimensions(nextDims);
-    setRotation(nextRot);
-    saveQuestionToHistory(solidType, nextDims, nextRot, question);
-    setView('studio');
+  const handleQuickSolveFromDashboard = (rawText: string) => {
+    const parsed = parseEngineeringQuestion(rawText);
+    handleApplyQuestionSolution({
+      targetModule: parsed.targetModule,
+      solidType: parsed.solidType,
+      dimensions: parsed.dimensions,
+      rotation: parsed.rotation,
+      sideViewMode: parsed.sideViewMode,
+      lineParams: parsed.lineParams,
+      planometricParams: parsed.planometricParams,
+      questionText: rawText,
+    });
   };
 
   const handleLoadRecord = (record: SavedQuestionRecord) => {
-    setCurrentSolid(record.solidType);
-    setDimensions(record.dimensions);
-    setRotation(record.rotation);
+    const mod = record.module || 'orthographic';
+    setActiveModule(mod);
+    setPhase2Banner(null);
+    if (mod === 'lines' && record.lineParams) {
+      setLineParams(record.lineParams);
+    } else if (mod === 'planometric' && record.planometricParams) {
+      setPlanometricParams(record.planometricParams);
+    } else {
+      setCurrentSolid(record.solidType);
+      setDimensions(record.dimensions);
+      setRotation(record.rotation);
+      if (record.sideViewMode) {
+        setDisplayOptions((prev) => ({ ...prev, sideViewMode: record.sideViewMode! }));
+      }
+    }
     setView('studio');
   };
 
@@ -314,7 +377,7 @@ export function App() {
 
   const handleOpenSolverGated = () => {
     if (!user) {
-      openAuthGate('solver', 'Sign in to ask questions and save accurate orthographic drawings to your dashboard.');
+      openAuthGate('solver', 'Sign in to access the 24EST1004-C Exam Bank and Question Solver.');
       return;
     }
     setIsSolverOpen(true);
@@ -331,7 +394,10 @@ export function App() {
           user={user}
           onOpenAuth={(msg) => openAuthGate('dashboard', msg)}
           onEnterDashboard={() => setView('dashboard')}
-          onOpenStudio={() => setView('studio')}
+          onOpenStudio={() => {
+            setActiveModule('orthographic');
+            setView('studio');
+          }}
           onOpenTheory={() => setIsTheoryOpen(true)}
         />
       )}
@@ -346,7 +412,11 @@ export function App() {
           savedQuestions={savedQuestions}
           onSignOut={handleSignOut}
           onGoHome={() => setView('landing')}
-          onOpenStudio={() => setView('studio')}
+          onOpenStudio={(mod) => {
+            setActiveModule(mod || 'orthographic');
+            setPhase2Banner(null);
+            setView('studio');
+          }}
           onOpenSolverModal={() => setIsSolverOpen(true)}
           onOpenTheory={() => setIsTheoryOpen(true)}
           onOpenQuiz={() => setIsQuizOpen(true)}
@@ -362,6 +432,11 @@ export function App() {
           }`}
         >
           <Header
+            activeModule={activeModule}
+            onSelectModule={(mod) => {
+              setActiveModule(mod);
+              setPhase2Banner(null);
+            }}
             solidName={currentPreset.name}
             dimensions={dimensions}
             theme={theme}
@@ -380,55 +455,87 @@ export function App() {
             isExporting={isExporting}
           />
 
-          <div className="flex-1 flex overflow-hidden relative">
-            <Sidebar
-              currentSolid={currentSolid}
-              onSelectSolid={handleSelectSolid}
-              dimensions={dimensions}
-              onUpdateDimensions={setDimensions}
-              rotation={rotation}
-              onUpdateRotation={setRotation}
-              onResetRotation={handleResetRotation}
+          {phase2Banner && (
+            <div className="px-5 py-2 text-xs border-b border-current/10 glass-panel flex items-center justify-between gap-3">
+              <span className="opacity-85">{phase2Banner}</span>
+              <button
+                onClick={() => setPhase2Banner(null)}
+                className="text-[11px] opacity-60 hover:opacity-100 underline cursor-pointer shrink-0"
+              >
+                Dismiss
+              </button>
+            </div>
+          )}
+
+          {activeModule === 'lines' && (
+            <LineSolverStudio
+              params={lineParams}
+              onChangeParams={setLineParams}
               theme={theme}
-              onToggleTheme={handleToggleTheme}
-              displayOptions={displayOptions}
-              onUpdateDisplayOptions={setDisplayOptions}
-              isCollapsed={isSidebarCollapsed}
-              onToggleCollapse={() => setIsSidebarCollapsed((prev) => !prev)}
+              studentName={user?.name}
             />
+          )}
 
-            <main className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-3 p-3 overflow-hidden h-full">
-              <section className="lg:col-span-5 h-full relative overflow-hidden flex flex-col">
-                <Viewport3D
-                  geometry={geometry}
-                  dimensions={dimensions}
-                  rotation={rotation}
-                  theme={theme}
-                  displayOptions={displayOptions}
-                  onResetRotation={handleResetRotation}
-                  onUpdateDisplayOptions={setDisplayOptions}
-                />
-              </section>
+          {activeModule === 'planometric' && (
+            <PlanometricStudio
+              params={planometricParams}
+              onChangeParams={setPlanometricParams}
+              theme={theme}
+            />
+          )}
 
-              <section className="lg:col-span-7 h-full relative overflow-hidden flex flex-col">
-                <OrthographicSheet
-                  geometry={geometry}
-                  dimensions={dimensions}
-                  rotation={rotation}
-                  theme={theme}
-                  displayOptions={displayOptions}
-                  solidName={currentPreset.name}
-                  onCanvasesReady={(canvases) => {
-                    canvasesRef.current = canvases;
-                  }}
-                />
-              </section>
-            </main>
-          </div>
+          {activeModule === 'orthographic' && (
+            <div className="flex-1 flex overflow-hidden relative">
+              <Sidebar
+                currentSolid={currentSolid}
+                onSelectSolid={handleSelectSolid}
+                dimensions={dimensions}
+                onUpdateDimensions={setDimensions}
+                rotation={rotation}
+                onUpdateRotation={setRotation}
+                onResetRotation={handleResetRotation}
+                theme={theme}
+                onToggleTheme={handleToggleTheme}
+                displayOptions={displayOptions}
+                onUpdateDisplayOptions={setDisplayOptions}
+                isCollapsed={isSidebarCollapsed}
+                onToggleCollapse={() => setIsSidebarCollapsed((prev) => !prev)}
+              />
+
+              <main className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-3 p-3 overflow-hidden h-full">
+                <section className="lg:col-span-5 h-full relative overflow-hidden flex flex-col">
+                  <Viewport3D
+                    geometry={geometry}
+                    dimensions={dimensions}
+                    rotation={rotation}
+                    theme={theme}
+                    displayOptions={displayOptions}
+                    onResetRotation={handleResetRotation}
+                    onUpdateDisplayOptions={setDisplayOptions}
+                  />
+                </section>
+
+                <section className="lg:col-span-7 h-full relative overflow-hidden flex flex-col">
+                  <OrthographicSheet
+                    geometry={geometry}
+                    dimensions={dimensions}
+                    rotation={rotation}
+                    theme={theme}
+                    displayOptions={displayOptions}
+                    solidName={currentPreset.name}
+                    studentName={user?.name}
+                    studentBranch={user?.branch}
+                    onCanvasesReady={(canvases) => {
+                      canvasesRef.current = canvases;
+                    }}
+                  />
+                </section>
+              </main>
+            </div>
+          )}
         </div>
       )}
 
-      {/* Auth Modal */}
       <AuthModal
         isOpen={isAuthOpen}
         onClose={() => setIsAuthOpen(false)}
@@ -437,7 +544,6 @@ export function App() {
         contextMessage={authContext}
       />
 
-      {/* Question-to-Drawing Solver Modal */}
       <QuestionSolverModal
         isOpen={isSolverOpen}
         onClose={() => setIsSolverOpen(false)}
@@ -445,14 +551,12 @@ export function App() {
         onApplySolution={handleApplyQuestionSolution}
       />
 
-      {/* Theory Guide Modal */}
       <TheoryModal
         isOpen={isTheoryOpen}
         onClose={() => setIsTheoryOpen(false)}
         theme={theme}
       />
 
-      {/* Student Practice Quiz Modal */}
       <QuizModal
         isOpen={isQuizOpen}
         onClose={() => setIsQuizOpen(false)}

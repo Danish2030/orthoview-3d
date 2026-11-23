@@ -11,6 +11,8 @@ interface OrthographicSheetProps {
   theme: ThemeMode;
   displayOptions: DisplayOptions;
   solidName: string;
+  studentName?: string;
+  studentBranch?: string;
   onCanvasesReady?: (canvases: {
     front: HTMLCanvasElement | null;
     top: HTMLCanvasElement | null;
@@ -25,6 +27,8 @@ export const OrthographicSheet: React.FC<OrthographicSheetProps> = ({
   theme,
   displayOptions,
   solidName,
+  studentName,
+  studentBranch,
   onCanvasesReady,
 }) => {
   const isDark = theme === 'blueprint';
@@ -32,10 +36,10 @@ export const OrthographicSheet: React.FC<OrthographicSheetProps> = ({
   const topCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const sideCanvasRef = useRef<HTMLCanvasElement | null>(null);
 
-  const handleCanvasReady = (type: 'front' | 'top' | 'leftSide', canvas: HTMLCanvasElement) => {
+  const handleCanvasReady = (type: 'front' | 'top' | 'leftSide' | 'rightSide', canvas: HTMLCanvasElement) => {
     if (type === 'front') frontCanvasRef.current = canvas;
     if (type === 'top') topCanvasRef.current = canvas;
-    if (type === 'leftSide') sideCanvasRef.current = canvas;
+    if (type === 'leftSide' || type === 'rightSide') sideCanvasRef.current = canvas;
 
     if (onCanvasesReady) {
       onCanvasesReady({
@@ -116,7 +120,7 @@ export const OrthographicSheet: React.FC<OrthographicSheetProps> = ({
             {/* Quadrant 2 (Top-Right): LEFT-HAND SIDE VIEW (on RPP) */}
             <div className="relative border-b border-dashed border-current/15 overflow-hidden">
               <ViewCanvas2D
-                viewType="leftSide"
+                viewType={displayOptions.sideViewMode === 'right' ? 'rightSide' : 'leftSide'}
                 geometry={geometry}
                 dimensions={dimensions}
                 rotation={rotation}
@@ -124,9 +128,9 @@ export const OrthographicSheet: React.FC<OrthographicSheetProps> = ({
                 showHiddenLines={displayOptions.showHiddenLines}
                 showDimensions={displayOptions.showDimensions}
                 showCenterLines={displayOptions.showCenterLines}
-                label="LEFT SIDE VIEW (LHSV)"
+                label={displayOptions.sideViewMode === 'right' ? 'RIGHT SIDE VIEW (RHSV)' : 'LEFT SIDE VIEW (LHSV)'}
                 sublabel="PROFILE VIEW"
-                planeName="R.P.P."
+                planeName={displayOptions.sideViewMode === 'right' ? 'L.P.P.' : 'R.P.P.'}
                 quadrant="Quadrant 2"
                 dimensionsSummary={`W: ${dimensions.width}mm × H: ${dimensions.height}mm`}
                 onCanvasReady={handleCanvasReady}

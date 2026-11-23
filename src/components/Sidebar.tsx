@@ -615,6 +615,29 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {/* TAB 3: ORIENTATION / INCLINATION */}
         {activeTab === 'orientation' && (
           <div className="space-y-4">
+            {/* Two-Stage Inclination Presets (Module 2 Exam Mode) */}
+            <div className="p-3.5 rounded-2xl glass-card space-y-2.5">
+              <div className="flex items-center justify-between text-[11px] font-semibold">
+                <span>Two-Stage Inclination (Module 2)</span>
+                <span className="text-[10px] opacity-55">HP → VP</span>
+              </div>
+              <div className="grid grid-cols-1 gap-1.5">
+                <button
+                  onClick={() => onUpdateRotation({ x: 45, y: 40, z: 0 })}
+                  className="px-3 py-1.5 rounded-xl glass-pill text-left text-[11px] flex items-center justify-between cursor-pointer"
+                >
+                  <span>Q3: Corner / Slant Edge 45° HP + 40° VP</span>
+                  <span className="opacity-55 tabular-nums">45°/40°</span>
+                </button>
+                <button
+                  onClick={() => onUpdateRotation({ x: 72, y: 30, z: 0 })}
+                  className="px-3 py-1.5 rounded-xl glass-pill text-left text-[11px] flex items-center justify-between cursor-pointer"
+                >
+                  <span>Q4: Cone on Generator HP + 30° VP</span>
+                  <span className="opacity-55 tabular-nums">72°/30°</span>
+                </button>
+              </div>
+            </div>
             <div className="flex items-center justify-between text-[11px] font-semibold text-slate-500 dark:text-[#9b99b8] uppercase tracking-wider">
               <span>Inclination / Rotation</span>
               <button
@@ -910,6 +933,39 @@ export const Sidebar: React.FC<SidebarProps> = ({
               />
             </div>
 
+            {/* Side View Mode Toggle (LHSV vs RHSV for Module 5) */}
+            <div className="p-3.5 rounded-2xl glass-card space-y-2">
+              <div className="text-xs font-bold text-slate-900 dark:text-[#f3f2fa]">
+                Side View Projection (Module 5)
+              </div>
+              <div className="grid grid-cols-2 gap-2 pt-1">
+                <button
+                  onClick={() =>
+                    onUpdateDisplayOptions({ ...displayOptions, sideViewMode: 'left' })
+                  }
+                  className={`p-2 rounded-xl border text-xs flex items-center justify-center transition-all cursor-pointer ${
+                    displayOptions.sideViewMode === 'left'
+                      ? 'glass-pill-active font-semibold'
+                      : 'glass-pill opacity-70'
+                  }`}
+                >
+                  LHSV (Q10)
+                </button>
+                <button
+                  onClick={() =>
+                    onUpdateDisplayOptions({ ...displayOptions, sideViewMode: 'right' })
+                  }
+                  className={`p-2 rounded-xl border text-xs flex items-center justify-center transition-all cursor-pointer ${
+                    displayOptions.sideViewMode === 'right'
+                      ? 'glass-pill-active font-semibold'
+                      : 'glass-pill opacity-70'
+                  }`}
+                >
+                  RHSV (Q9)
+                </button>
+              </div>
+            </div>
+
             {/* Theme Toggle Button Card */}
             <div className="p-3.5 rounded-2xl glass-card space-y-2">
               <div className="text-xs font-bold text-slate-900 dark:text-[#f3f2fa]">
@@ -951,7 +1007,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <Info className="w-3.5 h-3.5 text-[#0d0d10] dark:text-white" />
           <span>BIS SP:46 / ISO 128</span>
         </span>
-        <span>v2.1.0 • Studio</span>
+        <span>v3.0.0 • Phase 1</span>
       </div>
     </aside>
   );

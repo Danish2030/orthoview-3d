@@ -5,9 +5,11 @@ interface TitleBlockProps {
   solidName: string;
   dimensions: SolidDimensions;
   theme: ThemeMode;
+  studentName?: string;
+  studentBranch?: string;
 }
 
-export const TitleBlock: React.FC<TitleBlockProps> = ({ solidName, dimensions, theme }) => {
+export const TitleBlock: React.FC<TitleBlockProps> = ({ solidName, dimensions, theme, studentName, studentBranch }) => {
   const isDark = theme === 'blueprint';
 
   return (
@@ -23,7 +25,7 @@ export const TitleBlock: React.FC<TitleBlockProps> = ({ solidName, dimensions, t
           <div>
             <div className="flex items-center justify-between border-b pb-1.5 border-current/10">
               <span className="font-semibold tracking-[0.06em] text-[10px] uppercase">
-                OrthoView3D • Engineering Graphics
+                {studentName ? `${studentName} • ${studentBranch || 'B.Tech'}` : 'OrthoView3D • Engineering Graphics'}
               </span>
               <span
                 className={`text-[8px] px-2 py-0.5 rounded-full font-semibold ${
