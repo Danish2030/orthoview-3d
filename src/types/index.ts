@@ -24,6 +24,24 @@ export interface SolidRotation {
 export type ThemeMode = 'blueprint' | 'paper';
 export type RenderStyle = 'aluminum' | 'steel' | 'polymer' | 'glass' | 'anodized';
 export type TransferMethod = 'miter' | 'compass';
+export type AppView = 'landing' | 'dashboard' | 'studio';
+
+export interface UserProfile {
+  name: string;
+  email: string;
+  branch: string;
+  initials: string;
+}
+
+export interface SavedQuestionRecord {
+  id: string;
+  title: string;
+  question: string;
+  solidType: SolidType;
+  dimensions: SolidDimensions;
+  rotation: SolidRotation;
+  createdAt: string;
+}
 
 export interface DisplayOptions {
   showHiddenLines: boolean;
@@ -39,7 +57,7 @@ export interface DisplayOptions {
   showContactShadow: boolean;
   renderStyle: RenderStyle;
   transferMethod: TransferMethod;
-  unfoldProgress: number; // 0% (folded 3D box) to 100% (fully flattened 2D sheet)
+  unfoldProgress: number;
 }
 
 export interface SolidPreset {
