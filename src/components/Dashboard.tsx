@@ -20,7 +20,6 @@ import {
 import {
   SavedQuestionRecord,
   SolidDimensions,
-  SolidRotation,
   SolidType,
   StudioModule,
   ThemeMode,

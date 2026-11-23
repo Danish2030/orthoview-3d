@@ -242,7 +242,7 @@ export const OrthographicSheet: React.FC<OrthographicSheetProps> = ({
 
               {/* Title Block in bottom right */}
               <div className="w-full mt-auto">
-                <TitleBlock solidName={solidName} dimensions={dimensions} theme={theme} />
+                <TitleBlock studentName={studentName} studentBranch={studentBranch} solidName={solidName} dimensions={dimensions} theme={theme} />
               </div>
             </div>
 
