@@ -9,7 +9,8 @@ import {
   Archive,
   Share2,
   Check,
-  Github
+  Github,
+  Wand2
 } from 'lucide-react';
 import { SolidDimensions, ThemeMode } from '../types';
 
@@ -20,6 +21,7 @@ interface HeaderProps {
   onToggleTheme: () => void;
   onOpenTheory: () => void;
   onOpenQuiz: () => void;
+  onOpenSolver: () => void;
   onExportSheet: () => void;
   isExporting: boolean;
 }
@@ -31,6 +33,7 @@ export const Header: React.FC<HeaderProps> = ({
   onToggleTheme,
   onOpenTheory,
   onOpenQuiz,
+  onOpenSolver,
   onExportSheet,
   isExporting,
 }) => {
@@ -120,6 +123,19 @@ export const Header: React.FC<HeaderProps> = ({
         >
           <BookOpen className="w-3.5 h-3.5 text-sky-400" />
           <span className="hidden sm:inline">1st Angle</span> Theory
+        </button>
+
+        {/* Question-to-Drawing Solver Trigger */}
+        <button
+          onClick={onOpenSolver}
+          className={`px-3 py-1.5 text-xs font-mono font-semibold rounded-lg border flex items-center gap-1.5 transition-all ${
+            isDark
+              ? 'bg-violet-950/50 hover:bg-violet-900/70 text-violet-300 border-violet-700/60'
+              : 'bg-violet-50 hover:bg-violet-100 text-violet-800 border-violet-200'
+          }`}
+        >
+          <Wand2 className="w-3.5 h-3.5 text-violet-400" />
+          <span className="hidden sm:inline">Solve</span> Question
         </button>
 
         {/* Practice Quiz Trigger */}

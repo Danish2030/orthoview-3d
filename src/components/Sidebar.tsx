@@ -64,6 +64,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onToggleCollapse,
 }) => {
   const [activeTab, setActiveTab] = useState<'solids' | 'dimensions' | 'orientation' | 'display'>('solids');
+  const [dimInputMode, setDimInputMode] = useState<'sliders' | 'views'>('views');
+
+  const handleNumericDim = (axis: keyof SolidDimensions, raw: string) => {
+    const num = Number(raw);
+    if (Number.isNaN(num)) return;
+    const clamped = Math.max(10, Math.min(150, num));
+    onUpdateDimensions({ ...dimensions, [axis]: clamped });
+  };
 
   const isDark = theme === 'blueprint';
 
@@ -321,89 +329,267 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <div className="space-y-4">
             <div className="text-[11px] font-mono font-semibold text-slate-400 uppercase tracking-wider flex items-center justify-between">
               <span>Parametric Dimensions</span>
-              <span className="text-[10px] text-amber-400">All in millimeters (mm)</span>
+              <span className="text-[10px] text-amber-400">All in mm</span>
             </div>
 
-            {/* Length (L) */}
-            <div className="p-3 rounded-lg border border-slate-800 bg-slate-900/40 space-y-2">
-              <div className="flex items-center justify-between text-xs font-mono">
-                <span className="font-bold text-red-400 flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-red-400" />
-                  Length (L) [X-axis]
-                </span>
-                <span className="font-bold text-sky-400">{dimensions.length} mm</span>
-              </div>
-              <input
-                type="range"
-                min="20"
-                max="100"
-                step="2"
-                value={dimensions.length}
-                onChange={(e) =>
-                  onUpdateDimensions({ ...dimensions, length: Number(e.target.value) })
-                }
-                className="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-red-500"
-              />
-              <div className="flex justify-between text-[10px] text-slate-500 font-mono">
-                <span>20 mm</span>
-                <span>60 mm</span>
-                <span>100 mm</span>
-              </div>
+            {/* Mode Switcher: By View vs Sliders */}
+            <div className="grid grid-cols-2 gap-1 p-1 rounded-lg bg-slate-900/70 border border-slate-800 text-[11px] font-mono">
+              <button
+                onClick={() => setDimInputMode('views')}
+                className={`py-1.5 rounded-md font-semibold transition-all ${
+                  dimInputMode === 'views'
+                    ? 'bg-sky-500 text-slate-950 shadow'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                Write by View
+              </button>
+              <button
+                onClick={() => setDimInputMode('sliders')}
+                className={`py-1.5 rounded-md font-semibold transition-all ${
+                  dimInputMode === 'sliders'
+                    ? 'bg-sky-500 text-slate-950 shadow'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                Axis Sliders
+              </button>
             </div>
 
-            {/* Width / Depth (W) */}
-            <div className="p-3 rounded-lg border border-slate-800 bg-slate-900/40 space-y-2">
-              <div className="flex items-center justify-between text-xs font-mono">
-                <span className="font-bold text-blue-400 flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-blue-400" />
-                  Width / Depth (W) [Z-axis]
-                </span>
-                <span className="font-bold text-sky-400">{dimensions.width} mm</span>
-              </div>
-              <input
-                type="range"
-                min="20"
-                max="100"
-                step="2"
-                value={dimensions.width}
-                onChange={(e) =>
-                  onUpdateDimensions({ ...dimensions, width: Number(e.target.value) })
-                }
-                className="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-500"
-              />
-              <div className="flex justify-between text-[10px] text-slate-500 font-mono">
-                <span>20 mm</span>
-                <span>50 mm</span>
-                <span>100 mm</span>
-              </div>
-            </div>
+            {dimInputMode === 'views' ? (
+              <div className="space-y-3">
+                <p className="text-[11px] font-mono text-slate-400 leading-relaxed">
+                  Type exact dimensions for each orthographic view (10–150 mm). Shared axes stay synced automatically and render live in the output sheet.
+                </p>
 
-            {/* Height (H) */}
-            <div className="p-3 rounded-lg border border-slate-800 bg-slate-900/40 space-y-2">
-              <div className="flex items-center justify-between text-xs font-mono">
-                <span className="font-bold text-emerald-400 flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-emerald-400" />
-                  Height (H) [Y-axis]
-                </span>
-                <span className="font-bold text-sky-400">{dimensions.height} mm</span>
+                {/* Front View (FV): Length x Height */}
+                <div className="p-3 rounded-lg border border-slate-800 bg-slate-900/40 space-y-2">
+                  <div className="flex items-center justify-between text-xs font-mono">
+                    <span className="font-bold text-sky-400">Front View (FV)</span>
+                    <span className="text-[10px] text-slate-400">L × H</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <label className="space-y-1">
+                      <span className="text-[10px] font-mono text-red-400 block">Length (L)</span>
+                      <div className="relative">
+                        <input
+                          type="number"
+                          min={10}
+                          max={150}
+                          value={dimensions.length}
+                          onChange={(e) => handleNumericDim('length', e.target.value)}
+                          className="w-full px-2.5 py-1.5 pr-8 text-xs font-mono rounded-md bg-slate-950 border border-slate-700 text-slate-100 focus:outline-none focus:border-sky-500"
+                        />
+                        <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] font-mono text-slate-500">mm</span>
+                      </div>
+                    </label>
+                    <label className="space-y-1">
+                      <span className="text-[10px] font-mono text-emerald-400 block">Height (H)</span>
+                      <div className="relative">
+                        <input
+                          type="number"
+                          min={10}
+                          max={150}
+                          value={dimensions.height}
+                          onChange={(e) => handleNumericDim('height', e.target.value)}
+                          className="w-full px-2.5 py-1.5 pr-8 text-xs font-mono rounded-md bg-slate-950 border border-slate-700 text-slate-100 focus:outline-none focus:border-sky-500"
+                        />
+                        <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] font-mono text-slate-500">mm</span>
+                      </div>
+                    </label>
+                  </div>
+                </div>
+
+                {/* Top View (TV): Length x Width */}
+                <div className="p-3 rounded-lg border border-slate-800 bg-slate-900/40 space-y-2">
+                  <div className="flex items-center justify-between text-xs font-mono">
+                    <span className="font-bold text-sky-400">Top View (TV)</span>
+                    <span className="text-[10px] text-slate-400">L × W</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <label className="space-y-1">
+                      <span className="text-[10px] font-mono text-red-400 block">Length (L)</span>
+                      <div className="relative">
+                        <input
+                          type="number"
+                          min={10}
+                          max={150}
+                          value={dimensions.length}
+                          onChange={(e) => handleNumericDim('length', e.target.value)}
+                          className="w-full px-2.5 py-1.5 pr-8 text-xs font-mono rounded-md bg-slate-950 border border-slate-700 text-slate-100 focus:outline-none focus:border-sky-500"
+                        />
+                        <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] font-mono text-slate-500">mm</span>
+                      </div>
+                    </label>
+                    <label className="space-y-1">
+                      <span className="text-[10px] font-mono text-blue-400 block">Width (W)</span>
+                      <div className="relative">
+                        <input
+                          type="number"
+                          min={10}
+                          max={150}
+                          value={dimensions.width}
+                          onChange={(e) => handleNumericDim('width', e.target.value)}
+                          className="w-full px-2.5 py-1.5 pr-8 text-xs font-mono rounded-md bg-slate-950 border border-slate-700 text-slate-100 focus:outline-none focus:border-sky-500"
+                        />
+                        <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] font-mono text-slate-500">mm</span>
+                      </div>
+                    </label>
+                  </div>
+                </div>
+
+                {/* Left Side View (LHSV): Width x Height */}
+                <div className="p-3 rounded-lg border border-slate-800 bg-slate-900/40 space-y-2">
+                  <div className="flex items-center justify-between text-xs font-mono">
+                    <span className="font-bold text-sky-400">Left Side View (SV)</span>
+                    <span className="text-[10px] text-slate-400">W × H</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <label className="space-y-1">
+                      <span className="text-[10px] font-mono text-blue-400 block">Width (W)</span>
+                      <div className="relative">
+                        <input
+                          type="number"
+                          min={10}
+                          max={150}
+                          value={dimensions.width}
+                          onChange={(e) => handleNumericDim('width', e.target.value)}
+                          className="w-full px-2.5 py-1.5 pr-8 text-xs font-mono rounded-md bg-slate-950 border border-slate-700 text-slate-100 focus:outline-none focus:border-sky-500"
+                        />
+                        <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] font-mono text-slate-500">mm</span>
+                      </div>
+                    </label>
+                    <label className="space-y-1">
+                      <span className="text-[10px] font-mono text-emerald-400 block">Height (H)</span>
+                      <div className="relative">
+                        <input
+                          type="number"
+                          min={10}
+                          max={150}
+                          value={dimensions.height}
+                          onChange={(e) => handleNumericDim('height', e.target.value)}
+                          className="w-full px-2.5 py-1.5 pr-8 text-xs font-mono rounded-md bg-slate-950 border border-slate-700 text-slate-100 focus:outline-none focus:border-sky-500"
+                        />
+                        <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] font-mono text-slate-500">mm</span>
+                      </div>
+                    </label>
+                  </div>
+                </div>
               </div>
-              <input
-                type="range"
-                min="20"
-                max="100"
-                step="2"
-                value={dimensions.height}
-                onChange={(e) =>
-                  onUpdateDimensions({ ...dimensions, height: Number(e.target.value) })
-                }
-                className="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-emerald-500"
-              />
-              <div className="flex justify-between text-[10px] text-slate-500 font-mono">
-                <span>20 mm</span>
-                <span>50 mm</span>
-                <span>100 mm</span>
+            ) : (
+              <div className="space-y-3">
+                {/* Length (L) */}
+                <div className="p-3 rounded-lg border border-slate-800 bg-slate-900/40 space-y-2">
+                  <div className="flex items-center justify-between text-xs font-mono">
+                    <span className="font-bold text-red-400 flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-red-400" />
+                      Length (L) [X-axis]
+                    </span>
+                    <div className="flex items-center gap-1">
+                      <input
+                        type="number"
+                        min={10}
+                        max={150}
+                        value={dimensions.length}
+                        onChange={(e) => handleNumericDim('length', e.target.value)}
+                        className="w-16 px-1.5 py-0.5 text-right text-xs font-mono font-bold text-sky-400 bg-slate-950 border border-slate-700 rounded focus:outline-none focus:border-sky-500"
+                      />
+                      <span className="text-[10px] text-slate-400">mm</span>
+                    </div>
+                  </div>
+                  <input
+                    type="range"
+                    min="20"
+                    max="120"
+                    step="2"
+                    value={Math.min(120, Math.max(20, dimensions.length))}
+                    onChange={(e) =>
+                      onUpdateDimensions({ ...dimensions, length: Number(e.target.value) })
+                    }
+                    className="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-red-500"
+                  />
+                  <div className="flex justify-between text-[10px] text-slate-500 font-mono">
+                    <span>20 mm</span>
+                    <span>70 mm</span>
+                    <span>120 mm</span>
+                  </div>
+                </div>
+
+                {/* Width / Depth (W) */}
+                <div className="p-3 rounded-lg border border-slate-800 bg-slate-900/40 space-y-2">
+                  <div className="flex items-center justify-between text-xs font-mono">
+                    <span className="font-bold text-blue-400 flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-blue-400" />
+                      Width / Depth (W) [Z-axis]
+                    </span>
+                    <div className="flex items-center gap-1">
+                      <input
+                        type="number"
+                        min={10}
+                        max={150}
+                        value={dimensions.width}
+                        onChange={(e) => handleNumericDim('width', e.target.value)}
+                        className="w-16 px-1.5 py-0.5 text-right text-xs font-mono font-bold text-sky-400 bg-slate-950 border border-slate-700 rounded focus:outline-none focus:border-sky-500"
+                      />
+                      <span className="text-[10px] text-slate-400">mm</span>
+                    </div>
+                  </div>
+                  <input
+                    type="range"
+                    min="20"
+                    max="120"
+                    step="2"
+                    value={Math.min(120, Math.max(20, dimensions.width))}
+                    onChange={(e) =>
+                      onUpdateDimensions({ ...dimensions, width: Number(e.target.value) })
+                    }
+                    className="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-500"
+                  />
+                  <div className="flex justify-between text-[10px] text-slate-500 font-mono">
+                    <span>20 mm</span>
+                    <span>70 mm</span>
+                    <span>120 mm</span>
+                  </div>
+                </div>
+
+                {/* Height (H) */}
+                <div className="p-3 rounded-lg border border-slate-800 bg-slate-900/40 space-y-2">
+                  <div className="flex items-center justify-between text-xs font-mono">
+                    <span className="font-bold text-emerald-400 flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-emerald-400" />
+                      Height (H) [Y-axis]
+                    </span>
+                    <div className="flex items-center gap-1">
+                      <input
+                        type="number"
+                        min={10}
+                        max={150}
+                        value={dimensions.height}
+                        onChange={(e) => handleNumericDim('height', e.target.value)}
+                        className="w-16 px-1.5 py-0.5 text-right text-xs font-mono font-bold text-sky-400 bg-slate-950 border border-slate-700 rounded focus:outline-none focus:border-sky-500"
+                      />
+                      <span className="text-[10px] text-slate-400">mm</span>
+                    </div>
+                  </div>
+                  <input
+                    type="range"
+                    min="20"
+                    max="120"
+                    step="2"
+                    value={Math.min(120, Math.max(20, dimensions.height))}
+                    onChange={(e) =>
+                      onUpdateDimensions({ ...dimensions, height: Number(e.target.value) })
+                    }
+                    className="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-emerald-500"
+                  />
+                  <div className="flex justify-between text-[10px] text-slate-500 font-mono">
+                    <span>20 mm</span>
+                    <span>70 mm</span>
+                    <span>120 mm</span>
+                  </div>
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Quick Dimension Ratios */}
             <div className="pt-2 border-t border-slate-800 flex items-center justify-between">

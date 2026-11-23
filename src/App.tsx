@@ -5,6 +5,7 @@ import { Viewport3D } from './components/Viewport3D';
 import { OrthographicSheet } from './components/OrthographicSheet';
 import { TheoryModal } from './components/TheoryModal';
 import { QuizModal } from './components/QuizModal';
+import { QuestionSolverModal } from './components/QuestionSolverModal';
 import { createSolidGeometry, SOLID_PRESETS } from './utils/geometryGenerators';
 import { exportSheetAsPNG } from './utils/exportDrawingSheet';
 import { DisplayOptions, SolidDimensions, SolidRotation, SolidType, ThemeMode } from './types';
@@ -24,6 +25,7 @@ export function App() {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(false);
   const [isTheoryOpen, setIsTheoryOpen] = useState<boolean>(false);
   const [isQuizOpen, setIsQuizOpen] = useState<boolean>(false);
+  const [isSolverOpen, setIsSolverOpen] = useState<boolean>(false);
   const [isExporting, setIsExporting] = useState<boolean>(false);
 
   // Display Options
@@ -75,6 +77,35 @@ export function App() {
     }
   };
 
+  const handleApplyQuestionSolution = ({
+    solidType,
+    dimensions: nextDims,
+    rotation: nextRot,
+    exportAfter,
+  }: {
+    solidType: SolidType;
+    dimensions: SolidDimensions;
+    rotation: SolidRotation;
+    exportAfter?: boolean;
+  }) => {
+    setCurrentSolid(solidType);
+    setDimensions(nextDims);
+    setRotation(nextRot);
+    if (exportAfter) {
+      setTimeout(() => {
+        const preset = SOLID_PRESETS.find((p) => p.id === solidType) || SOLID_PRESETS[0];
+        exportSheetAsPNG({
+          canvases: canvasesRef.current,
+          solidName: preset.name,
+          dimensions: nextDims,
+          theme,
+          showMiterLine: displayOptions.showMiterLine,
+          showProjectors: displayOptions.showProjectors,
+        }).catch((err) => console.error('Export error:', err));
+      }, 350);
+    }
+  };
+
   const handleResetRotation = () => {
     setRotation({ x: 0, y: 0, z: 0 });
   };
@@ -117,6 +148,7 @@ export function App() {
         onToggleTheme={handleToggleTheme}
         onOpenTheory={() => setIsTheoryOpen(true)}
         onOpenQuiz={() => setIsQuizOpen(true)}
+        onOpenSolver={() => setIsSolverOpen(true)}
         onExportSheet={handleExportSheet}
         isExporting={isExporting}
       />
@@ -177,6 +209,14 @@ export function App() {
         isOpen={isTheoryOpen}
         onClose={() => setIsTheoryOpen(false)}
         theme={theme}
+      />
+
+      {/* Question-to-Drawing Solver Modal */}
+      <QuestionSolverModal
+        isOpen={isSolverOpen}
+        onClose={() => setIsSolverOpen(false)}
+        theme={theme}
+        onApplySolution={handleApplyQuestionSolution}
       />
 
       {/* Student Practice Quiz Modal */}
