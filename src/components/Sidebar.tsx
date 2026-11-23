@@ -78,23 +78,23 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const getSolidIcon = (iconName: string) => {
     switch (iconName) {
       case 'CornerDownRight':
-        return <CornerDownRight className="w-4 h-4 text-sky-400" />;
+        return <CornerDownRight className="w-4 h-4 text-violet-600 dark:text-violet-300" />;
       case 'SplitSquareVertical':
-        return <SplitSquareVertical className="w-4 h-4 text-sky-400" />;
+        return <SplitSquareVertical className="w-4 h-4 text-violet-600 dark:text-violet-300" />;
       case 'Hexagon':
-        return <Hexagon className="w-4 h-4 text-sky-400" />;
+        return <Hexagon className="w-4 h-4 text-violet-600 dark:text-violet-300" />;
       case 'Pyramid':
-        return <Pyramid className="w-4 h-4 text-sky-400" />;
+        return <Pyramid className="w-4 h-4 text-violet-600 dark:text-violet-300" />;
       case 'Cone':
-        return <Cone className="w-4 h-4 text-sky-400" />;
+        return <Cone className="w-4 h-4 text-violet-600 dark:text-violet-300" />;
       case 'CircleDot':
-        return <CircleDot className="w-4 h-4 text-sky-400" />;
+        return <CircleDot className="w-4 h-4 text-violet-600 dark:text-violet-300" />;
       case 'Spline':
-        return <Spline className="w-4 h-4 text-sky-400" />;
+        return <Spline className="w-4 h-4 text-violet-600 dark:text-violet-300" />;
       case 'Triangle':
-        return <Triangle className="w-4 h-4 text-sky-400" />;
+        return <Triangle className="w-4 h-4 text-violet-600 dark:text-violet-300" />;
       default:
-        return <Box className="w-4 h-4 text-sky-400" />;
+        return <Box className="w-4 h-4 text-violet-600 dark:text-violet-300" />;
     }
   };
 
@@ -102,14 +102,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
     return (
       <div
         className={`w-14 h-full flex flex-col items-center py-4 border-r select-none transition-colors duration-200 z-30 ${
-          isDark ? 'bg-[#0f172a] border-slate-800' : 'bg-white border-slate-200'
+          isDark ? 'glass-panel border-white/10 text-[#f3f2fa]' : 'glass-panel border-indigo-950/10 text-[#141326]'
         }`}
       >
         <button
           onClick={onToggleCollapse}
           title="Expand Control Panel"
           className={`p-2.5 rounded-lg mb-6 transition-all ${
-            isDark ? 'hover:bg-slate-800 text-sky-400' : 'hover:bg-slate-100 text-blue-600'
+            isDark ? 'hover:bg-slate-800 text-violet-600 dark:text-violet-300' : 'hover:bg-slate-100 text-blue-600'
           }`}
         >
           <ChevronRight className="w-5 h-5" />
@@ -122,7 +122,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               setActiveTab('solids');
             }}
             title="Engineering Solids"
-            className="p-2 rounded hover:bg-slate-800 text-slate-400 hover:text-sky-400"
+            className="p-2 rounded hover:bg-slate-800 text-slate-500 dark:text-[#9b99b8] hover:text-violet-600 dark:text-violet-300"
           >
             <Box className="w-5 h-5" />
           </button>
@@ -132,7 +132,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               setActiveTab('dimensions');
             }}
             title="Parametric Dimensions"
-            className="p-2 rounded hover:bg-slate-800 text-slate-400 hover:text-sky-400"
+            className="p-2 rounded hover:bg-slate-800 text-slate-500 dark:text-[#9b99b8] hover:text-violet-600 dark:text-violet-300"
           >
             <Sliders className="w-5 h-5" />
           </button>
@@ -142,7 +142,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               setActiveTab('orientation');
             }}
             title="Orientation & Inclination"
-            className="p-2 rounded hover:bg-slate-800 text-slate-400 hover:text-sky-400"
+            className="p-2 rounded hover:bg-slate-800 text-slate-500 dark:text-[#9b99b8] hover:text-violet-600 dark:text-violet-300"
           >
             <Rotate3d className="w-5 h-5" />
           </button>
@@ -152,7 +152,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               setActiveTab('display');
             }}
             title="Display Options"
-            className="p-2 rounded hover:bg-slate-800 text-slate-400 hover:text-sky-400"
+            className="p-2 rounded hover:bg-slate-800 text-slate-500 dark:text-[#9b99b8] hover:text-violet-600 dark:text-violet-300"
           >
             <Layers className="w-5 h-5" />
           </button>
@@ -174,36 +174,36 @@ export const Sidebar: React.FC<SidebarProps> = ({
   return (
     <aside
       className={`w-80 h-full flex flex-col border-r select-none transition-colors duration-200 z-30 ${
-        isDark ? 'bg-[#0f172a] border-slate-800 text-slate-200' : 'bg-white border-slate-200 text-slate-800'
+        isDark ? 'glass-panel border-white/10 text-[#f3f2fa]' : 'glass-panel border-indigo-950/10 text-[#141326]'
       }`}
     >
       {/* Sidebar Header */}
-      <div className="px-4 py-3.5 border-b border-slate-700/50 flex items-center justify-between">
+      <div className="px-4 py-3.5 border-b border-indigo-950/10 dark:border-white/10 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <SlidersHorizontal className="w-4 h-4 text-sky-400" />
-          <span className="font-mono font-bold text-xs tracking-wider uppercase">
+          <SlidersHorizontal className="w-4 h-4 text-violet-600 dark:text-violet-300" />
+          <span className="font-bold text-xs tracking-wider uppercase">
             CONTROL PALETTE
           </span>
         </div>
         <button
           onClick={onToggleCollapse}
           title="Collapse Sidebar"
-          className="p-1 rounded hover:bg-slate-800 text-slate-400 hover:text-white transition-colors"
+          className="p-1 rounded hover:bg-slate-800 text-slate-500 dark:text-[#9b99b8] hover:text-white transition-colors"
         >
           <ChevronLeft className="w-4 h-4" />
         </button>
       </div>
 
       {/* Tabs */}
-      <div className="grid grid-cols-4 border-b border-slate-700/50 p-1 text-[11px] font-mono">
+      <div className="grid grid-cols-4 border-b border-indigo-950/10 dark:border-white/10 p-1 text-[11px]">
         <button
           onClick={() => setActiveTab('solids')}
-          className={`py-1.5 rounded transition-all text-center flex flex-col items-center gap-1 ${
+          className={`py-1.5 rounded-xl transition-all text-center flex flex-col items-center gap-1 ${
             activeTab === 'solids'
               ? isDark
-                ? 'bg-sky-500/20 text-sky-300 font-bold border border-sky-500/30'
-                : 'bg-blue-50 text-blue-700 font-bold border border-blue-200'
-              : 'text-slate-400 hover:text-slate-200'
+                ? 'glass-pill-active text-white font-semibold'
+                : 'glass-pill-active text-violet-950 font-semibold'
+              : isDark ? 'text-[#9b99b8] hover:text-white' : 'text-[#5c5b74] hover:text-[#141326]'
           }`}
         >
           <Box className="w-3.5 h-3.5" />
@@ -212,12 +212,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
         <button
           onClick={() => setActiveTab('dimensions')}
-          className={`py-1.5 rounded transition-all text-center flex flex-col items-center gap-1 ${
+          className={`py-1.5 rounded-xl transition-all text-center flex flex-col items-center gap-1 ${
             activeTab === 'dimensions'
               ? isDark
-                ? 'bg-sky-500/20 text-sky-300 font-bold border border-sky-500/30'
-                : 'bg-blue-50 text-blue-700 font-bold border border-blue-200'
-              : 'text-slate-400 hover:text-slate-200'
+                ? 'glass-pill-active text-white font-semibold'
+                : 'glass-pill-active text-violet-950 font-semibold'
+              : isDark ? 'text-[#9b99b8] hover:text-white' : 'text-[#5c5b74] hover:text-[#141326]'
           }`}
         >
           <Sliders className="w-3.5 h-3.5" />
@@ -226,12 +226,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
         <button
           onClick={() => setActiveTab('orientation')}
-          className={`py-1.5 rounded transition-all text-center flex flex-col items-center gap-1 ${
+          className={`py-1.5 rounded-xl transition-all text-center flex flex-col items-center gap-1 ${
             activeTab === 'orientation'
               ? isDark
-                ? 'bg-sky-500/20 text-sky-300 font-bold border border-sky-500/30'
-                : 'bg-blue-50 text-blue-700 font-bold border border-blue-200'
-              : 'text-slate-400 hover:text-slate-200'
+                ? 'glass-pill-active text-white font-semibold'
+                : 'glass-pill-active text-violet-950 font-semibold'
+              : isDark ? 'text-[#9b99b8] hover:text-white' : 'text-[#5c5b74] hover:text-[#141326]'
           }`}
         >
           <Rotate3d className="w-3.5 h-3.5" />
@@ -240,12 +240,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
         <button
           onClick={() => setActiveTab('display')}
-          className={`py-1.5 rounded transition-all text-center flex flex-col items-center gap-1 ${
+          className={`py-1.5 rounded-xl transition-all text-center flex flex-col items-center gap-1 ${
             activeTab === 'display'
               ? isDark
-                ? 'bg-sky-500/20 text-sky-300 font-bold border border-sky-500/30'
-                : 'bg-blue-50 text-blue-700 font-bold border border-blue-200'
-              : 'text-slate-400 hover:text-slate-200'
+                ? 'glass-pill-active text-white font-semibold'
+                : 'glass-pill-active text-violet-950 font-semibold'
+              : isDark ? 'text-[#9b99b8] hover:text-white' : 'text-[#5c5b74] hover:text-[#141326]'
           }`}
         >
           <Layers className="w-3.5 h-3.5" />
@@ -258,9 +258,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {/* TAB 1: SOLIDS PRESETS */}
         {activeTab === 'solids' && (
           <div className="space-y-3">
-            <div className="text-[11px] font-mono font-semibold text-slate-400 uppercase tracking-wider flex items-center justify-between">
+            <div className="text-[11px] font-semibold text-slate-500 dark:text-[#9b99b8] uppercase tracking-wider flex items-center justify-between">
               <span>Standard Engineering Solids</span>
-              <span className="text-[10px] text-sky-400">{SOLID_PRESETS.length} models</span>
+              <span className="text-[10px] text-violet-600 dark:text-violet-300">{SOLID_PRESETS.length} models</span>
             </div>
 
             <div className="grid grid-cols-1 gap-2">
@@ -276,7 +276,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                           ? 'bg-sky-950/40 border-sky-400 shadow-[0_0_15px_rgba(56,189,248,0.25)]'
                           : 'bg-blue-50 border-blue-500 shadow-sm'
                         : isDark
-                        ? 'bg-slate-900/60 border-slate-800 hover:border-slate-700 hover:bg-slate-800/50'
+                        ? 'bg-slate-900/60 border-indigo-950/10 dark:border-white/10 hover:border-slate-700 hover:bg-slate-800/50'
                         : 'bg-slate-50 border-slate-200 hover:border-slate-300 hover:bg-slate-100'
                     }`}
                   >
@@ -287,7 +287,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                             ? 'bg-sky-500/20 text-sky-300'
                             : 'bg-blue-100 text-blue-700'
                           : isDark
-                          ? 'bg-slate-800 text-slate-400'
+                          ? 'bg-slate-800 text-slate-500 dark:text-[#9b99b8]'
                           : 'bg-slate-200 text-slate-600'
                       }`}
                     >
@@ -297,23 +297,23 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between">
                         <span
-                          className={`font-mono text-xs font-bold truncate ${
+                          className={`text-xs font-bold truncate ${
                             isSelected
                               ? isDark
                                 ? 'text-sky-300'
                                 : 'text-blue-700'
                               : isDark
-                              ? 'text-slate-200'
+                              ? 'text-slate-900 dark:text-[#f3f2fa]'
                               : 'text-slate-800'
                           }`}
                         >
                           {preset.name}
                         </span>
-                        <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-slate-800 text-slate-400">
+                        <span className="text-[9px] px-1.5 py-0.2 rounded bg-slate-800 text-slate-500 dark:text-[#9b99b8]">
                           {preset.category}
                         </span>
                       </div>
-                      <p className="text-[10px] text-slate-400 mt-1 line-clamp-2 leading-tight">
+                      <p className="text-[10px] text-slate-500 dark:text-[#9b99b8] mt-1 line-clamp-2 leading-tight">
                         {preset.description}
                       </p>
                     </div>
@@ -327,19 +327,19 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {/* TAB 2: PARAMETRIC DIMENSIONS */}
         {activeTab === 'dimensions' && (
           <div className="space-y-4">
-            <div className="text-[11px] font-mono font-semibold text-slate-400 uppercase tracking-wider flex items-center justify-between">
+            <div className="text-[11px] font-semibold text-slate-500 dark:text-[#9b99b8] uppercase tracking-wider flex items-center justify-between">
               <span>Parametric Dimensions</span>
               <span className="text-[10px] text-amber-400">All in mm</span>
             </div>
 
             {/* Mode Switcher: By View vs Sliders */}
-            <div className="grid grid-cols-2 gap-1 p-1 rounded-lg bg-slate-900/70 border border-slate-800 text-[11px] font-mono">
+            <div className="grid grid-cols-2 gap-1 p-1 rounded-lg glass-card text-[11px]">
               <button
                 onClick={() => setDimInputMode('views')}
                 className={`py-1.5 rounded-md font-semibold transition-all ${
                   dimInputMode === 'views'
-                    ? 'bg-sky-500 text-slate-950 shadow'
-                    : 'text-slate-400 hover:text-slate-200'
+                    ? 'glass-pill-active text-violet-950 dark:text-white'
+                    : 'text-slate-500 dark:text-[#9b99b8] hover:text-slate-900 dark:text-[#f3f2fa]'
                 }`}
               >
                 Write by View
@@ -348,8 +348,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 onClick={() => setDimInputMode('sliders')}
                 className={`py-1.5 rounded-md font-semibold transition-all ${
                   dimInputMode === 'sliders'
-                    ? 'bg-sky-500 text-slate-950 shadow'
-                    : 'text-slate-400 hover:text-slate-200'
+                    ? 'glass-pill-active text-violet-950 dark:text-white'
+                    : 'text-slate-500 dark:text-[#9b99b8] hover:text-slate-900 dark:text-[#f3f2fa]'
                 }`}
               >
                 Axis Sliders
@@ -358,19 +358,19 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
             {dimInputMode === 'views' ? (
               <div className="space-y-3">
-                <p className="text-[11px] font-mono text-slate-400 leading-relaxed">
+                <p className="text-[11px] text-slate-500 dark:text-[#9b99b8] leading-relaxed">
                   Type exact dimensions for each orthographic view (10–150 mm). Shared axes stay synced automatically and render live in the output sheet.
                 </p>
 
                 {/* Front View (FV): Length x Height */}
-                <div className="p-3 rounded-lg border border-slate-800 bg-slate-900/40 space-y-2">
-                  <div className="flex items-center justify-between text-xs font-mono">
-                    <span className="font-bold text-sky-400">Front View (FV)</span>
-                    <span className="text-[10px] text-slate-400">L × H</span>
+                <div className="p-3.5 rounded-2xl glass-card space-y-2">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-bold text-violet-600 dark:text-violet-300">Front View (FV)</span>
+                    <span className="text-[10px] text-slate-500 dark:text-[#9b99b8]">L × H</span>
                   </div>
                   <div className="grid grid-cols-2 gap-2">
                     <label className="space-y-1">
-                      <span className="text-[10px] font-mono text-red-400 block">Length (L)</span>
+                      <span className="text-[10px] text-red-400 block">Length (L)</span>
                       <div className="relative">
                         <input
                           type="number"
@@ -378,13 +378,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
                           max={150}
                           value={dimensions.length}
                           onChange={(e) => handleNumericDim('length', e.target.value)}
-                          className="w-full px-2.5 py-1.5 pr-8 text-xs font-mono rounded-md bg-slate-950 border border-slate-700 text-slate-100 focus:outline-none focus:border-sky-500"
+                          className="w-full px-2.5 py-1.5 pr-8 text-xs rounded-md glass-input tabular-nums"
                         />
-                        <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] font-mono text-slate-500">mm</span>
+                        <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-slate-500">mm</span>
                       </div>
                     </label>
                     <label className="space-y-1">
-                      <span className="text-[10px] font-mono text-emerald-400 block">Height (H)</span>
+                      <span className="text-[10px] text-emerald-400 block">Height (H)</span>
                       <div className="relative">
                         <input
                           type="number"
@@ -392,23 +392,23 @@ export const Sidebar: React.FC<SidebarProps> = ({
                           max={150}
                           value={dimensions.height}
                           onChange={(e) => handleNumericDim('height', e.target.value)}
-                          className="w-full px-2.5 py-1.5 pr-8 text-xs font-mono rounded-md bg-slate-950 border border-slate-700 text-slate-100 focus:outline-none focus:border-sky-500"
+                          className="w-full px-2.5 py-1.5 pr-8 text-xs rounded-md glass-input tabular-nums"
                         />
-                        <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] font-mono text-slate-500">mm</span>
+                        <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-slate-500">mm</span>
                       </div>
                     </label>
                   </div>
                 </div>
 
                 {/* Top View (TV): Length x Width */}
-                <div className="p-3 rounded-lg border border-slate-800 bg-slate-900/40 space-y-2">
-                  <div className="flex items-center justify-between text-xs font-mono">
-                    <span className="font-bold text-sky-400">Top View (TV)</span>
-                    <span className="text-[10px] text-slate-400">L × W</span>
+                <div className="p-3.5 rounded-2xl glass-card space-y-2">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-bold text-violet-600 dark:text-violet-300">Top View (TV)</span>
+                    <span className="text-[10px] text-slate-500 dark:text-[#9b99b8]">L × W</span>
                   </div>
                   <div className="grid grid-cols-2 gap-2">
                     <label className="space-y-1">
-                      <span className="text-[10px] font-mono text-red-400 block">Length (L)</span>
+                      <span className="text-[10px] text-red-400 block">Length (L)</span>
                       <div className="relative">
                         <input
                           type="number"
@@ -416,13 +416,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
                           max={150}
                           value={dimensions.length}
                           onChange={(e) => handleNumericDim('length', e.target.value)}
-                          className="w-full px-2.5 py-1.5 pr-8 text-xs font-mono rounded-md bg-slate-950 border border-slate-700 text-slate-100 focus:outline-none focus:border-sky-500"
+                          className="w-full px-2.5 py-1.5 pr-8 text-xs rounded-md glass-input tabular-nums"
                         />
-                        <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] font-mono text-slate-500">mm</span>
+                        <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-slate-500">mm</span>
                       </div>
                     </label>
                     <label className="space-y-1">
-                      <span className="text-[10px] font-mono text-blue-400 block">Width (W)</span>
+                      <span className="text-[10px] text-blue-400 block">Width (W)</span>
                       <div className="relative">
                         <input
                           type="number"
@@ -430,23 +430,23 @@ export const Sidebar: React.FC<SidebarProps> = ({
                           max={150}
                           value={dimensions.width}
                           onChange={(e) => handleNumericDim('width', e.target.value)}
-                          className="w-full px-2.5 py-1.5 pr-8 text-xs font-mono rounded-md bg-slate-950 border border-slate-700 text-slate-100 focus:outline-none focus:border-sky-500"
+                          className="w-full px-2.5 py-1.5 pr-8 text-xs rounded-md glass-input tabular-nums"
                         />
-                        <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] font-mono text-slate-500">mm</span>
+                        <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-slate-500">mm</span>
                       </div>
                     </label>
                   </div>
                 </div>
 
                 {/* Left Side View (LHSV): Width x Height */}
-                <div className="p-3 rounded-lg border border-slate-800 bg-slate-900/40 space-y-2">
-                  <div className="flex items-center justify-between text-xs font-mono">
-                    <span className="font-bold text-sky-400">Left Side View (SV)</span>
-                    <span className="text-[10px] text-slate-400">W × H</span>
+                <div className="p-3.5 rounded-2xl glass-card space-y-2">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-bold text-violet-600 dark:text-violet-300">Left Side View (SV)</span>
+                    <span className="text-[10px] text-slate-500 dark:text-[#9b99b8]">W × H</span>
                   </div>
                   <div className="grid grid-cols-2 gap-2">
                     <label className="space-y-1">
-                      <span className="text-[10px] font-mono text-blue-400 block">Width (W)</span>
+                      <span className="text-[10px] text-blue-400 block">Width (W)</span>
                       <div className="relative">
                         <input
                           type="number"
@@ -454,13 +454,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
                           max={150}
                           value={dimensions.width}
                           onChange={(e) => handleNumericDim('width', e.target.value)}
-                          className="w-full px-2.5 py-1.5 pr-8 text-xs font-mono rounded-md bg-slate-950 border border-slate-700 text-slate-100 focus:outline-none focus:border-sky-500"
+                          className="w-full px-2.5 py-1.5 pr-8 text-xs rounded-md glass-input tabular-nums"
                         />
-                        <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] font-mono text-slate-500">mm</span>
+                        <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-slate-500">mm</span>
                       </div>
                     </label>
                     <label className="space-y-1">
-                      <span className="text-[10px] font-mono text-emerald-400 block">Height (H)</span>
+                      <span className="text-[10px] text-emerald-400 block">Height (H)</span>
                       <div className="relative">
                         <input
                           type="number"
@@ -468,9 +468,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
                           max={150}
                           value={dimensions.height}
                           onChange={(e) => handleNumericDim('height', e.target.value)}
-                          className="w-full px-2.5 py-1.5 pr-8 text-xs font-mono rounded-md bg-slate-950 border border-slate-700 text-slate-100 focus:outline-none focus:border-sky-500"
+                          className="w-full px-2.5 py-1.5 pr-8 text-xs rounded-md glass-input tabular-nums"
                         />
-                        <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] font-mono text-slate-500">mm</span>
+                        <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-slate-500">mm</span>
                       </div>
                     </label>
                   </div>
@@ -479,8 +479,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
             ) : (
               <div className="space-y-3">
                 {/* Length (L) */}
-                <div className="p-3 rounded-lg border border-slate-800 bg-slate-900/40 space-y-2">
-                  <div className="flex items-center justify-between text-xs font-mono">
+                <div className="p-3.5 rounded-2xl glass-card space-y-2">
+                  <div className="flex items-center justify-between text-xs">
                     <span className="font-bold text-red-400 flex items-center gap-1.5">
                       <span className="w-2 h-2 rounded-full bg-red-400" />
                       Length (L) [X-axis]
@@ -492,9 +492,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
                         max={150}
                         value={dimensions.length}
                         onChange={(e) => handleNumericDim('length', e.target.value)}
-                        className="w-16 px-1.5 py-0.5 text-right text-xs font-mono font-bold text-sky-400 bg-slate-950 border border-slate-700 rounded focus:outline-none focus:border-sky-500"
+                        className="w-16 px-1.5 py-0.5 text-right text-xs font-bold text-violet-600 dark:text-violet-300 glass-input rounded-lg tabular-nums"
                       />
-                      <span className="text-[10px] text-slate-400">mm</span>
+                      <span className="text-[10px] text-slate-500 dark:text-[#9b99b8]">mm</span>
                     </div>
                   </div>
                   <input
@@ -508,7 +508,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     }
                     className="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-red-500"
                   />
-                  <div className="flex justify-between text-[10px] text-slate-500 font-mono">
+                  <div className="flex justify-between text-[10px] text-slate-500">
                     <span>20 mm</span>
                     <span>70 mm</span>
                     <span>120 mm</span>
@@ -516,8 +516,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 </div>
 
                 {/* Width / Depth (W) */}
-                <div className="p-3 rounded-lg border border-slate-800 bg-slate-900/40 space-y-2">
-                  <div className="flex items-center justify-between text-xs font-mono">
+                <div className="p-3.5 rounded-2xl glass-card space-y-2">
+                  <div className="flex items-center justify-between text-xs">
                     <span className="font-bold text-blue-400 flex items-center gap-1.5">
                       <span className="w-2 h-2 rounded-full bg-blue-400" />
                       Width / Depth (W) [Z-axis]
@@ -529,9 +529,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
                         max={150}
                         value={dimensions.width}
                         onChange={(e) => handleNumericDim('width', e.target.value)}
-                        className="w-16 px-1.5 py-0.5 text-right text-xs font-mono font-bold text-sky-400 bg-slate-950 border border-slate-700 rounded focus:outline-none focus:border-sky-500"
+                        className="w-16 px-1.5 py-0.5 text-right text-xs font-bold text-violet-600 dark:text-violet-300 glass-input rounded-lg tabular-nums"
                       />
-                      <span className="text-[10px] text-slate-400">mm</span>
+                      <span className="text-[10px] text-slate-500 dark:text-[#9b99b8]">mm</span>
                     </div>
                   </div>
                   <input
@@ -545,7 +545,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     }
                     className="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-500"
                   />
-                  <div className="flex justify-between text-[10px] text-slate-500 font-mono">
+                  <div className="flex justify-between text-[10px] text-slate-500">
                     <span>20 mm</span>
                     <span>70 mm</span>
                     <span>120 mm</span>
@@ -553,8 +553,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 </div>
 
                 {/* Height (H) */}
-                <div className="p-3 rounded-lg border border-slate-800 bg-slate-900/40 space-y-2">
-                  <div className="flex items-center justify-between text-xs font-mono">
+                <div className="p-3.5 rounded-2xl glass-card space-y-2">
+                  <div className="flex items-center justify-between text-xs">
                     <span className="font-bold text-emerald-400 flex items-center gap-1.5">
                       <span className="w-2 h-2 rounded-full bg-emerald-400" />
                       Height (H) [Y-axis]
@@ -566,9 +566,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
                         max={150}
                         value={dimensions.height}
                         onChange={(e) => handleNumericDim('height', e.target.value)}
-                        className="w-16 px-1.5 py-0.5 text-right text-xs font-mono font-bold text-sky-400 bg-slate-950 border border-slate-700 rounded focus:outline-none focus:border-sky-500"
+                        className="w-16 px-1.5 py-0.5 text-right text-xs font-bold text-violet-600 dark:text-violet-300 glass-input rounded-lg tabular-nums"
                       />
-                      <span className="text-[10px] text-slate-400">mm</span>
+                      <span className="text-[10px] text-slate-500 dark:text-[#9b99b8]">mm</span>
                     </div>
                   </div>
                   <input
@@ -582,7 +582,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     }
                     className="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-emerald-500"
                   />
-                  <div className="flex justify-between text-[10px] text-slate-500 font-mono">
+                  <div className="flex justify-between text-[10px] text-slate-500">
                     <span>20 mm</span>
                     <span>70 mm</span>
                     <span>120 mm</span>
@@ -592,18 +592,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
             )}
 
             {/* Quick Dimension Ratios */}
-            <div className="pt-2 border-t border-slate-800 flex items-center justify-between">
-              <span className="text-[11px] font-mono text-slate-400">Quick Presets:</span>
+            <div className="pt-2 border-t border-indigo-950/10 dark:border-white/10 flex items-center justify-between">
+              <span className="text-[11px] text-slate-500 dark:text-[#9b99b8]">Quick Presets:</span>
               <div className="flex gap-1.5">
                 <button
                   onClick={() => onUpdateDimensions({ length: 60, width: 40, height: 50 })}
-                  className="px-2 py-1 text-[10px] font-mono bg-slate-800 hover:bg-slate-700 rounded text-slate-300"
+                  className="px-2 py-1 text-[10px] glass-pill rounded text-slate-700 dark:text-[#d6d4ec]"
                 >
                   60×40×50
                 </button>
                 <button
                   onClick={() => onUpdateDimensions({ length: 50, width: 50, height: 50 })}
-                  className="px-2 py-1 text-[10px] font-mono bg-slate-800 hover:bg-slate-700 rounded text-slate-300"
+                  className="px-2 py-1 text-[10px] glass-pill rounded text-slate-700 dark:text-[#d6d4ec]"
                 >
                   Cube 50³
                 </button>
@@ -615,7 +615,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {/* TAB 3: ORIENTATION / INCLINATION */}
         {activeTab === 'orientation' && (
           <div className="space-y-4">
-            <div className="flex items-center justify-between text-[11px] font-mono font-semibold text-slate-400 uppercase tracking-wider">
+            <div className="flex items-center justify-between text-[11px] font-semibold text-slate-500 dark:text-[#9b99b8] uppercase tracking-wider">
               <span>Inclination / Rotation</span>
               <button
                 onClick={onResetRotation}
@@ -627,10 +627,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </div>
 
             {/* Rotate X */}
-            <div className="p-3 rounded-lg border border-slate-800 bg-slate-900/40 space-y-2">
-              <div className="flex items-center justify-between text-xs font-mono">
+            <div className="p-3.5 rounded-2xl glass-card space-y-2">
+              <div className="flex items-center justify-between text-xs">
                 <span className="font-bold text-red-400">Tilt X (θ to HP)</span>
-                <span className="font-bold text-sky-400">{rotation.x}°</span>
+                <span className="font-bold text-violet-600 dark:text-violet-300">{rotation.x}°</span>
               </div>
               <input
                 type="range"
@@ -648,10 +648,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   <button
                     key={angle}
                     onClick={() => onUpdateRotation({ ...rotation, x: angle })}
-                    className={`px-1.5 py-0.5 text-[9px] font-mono rounded ${
+                    className={`px-1.5 py-0.5 text-[9px] rounded ${
                       rotation.x === angle
                         ? 'bg-red-500 text-white font-bold'
-                        : 'bg-slate-800 text-slate-400 hover:text-white'
+                        : 'bg-slate-800 text-slate-500 dark:text-[#9b99b8] hover:text-white'
                     }`}
                   >
                     {angle}°
@@ -661,10 +661,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </div>
 
             {/* Rotate Y */}
-            <div className="p-3 rounded-lg border border-slate-800 bg-slate-900/40 space-y-2">
-              <div className="flex items-center justify-between text-xs font-mono">
+            <div className="p-3.5 rounded-2xl glass-card space-y-2">
+              <div className="flex items-center justify-between text-xs">
                 <span className="font-bold text-emerald-400">Spin Y (Azimuth)</span>
-                <span className="font-bold text-sky-400">{rotation.y}°</span>
+                <span className="font-bold text-violet-600 dark:text-violet-300">{rotation.y}°</span>
               </div>
               <input
                 type="range"
@@ -682,10 +682,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   <button
                     key={angle}
                     onClick={() => onUpdateRotation({ ...rotation, y: angle })}
-                    className={`px-1.5 py-0.5 text-[9px] font-mono rounded ${
+                    className={`px-1.5 py-0.5 text-[9px] rounded ${
                       rotation.y === angle
                         ? 'bg-emerald-500 text-white font-bold'
-                        : 'bg-slate-800 text-slate-400 hover:text-white'
+                        : 'bg-slate-800 text-slate-500 dark:text-[#9b99b8] hover:text-white'
                     }`}
                   >
                     {angle}°
@@ -695,10 +695,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </div>
 
             {/* Rotate Z */}
-            <div className="p-3 rounded-lg border border-slate-800 bg-slate-900/40 space-y-2">
-              <div className="flex items-center justify-between text-xs font-mono">
+            <div className="p-3.5 rounded-2xl glass-card space-y-2">
+              <div className="flex items-center justify-between text-xs">
                 <span className="font-bold text-blue-400">Tilt Z (φ to VP)</span>
-                <span className="font-bold text-sky-400">{rotation.z}°</span>
+                <span className="font-bold text-violet-600 dark:text-violet-300">{rotation.z}°</span>
               </div>
               <input
                 type="range"
@@ -716,10 +716,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   <button
                     key={angle}
                     onClick={() => onUpdateRotation({ ...rotation, z: angle })}
-                    className={`px-1.5 py-0.5 text-[9px] font-mono rounded ${
+                    className={`px-1.5 py-0.5 text-[9px] rounded ${
                       rotation.z === angle
                         ? 'bg-blue-500 text-white font-bold'
-                        : 'bg-slate-800 text-slate-400 hover:text-white'
+                        : 'bg-slate-800 text-slate-500 dark:text-[#9b99b8] hover:text-white'
                     }`}
                   >
                     {angle}°
@@ -733,13 +733,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {/* TAB 4: ADVANCED GRAPHICS & PEDAGOGY TOGGLES */}
         {activeTab === 'display' && (
           <div className="space-y-4">
-            <div className="text-[11px] font-mono font-semibold text-slate-400 uppercase tracking-wider">
+            <div className="text-[11px] font-semibold text-slate-500 dark:text-[#9b99b8] uppercase tracking-wider">
               Drafting & Render Styles
             </div>
 
             {/* 3D Material / Shading Style */}
-            <div className="p-3 rounded-lg border border-slate-800 bg-slate-900/40 space-y-2">
-              <div className="text-xs font-mono font-bold text-slate-200">
+            <div className="p-3.5 rounded-2xl glass-card space-y-2">
+              <div className="text-xs font-bold text-slate-900 dark:text-[#f3f2fa]">
                 3D CAD Material Finish
               </div>
               <div className="grid grid-cols-3 gap-1.5 pt-1">
@@ -749,10 +749,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     onClick={() =>
                       onUpdateDisplayOptions({ ...displayOptions, renderStyle: style })
                     }
-                    className={`py-1.5 px-2 rounded border text-[10px] font-mono uppercase font-bold transition-all ${
+                    className={`py-1.5 px-2 rounded border text-[10px] uppercase font-bold transition-all ${
                       displayOptions.renderStyle === style
                         ? 'bg-sky-500 text-slate-950 border-sky-400 shadow'
-                        : 'bg-slate-800 border-slate-700 text-slate-400 hover:text-white'
+                        : 'bg-slate-800 border-slate-700 text-slate-500 dark:text-[#9b99b8] hover:text-white'
                     }`}
                   >
                     {style}
@@ -762,8 +762,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </div>
 
             {/* Transfer Method: 45° Miter vs Compass Arcs */}
-            <div className="p-3 rounded-lg border border-slate-800 bg-slate-900/40 space-y-2">
-              <div className="text-xs font-mono font-bold text-slate-200">
+            <div className="p-3.5 rounded-2xl glass-card space-y-2">
+              <div className="text-xs font-bold text-slate-900 dark:text-[#f3f2fa]">
                 Quadrant 4 Depth Transfer
               </div>
               <div className="grid grid-cols-2 gap-2 pt-1">
@@ -771,10 +771,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   onClick={() =>
                     onUpdateDisplayOptions({ ...displayOptions, transferMethod: 'miter' })
                   }
-                  className={`py-1.5 px-2 rounded border text-xs font-mono flex items-center justify-center gap-1.5 transition-all ${
+                  className={`py-1.5 px-2 rounded border text-xs flex items-center justify-center gap-1.5 transition-all ${
                     displayOptions.transferMethod === 'miter'
                       ? 'bg-sky-950 border-sky-500 text-sky-300 font-bold'
-                      : 'bg-slate-800 border-slate-700 text-slate-400'
+                      : 'bg-slate-800 border-slate-700 text-slate-500 dark:text-[#9b99b8]'
                   }`}
                 >
                   <span>45° Miter Line</span>
@@ -783,10 +783,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   onClick={() =>
                     onUpdateDisplayOptions({ ...displayOptions, transferMethod: 'compass' })
                   }
-                  className={`py-1.5 px-2 rounded border text-xs font-mono flex items-center justify-center gap-1.5 transition-all ${
+                  className={`py-1.5 px-2 rounded border text-xs flex items-center justify-center gap-1.5 transition-all ${
                     displayOptions.transferMethod === 'compass'
                       ? 'bg-sky-950 border-sky-500 text-sky-300 font-bold'
-                      : 'bg-slate-800 border-slate-700 text-slate-400'
+                      : 'bg-slate-800 border-slate-700 text-slate-500 dark:text-[#9b99b8]'
                   }`}
                 >
                   <Compass className="w-3.5 h-3.5" />
@@ -796,12 +796,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </div>
 
             {/* Hidden Lines (Dashed) */}
-            <div className="p-3 rounded-lg border border-slate-800 bg-slate-900/40 flex items-center justify-between">
+            <div className="p-3.5 rounded-2xl glass-card flex items-center justify-between">
               <div>
-                <div className="text-xs font-mono font-bold text-slate-200">
+                <div className="text-xs font-bold text-slate-900 dark:text-[#f3f2fa]">
                   Hidden Lines (Dashed)
                 </div>
-                <div className="text-[10px] text-slate-400 mt-0.5">
+                <div className="text-[10px] text-slate-500 dark:text-[#9b99b8] mt-0.5">
                   Renders occluded edges behind solid faces
                 </div>
               </div>
@@ -819,12 +819,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </div>
 
             {/* Dimension Callout Lines */}
-            <div className="p-3 rounded-lg border border-slate-800 bg-slate-900/40 flex items-center justify-between">
+            <div className="p-3.5 rounded-2xl glass-card flex items-center justify-between">
               <div>
-                <div className="text-xs font-mono font-bold text-slate-200">
+                <div className="text-xs font-bold text-slate-900 dark:text-[#f3f2fa]">
                   Dimension Lines (L, W, H)
                 </div>
-                <div className="text-[10px] text-slate-400 mt-0.5">
+                <div className="text-[10px] text-slate-500 dark:text-[#9b99b8] mt-0.5">
                   BIS SP:46 aligned dimension arrows & text
                 </div>
               </div>
@@ -842,12 +842,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </div>
 
             {/* Observer Sight Arrows */}
-            <div className="p-3 rounded-lg border border-slate-800 bg-slate-900/40 flex items-center justify-between">
+            <div className="p-3.5 rounded-2xl glass-card flex items-center justify-between">
               <div>
-                <div className="text-xs font-mono font-bold text-slate-200">
+                <div className="text-xs font-bold text-slate-900 dark:text-[#f3f2fa]">
                   Observer Sight Arrows
                 </div>
-                <div className="text-[10px] text-slate-400 mt-0.5">
+                <div className="text-[10px] text-slate-500 dark:text-[#9b99b8] mt-0.5">
                   Visual sight-rays pointing to FV, TV, LHSV
                 </div>
               </div>
@@ -865,12 +865,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </div>
 
             {/* Center Lines */}
-            <div className="p-3 rounded-lg border border-slate-800 bg-slate-900/40 flex items-center justify-between">
+            <div className="p-3.5 rounded-2xl glass-card flex items-center justify-between">
               <div>
-                <div className="text-xs font-mono font-bold text-slate-200">
+                <div className="text-xs font-bold text-slate-900 dark:text-[#f3f2fa]">
                   Axis & Center Lines
                 </div>
-                <div className="text-[10px] text-slate-400 mt-0.5">
+                <div className="text-[10px] text-slate-500 dark:text-[#9b99b8] mt-0.5">
                   BIS Type G dash-dot symmetry axes
                 </div>
               </div>
@@ -888,12 +888,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </div>
 
             {/* Alignment / Projector Lines */}
-            <div className="p-3 rounded-lg border border-slate-800 bg-slate-900/40 flex items-center justify-between">
+            <div className="p-3.5 rounded-2xl glass-card flex items-center justify-between">
               <div>
-                <div className="text-xs font-mono font-bold text-slate-200">
+                <div className="text-xs font-bold text-slate-900 dark:text-[#f3f2fa]">
                   Alignment Projectors
                 </div>
-                <div className="text-[10px] text-slate-400 mt-0.5">
+                <div className="text-[10px] text-slate-500 dark:text-[#9b99b8] mt-0.5">
                   Faint rays connecting FV, TV, and LHSV
                 </div>
               </div>
@@ -911,33 +911,33 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </div>
 
             {/* Theme Toggle Button Card */}
-            <div className="p-3 rounded-lg border border-slate-800 bg-slate-900/40 space-y-2">
-              <div className="text-xs font-mono font-bold text-slate-200">
+            <div className="p-3.5 rounded-2xl glass-card space-y-2">
+              <div className="text-xs font-bold text-slate-900 dark:text-[#f3f2fa]">
                 Visual Drafting Theme
               </div>
               <div className="grid grid-cols-2 gap-2 pt-1">
                 <button
                   onClick={() => theme !== 'blueprint' && onToggleTheme()}
-                  className={`p-2 rounded border text-xs font-mono flex items-center justify-center gap-1.5 transition-all ${
+                  className={`p-2 rounded border text-xs flex items-center justify-center gap-1.5 transition-all ${
                     isDark
                       ? 'bg-sky-950 border-sky-500 text-sky-300 font-bold shadow'
-                      : 'bg-slate-800 border-slate-700 text-slate-400'
+                      : 'bg-slate-800 border-slate-700 text-slate-500 dark:text-[#9b99b8]'
                   }`}
                 >
                   <Moon className="w-3.5 h-3.5" />
-                  <span>CAD Blueprint</span>
+                  <span>Dark Glass</span>
                 </button>
 
                 <button
                   onClick={() => theme !== 'paper' && onToggleTheme()}
-                  className={`p-2 rounded border text-xs font-mono flex items-center justify-center gap-1.5 transition-all ${
+                  className={`p-2 rounded border text-xs flex items-center justify-center gap-1.5 transition-all ${
                     !isDark
                       ? 'bg-white border-blue-600 text-blue-700 font-bold shadow'
-                      : 'bg-slate-800 border-slate-700 text-slate-400'
+                      : 'bg-slate-800 border-slate-700 text-slate-500 dark:text-[#9b99b8]'
                   }`}
                 >
                   <Sun className="w-3.5 h-3.5" />
-                  <span>Drawing Sheet</span>
+                  <span>Light Glass</span>
                 </button>
               </div>
             </div>
@@ -946,12 +946,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
       </div>
 
       {/* Footer Info Box */}
-      <div className="p-3 border-t border-slate-700/50 text-[10px] font-mono text-slate-500 flex items-center justify-between">
+      <div className="p-3 border-t border-indigo-950/10 dark:border-white/10 text-[10px] text-slate-500 flex items-center justify-between">
         <span className="flex items-center gap-1">
-          <Info className="w-3.5 h-3.5 text-sky-400" />
+          <Info className="w-3.5 h-3.5 text-violet-600 dark:text-violet-300" />
           <span>BIS SP:46 / ISO 128</span>
         </span>
-        <span>v1.1.0</span>
+        <span>v1.2.0 • Liquid Glass</span>
       </div>
     </aside>
   );

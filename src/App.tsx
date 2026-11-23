@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import { Header } from './components/Header';
 import { Sidebar } from './components/Sidebar';
 import { Viewport3D } from './components/Viewport3D';
@@ -21,7 +21,29 @@ export function App() {
   const [rotation, setRotation] = useState<SolidRotation>({ x: 0, y: 0, z: 0 });
 
   // UI States
-  const [theme, setTheme] = useState<ThemeMode>('blueprint');
+  const [theme, setTheme] = useState<ThemeMode>(() => {
+    try {
+      const saved = localStorage.getItem('orthoview-theme');
+      if (saved === 'paper' || saved === 'blueprint') return saved;
+    } catch {
+      // ignore storage errors
+    }
+    return 'blueprint';
+  });
+
+  useEffect(() => {
+    const root = document.documentElement;
+    if (theme === 'blueprint') {
+      root.classList.add('dark');
+    } else {
+      root.classList.remove('dark');
+    }
+    try {
+      localStorage.setItem('orthoview-theme', theme);
+    } catch {
+      // ignore storage errors
+    }
+  }, [theme]);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(false);
   const [isTheoryOpen, setIsTheoryOpen] = useState<boolean>(false);
   const [isQuizOpen, setIsQuizOpen] = useState<boolean>(false);
@@ -136,8 +158,10 @@ export function App() {
 
   return (
     <div
-      className={`w-screen h-screen flex flex-col overflow-hidden font-sans select-none transition-colors duration-200 ${
-        isDark ? 'dark bg-[#0b0f19] text-slate-100' : 'bg-slate-100 text-slate-900'
+      className={`w-screen h-screen flex flex-col overflow-hidden font-sans select-none transition-colors duration-300 ${
+        isDark
+          ? 'dark liquid-ambient-dark text-[#f3f2fa]'
+          : 'liquid-ambient-light text-[#141326]'
       }`}
     >
       {/* Sleek Top Toolbar */}
@@ -175,7 +199,7 @@ export function App() {
         {/* Dual Viewport Split-Screen Workspace */}
         <main className="flex-1 grid grid-cols-1 lg:grid-cols-12 overflow-hidden h-full">
           {/* Left Panel: Interactive 3D Perspective Viewport (5 Columns) */}
-          <section className="lg:col-span-5 h-full relative border-r border-slate-700/50 overflow-hidden flex flex-col">
+          <section className={`lg:col-span-5 h-full relative border-r overflow-hidden flex flex-col ${isDark ? 'border-white/10' : 'border-indigo-950/10'}`}>
             <Viewport3D
               geometry={geometry}
               dimensions={dimensions}

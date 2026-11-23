@@ -2,49 +2,172 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --glass-bg: rgba(255, 255, 255, 0.64);
+  --glass-bg-strong: rgba(255, 255, 255, 0.82);
+  --glass-card: rgba(255, 255, 255, 0.58);
+  --glass-card-hover: rgba(255, 255, 255, 0.84);
+  --glass-border: rgba(124, 111, 214, 0.16);
+  --glass-border-strong: rgba(124, 111, 214, 0.34);
+  --glass-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.85);
+  --glass-shadow: 0 8px 32px rgba(79, 70, 229, 0.08);
+  --glass-pill-active: linear-gradient(135deg, rgba(124, 92, 255, 0.2), rgba(99, 102, 241, 0.12));
+  --glass-pill-border: rgba(124, 92, 255, 0.42);
+  --glass-pill-glow: 0 4px 18px rgba(124, 92, 255, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.75);
+  --glass-text: #141326;
+  --glass-text-muted: #5c5b74;
+  --glass-input-bg: rgba(255, 255, 255, 0.78);
+  --app-canvas: #eef1fa;
+}
+
+.dark {
+  --glass-bg: rgba(16, 13, 34, 0.62);
+  --glass-bg-strong: rgba(19, 16, 40, 0.82);
+  --glass-card: rgba(255, 255, 255, 0.045);
+  --glass-card-hover: rgba(255, 255, 255, 0.085);
+  --glass-border: rgba(255, 255, 255, 0.11);
+  --glass-border-strong: rgba(196, 181, 253, 0.34);
+  --glass-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.16);
+  --glass-shadow: 0 12px 40px rgba(0, 0, 0, 0.48);
+  --glass-pill-active: linear-gradient(135deg, rgba(167, 139, 250, 0.32), rgba(109, 40, 217, 0.18));
+  --glass-pill-border: rgba(196, 181, 253, 0.48);
+  --glass-pill-glow: 0 0 24px rgba(139, 92, 246, 0.32), inset 0 1px 0 rgba(255, 255, 255, 0.28);
+  --glass-text: #f3f2fa;
+  --glass-text-muted: #9b99b8;
+  --glass-input-bg: rgba(10, 8, 24, 0.55);
+  --app-canvas: #080614;
+}
+
 @layer base {
   * {
     box-sizing: border-box;
   }
-  
+
   body {
     margin: 0;
     padding: 0;
     overflow: hidden;
     user-select: none;
     -webkit-user-select: none;
-    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    font-family: "Plus Jakarta Sans", "Inter", system-ui, -apple-system, sans-serif;
+    background-color: var(--app-canvas);
+    color: var(--glass-text);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 }
 
-/* Custom CAD technical scrollbars */
+.liquid-ambient-dark {
+  background-color: #080614;
+  background-image:
+    radial-gradient(ellipse 65% 55% at 10% 8%, rgba(124, 58, 237, 0.28) 0%, transparent 62%),
+    radial-gradient(ellipse 55% 48% at 88% 18%, rgba(99, 102, 241, 0.22) 0%, transparent 60%),
+    radial-gradient(ellipse 50% 45% at 50% 95%, rgba(139, 92, 246, 0.18) 0%, transparent 62%);
+}
+
+.liquid-ambient-light {
+  background-color: #eef1fa;
+  background-image:
+    radial-gradient(ellipse 60% 50% at 12% 10%, rgba(167, 139, 250, 0.28) 0%, transparent 62%),
+    radial-gradient(ellipse 55% 48% at 88% 16%, rgba(125, 211, 252, 0.28) 0%, transparent 60%),
+    radial-gradient(ellipse 50% 45% at 50% 95%, rgba(196, 181, 253, 0.24) 0%, transparent 60%);
+}
+
+.glass-panel {
+  background: var(--glass-bg);
+  backdrop-filter: blur(26px) saturate(165%);
+  -webkit-backdrop-filter: blur(26px) saturate(165%);
+  border-color: var(--glass-border);
+  box-shadow: var(--glass-highlight);
+}
+
+.glass-modal {
+  background: var(--glass-bg-strong);
+  backdrop-filter: blur(32px) saturate(180%);
+  -webkit-backdrop-filter: blur(32px) saturate(180%);
+  border: 1px solid var(--glass-border-strong);
+  box-shadow: var(--glass-shadow), var(--glass-highlight);
+}
+
+.glass-card {
+  background: var(--glass-card);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-highlight);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  transition: background 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
+}
+
+.glass-card:hover {
+  background: var(--glass-card-hover);
+  border-color: var(--glass-border-strong);
+}
+
+.glass-pill {
+  background: var(--glass-card);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-highlight);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  transition: all 180ms ease;
+}
+
+.glass-pill:hover {
+  background: var(--glass-card-hover);
+  border-color: var(--glass-border-strong);
+}
+
+.glass-pill-active {
+  background: var(--glass-pill-active);
+  border: 1px solid var(--glass-pill-border);
+  box-shadow: var(--glass-pill-glow);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+
+.glass-input {
+  background: var(--glass-input-bg);
+  border: 1px solid var(--glass-border);
+  color: var(--glass-text);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.14);
+  transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.glass-input:focus {
+  outline: none;
+  border-color: rgba(167, 139, 250, 0.65);
+  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.18);
+}
+
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
 .custom-scrollbar::-webkit-scrollbar {
   width: 5px;
   height: 5px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-track {
-  background: rgba(15, 23, 42, 0.4);
+  background: transparent;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background: rgba(56, 189, 248, 0.25);
+  background: rgba(167, 139, 250, 0.25);
   border-radius: 9999px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: rgba(56, 189, 248, 0.5);
+  background: rgba(167, 139, 250, 0.48);
 }
 
-/* Range input styling */
 input[type="range"] {
-  accent-color: #38bdf8;
+  accent-color: #8b5cf6;
 }
 
-/* CAD Technical blueprint grid */
 .blueprint-grid {
-  background-image: 
-    linear-gradient(rgba(56, 189, 248, 0.05) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(56, 189, 248, 0.05) 1px, transparent 1px);
-  background-size: 20px 20px;
+  background-image:
+    linear-gradient(rgba(167, 139, 250, 0.055) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(167, 139, 250, 0.055) 1px, transparent 1px);
+  background-size: 22px 22px;
 }

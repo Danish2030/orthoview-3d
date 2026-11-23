@@ -62,18 +62,16 @@ export const QuestionSolverModal: React.FC<QuestionSolverModalProps> = ({
   const githubIssueUrl = `${REPO_ISSUES_BASE}?${issueParams.toString()}`;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm select-text">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/55 backdrop-blur-md select-text">
       <div
-        className={`w-full max-w-2xl rounded-xl border shadow-2xl overflow-hidden flex flex-col max-h-[90vh] ${
-          isDark
-            ? 'bg-[#0f172a] border-slate-700 text-slate-100'
-            : 'bg-white border-slate-200 text-slate-900'
+        className={`w-full max-w-2xl rounded-3xl glass-modal overflow-hidden flex flex-col max-h-[90vh] ${
+          isDark ? 'text-[#f3f2fa]' : 'text-[#141326]'
         }`}
       >
         {/* Header */}
         <div
           className={`px-5 py-4 border-b flex items-center justify-between ${
-            isDark ? 'border-slate-800 bg-slate-900/60' : 'border-slate-200 bg-slate-50'
+            isDark ? 'border-white/10 bg-white/[0.03]' : 'border-indigo-950/10 bg-white/40'
           }`}
         >
           <div className="flex items-center gap-2.5">
@@ -81,10 +79,10 @@ export const QuestionSolverModal: React.FC<QuestionSolverModalProps> = ({
               <Wand2 className="w-4 h-4 text-violet-400" />
             </div>
             <div>
-              <h2 className="text-sm font-mono font-bold tracking-tight">
+              <h2 className="text-sm font-bold tracking-tight">
                 Question-to-Drawing Solver
               </h2>
-              <p className="text-[11px] font-mono text-slate-400">
+              <p className="text-[11px] text-slate-400">
                 Paste any Engineering Graphics question to generate accurate ISO First-Angle projections
               </p>
             </div>
@@ -103,7 +101,7 @@ export const QuestionSolverModal: React.FC<QuestionSolverModalProps> = ({
         <div className="p-5 space-y-4 overflow-y-auto">
           {/* Sample Questions */}
           <div className="space-y-1.5">
-            <div className="text-[11px] font-mono font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+            <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
               <Sparkles className="w-3.5 h-3.5 text-violet-400" />
               Try a Sample Question
             </div>
@@ -112,7 +110,7 @@ export const QuestionSolverModal: React.FC<QuestionSolverModalProps> = ({
                 <button
                   key={sample.label}
                   onClick={() => setQuestion(sample.text)}
-                  className={`px-2.5 py-1 text-[11px] font-mono rounded-md border transition-colors ${
+                  className={`px-2.5 py-1 text-[11px] rounded-md border transition-colors ${
                     isDark
                       ? 'bg-slate-900 border-slate-700 hover:border-violet-500/60 text-slate-300'
                       : 'bg-slate-100 border-slate-300 hover:border-violet-500 text-slate-700'
@@ -126,7 +124,7 @@ export const QuestionSolverModal: React.FC<QuestionSolverModalProps> = ({
 
           {/* Question Input */}
           <div className="space-y-1.5">
-            <label className="text-[11px] font-mono font-semibold text-slate-400 uppercase tracking-wider block">
+            <label className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block">
               Enter Your Engineering Graphics Question
             </label>
             <textarea
@@ -134,7 +132,7 @@ export const QuestionSolverModal: React.FC<QuestionSolverModalProps> = ({
               value={question}
               onChange={(e) => setQuestion(e.target.value)}
               placeholder="e.g. A hexagonal prism of base 40mm and height 75mm rests on HP, inclined at 30 degrees to HP..."
-              className={`w-full rounded-lg border p-3 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-violet-500/60 resize-none ${
+              className={`w-full rounded-lg border p-3 text-xs focus:outline-none focus:ring-2 focus:ring-violet-500/60 resize-none ${
                 isDark
                   ? 'bg-slate-950 border-slate-700 text-slate-100 placeholder-slate-500'
                   : 'bg-white border-slate-300 text-slate-900 placeholder-slate-400'
@@ -152,7 +150,7 @@ export const QuestionSolverModal: React.FC<QuestionSolverModalProps> = ({
               }`}
             >
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1.5 text-xs font-mono font-bold">
+                <div className="flex items-center gap-1.5 text-xs font-bold">
                   {parsed.confidence === 'low' ? (
                     <AlertCircle className="w-4 h-4 text-amber-400" />
                   ) : (
@@ -161,7 +159,7 @@ export const QuestionSolverModal: React.FC<QuestionSolverModalProps> = ({
                   <span>Detected CAD Specification</span>
                 </div>
                 <span
-                  className={`text-[10px] font-mono px-2 py-0.5 rounded uppercase font-semibold ${
+                  className={`text-[10px] px-2 py-0.5 rounded uppercase font-semibold ${
                     parsed.confidence === 'high'
                       ? 'bg-emerald-500/20 text-emerald-400'
                       : parsed.confidence === 'medium'
@@ -173,7 +171,7 @@ export const QuestionSolverModal: React.FC<QuestionSolverModalProps> = ({
                 </span>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs font-mono">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
                 <div
                   className={`p-2 rounded border ${
                     isDark ? 'bg-slate-950/70 border-slate-800' : 'bg-white border-slate-200'
@@ -206,7 +204,7 @@ export const QuestionSolverModal: React.FC<QuestionSolverModalProps> = ({
                 </div>
               </div>
 
-              <ul className="text-[11px] font-mono text-slate-400 space-y-0.5 list-disc list-inside">
+              <ul className="text-[11px] text-slate-400 space-y-0.5 list-disc list-inside">
                 {parsed.notes.map((note, idx) => (
                   <li key={idx}>{note}</li>
                 ))}
@@ -222,7 +220,7 @@ export const QuestionSolverModal: React.FC<QuestionSolverModalProps> = ({
                 : 'bg-violet-50 border-violet-200'
             }`}
           >
-            <div className="text-[11px] font-mono">
+            <div className="text-[11px]">
               <div className="font-bold text-violet-400">
                 Have a custom or complex textbook part?
               </div>
@@ -234,7 +232,7 @@ export const QuestionSolverModal: React.FC<QuestionSolverModalProps> = ({
               href={githubIssueUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="shrink-0 px-3 py-1.5 text-[11px] font-mono font-semibold rounded-lg border border-violet-500/50 bg-violet-500/10 hover:bg-violet-500/20 text-violet-300 flex items-center gap-1.5 transition-colors"
+              className="shrink-0 px-3 py-1.5 text-[11px] font-semibold rounded-lg border border-violet-500/50 bg-violet-500/10 hover:bg-violet-500/20 text-violet-300 flex items-center gap-1.5 transition-colors"
             >
               <Send className="w-3 h-3" />
               Send Question
@@ -246,12 +244,12 @@ export const QuestionSolverModal: React.FC<QuestionSolverModalProps> = ({
         {/* Footer Actions */}
         <div
           className={`px-5 py-3.5 border-t flex flex-wrap items-center justify-end gap-2 ${
-            isDark ? 'border-slate-800 bg-slate-900/60' : 'border-slate-200 bg-slate-50'
+            isDark ? 'border-white/10 bg-white/[0.03]' : 'border-indigo-950/10 bg-white/40'
           }`}
         >
           <button
             onClick={onClose}
-            className={`px-3 py-1.5 text-xs font-mono rounded-lg border ${
+            className={`px-3 py-1.5 text-xs rounded-lg border ${
               isDark
                 ? 'border-slate-700 text-slate-300 hover:bg-slate-800'
                 : 'border-slate-300 text-slate-700 hover:bg-slate-200'
@@ -262,7 +260,7 @@ export const QuestionSolverModal: React.FC<QuestionSolverModalProps> = ({
           <button
             onClick={() => handleGenerate(false)}
             disabled={!parsed}
-            className="px-4 py-1.5 text-xs font-mono font-bold rounded-lg bg-violet-500 hover:bg-violet-400 text-white shadow-md shadow-violet-500/20 flex items-center gap-1.5 disabled:opacity-50 transition-all"
+            className="px-4 py-1.5 text-xs font-bold rounded-full bg-gradient-to-r from-violet-500 to-indigo-500 hover:from-violet-400 hover:to-indigo-400 text-white shadow-[0_6px_22px_rgba(124,58,237,0.38)] flex items-center gap-1.5 disabled:opacity-50 transition-all"
           >
             <Wand2 className="w-3.5 h-3.5" />
             Generate Accurate Drawing
@@ -270,7 +268,7 @@ export const QuestionSolverModal: React.FC<QuestionSolverModalProps> = ({
           <button
             onClick={() => handleGenerate(true)}
             disabled={!parsed}
-            className="px-4 py-1.5 text-xs font-mono font-bold rounded-lg bg-sky-500 hover:bg-sky-400 text-slate-950 shadow-md shadow-sky-500/20 flex items-center gap-1.5 disabled:opacity-50 transition-all"
+            className="px-4 py-1.5 text-xs font-bold rounded-full glass-pill-active text-violet-950 dark:text-white flex items-center gap-1.5 disabled:opacity-50 transition-all"
           >
             <Download className="w-3.5 h-3.5" />
             Generate &amp; Save PNG
