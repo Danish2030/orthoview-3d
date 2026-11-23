@@ -75,8 +75,8 @@ export const QuestionSolverModal: React.FC<QuestionSolverModalProps> = ({
           }`}
         >
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-violet-500/20 border border-violet-500/40 flex items-center justify-center">
-              <Wand2 className="w-4 h-4 text-violet-400" />
+            <div className="w-8 h-8 rounded-lg bg-current/10 border border-current/15 flex items-center justify-center">
+              <Wand2 className="w-4 h-4 opacity-85" />
             </div>
             <div>
               <h2 className="text-sm font-bold tracking-tight">
@@ -102,7 +102,7 @@ export const QuestionSolverModal: React.FC<QuestionSolverModalProps> = ({
           {/* Sample Questions */}
           <div className="space-y-1.5">
             <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-              <Sparkles className="w-3.5 h-3.5 text-violet-400" />
+              <Sparkles className="w-3.5 h-3.5 opacity-85" />
               Try a Sample Question
             </div>
             <div className="flex flex-wrap gap-1.5">
@@ -132,7 +132,7 @@ export const QuestionSolverModal: React.FC<QuestionSolverModalProps> = ({
               value={question}
               onChange={(e) => setQuestion(e.target.value)}
               placeholder="e.g. A hexagonal prism of base 40mm and height 75mm rests on HP, inclined at 30 degrees to HP..."
-              className={`w-full rounded-lg border p-3 text-xs focus:outline-none focus:ring-2 focus:ring-violet-500/60 resize-none ${
+              className={`w-full rounded-lg border p-3 text-xs focus:outline-none focus:ring-2 focus:ring-zinc-400/50 resize-none ${
                 isDark
                   ? 'bg-slate-950 border-slate-700 text-slate-100 placeholder-slate-500'
                   : 'bg-white border-slate-300 text-slate-900 placeholder-slate-400'
@@ -216,12 +216,12 @@ export const QuestionSolverModal: React.FC<QuestionSolverModalProps> = ({
           <div
             className={`rounded-lg border p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 ${
               isDark
-                ? 'bg-violet-950/20 border-violet-800/40'
-                : 'bg-violet-50 border-violet-200'
+                ? 'bg-white/[0.04] border-white/10'
+                : 'bg-black/[0.03] border-black/10'
             }`}
           >
             <div className="text-[11px]">
-              <div className="font-bold text-violet-400">
+              <div className="font-bold opacity-85">
                 Have a custom or complex textbook part?
               </div>
               <div className="text-slate-400">
@@ -232,7 +232,7 @@ export const QuestionSolverModal: React.FC<QuestionSolverModalProps> = ({
               href={githubIssueUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="shrink-0 px-3 py-1.5 text-[11px] font-semibold rounded-lg border border-violet-500/50 bg-violet-500/10 hover:bg-violet-500/20 text-violet-300 flex items-center gap-1.5 transition-colors"
+              className="shrink-0 px-3 py-1.5 text-[11px] font-semibold rounded-lg border border-current/20 bg-current/5 hover:bg-current/10 opacity-90 flex items-center gap-1.5 transition-colors"
             >
               <Send className="w-3 h-3" />
               Send Question
@@ -260,7 +260,7 @@ export const QuestionSolverModal: React.FC<QuestionSolverModalProps> = ({
           <button
             onClick={() => handleGenerate(false)}
             disabled={!parsed}
-            className="px-4 py-1.5 text-xs font-bold rounded-full bg-gradient-to-r from-violet-500 to-indigo-500 hover:from-violet-400 hover:to-indigo-400 text-white shadow-[0_6px_22px_rgba(124,58,237,0.38)] flex items-center gap-1.5 disabled:opacity-50 transition-all"
+            className="px-4 py-1.5 text-xs font-bold rounded-full glass-pill-active flex items-center gap-1.5 disabled:opacity-50 transition-all"
           >
             <Wand2 className="w-3.5 h-3.5" />
             Generate Accurate Drawing
@@ -268,7 +268,7 @@ export const QuestionSolverModal: React.FC<QuestionSolverModalProps> = ({
           <button
             onClick={() => handleGenerate(true)}
             disabled={!parsed}
-            className="px-4 py-1.5 text-xs font-bold rounded-full glass-pill-active text-violet-950 dark:text-white flex items-center gap-1.5 disabled:opacity-50 transition-all"
+            className="px-4 py-1.5 text-xs font-bold rounded-full glass-pill flex items-center gap-1.5 disabled:opacity-50 transition-all"
           >
             <Download className="w-3.5 h-3.5" />
             Generate &amp; Save PNG

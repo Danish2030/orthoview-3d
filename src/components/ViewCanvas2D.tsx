@@ -48,10 +48,10 @@ export const ViewCanvas2D: React.FC<ViewCanvas2DProps> = ({
     }
 
     const isDark = theme === 'blueprint';
-    const bgColor = isDark ? 0x0c1222 : 0xf8fafc;
-    const meshFaceColor = isDark ? 0x111a2e : 0xffffff;
-    const visibleEdgeColor = isDark ? 0x38bdf8 : 0x0f172a;
-    const hiddenEdgeColor = isDark ? 0xf59e0b : 0x64748b;
+    const bgColor = isDark ? 0x0b0b0e : 0xfafafb;
+    const meshFaceColor = isDark ? 0x15151a : 0xffffff;
+    const visibleEdgeColor = isDark ? 0xf4f4f6 : 0x0d0d10;
+    const hiddenEdgeColor = isDark ? 0x71717a : 0x9ca3af;
 
     // Renderer
     const renderer = new THREE.WebGLRenderer({
@@ -243,68 +243,50 @@ export const ViewCanvas2D: React.FC<ViewCanvas2DProps> = ({
     <div
       ref={containerRef}
       className={`relative w-full h-full overflow-hidden transition-colors duration-200 ${
-        isDark ? 'bg-[#0c1222]' : 'bg-[#f8fafc]'
+        isDark ? 'bg-[#0b0b0e] text-[#f4f4f6]' : 'bg-[#fafafb] text-[#0d0d10]'
       }`}
     >
-      {/* Millimeter Engineering Graph Background Grid */}
+      {/* Subtle Architectural Dot Grid */}
       <div
-        className="absolute inset-0 pointer-events-none opacity-40"
+        className="absolute inset-0 pointer-events-none opacity-45"
         style={{
           backgroundImage: isDark
-            ? `radial-gradient(circle, rgba(56, 189, 248, 0.15) 1px, transparent 1px),
-               linear-gradient(to right, rgba(56, 189, 248, 0.05) 1px, transparent 1px),
-               linear-gradient(to bottom, rgba(56, 189, 248, 0.05) 1px, transparent 1px)`
-            : `radial-gradient(circle, rgba(100, 116, 139, 0.2) 1px, transparent 1px),
-               linear-gradient(to right, rgba(148, 163, 184, 0.1) 1px, transparent 1px),
-               linear-gradient(to bottom, rgba(148, 163, 184, 0.1) 1px, transparent 1px)`,
-          backgroundSize: '16px 16px',
+            ? `radial-gradient(circle, rgba(255, 255, 255, 0.14) 1px, transparent 1px)`
+            : `radial-gradient(circle, rgba(15, 15, 20, 0.14) 1px, transparent 1px)`,
+          backgroundSize: '18px 18px',
         }}
       />
 
       <canvas ref={canvasRef} className="w-full h-full block relative z-0" />
 
-      {/* Engineering View Header & Quadrant Tag */}
-      <div className="absolute top-2 left-3 z-10 pointer-events-none flex flex-col">
-        <div className="flex items-center gap-2">
-          <span
-            className={`text-xs font-mono font-bold tracking-wider px-2 py-0.5 rounded border ${
-              isDark
-                ? 'bg-sky-950/80 text-sky-300 border-sky-800/80 shadow-[0_0_10px_rgba(56,189,248,0.2)]'
-                : 'bg-slate-100 text-slate-800 border-slate-300'
-            }`}
-          >
+      {/* Minimalist View Header Tag */}
+      <div className="absolute top-2.5 left-3 z-10 pointer-events-none flex flex-col gap-0.5">
+        <div className="flex items-center gap-1.5">
+          <span className="text-[11px] font-semibold tracking-[-0.01em] px-2.5 py-0.5 rounded-full glass-pill">
             {label}
           </span>
           <span
-            className={`text-[10px] font-mono px-1.5 py-0.5 rounded ${
-              isDark ? 'bg-slate-800/80 text-slate-400' : 'bg-slate-200/80 text-slate-600'
+            className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${
+              isDark ? 'bg-white/10 text-zinc-300' : 'bg-black/5 text-zinc-600'
             }`}
           >
             {planeName}
           </span>
         </div>
-        <span
-          className={`text-[10px] font-mono mt-0.5 ${
-            isDark ? 'text-slate-400' : 'text-slate-500'
-          }`}
-        >
+        <span className="text-[10px] opacity-55 pl-1 tabular-nums">
           {sublabel} • {dimensionsSummary}
         </span>
       </div>
 
-      {/* Aligned Engineering Dimension Callouts Overlay */}
+      {/* Clean Monochrome Dimension Callouts */}
       {showDimensions && (
         <div className="absolute inset-0 pointer-events-none z-10 flex items-center justify-center">
           {viewType === 'front' && (
             <>
-              {/* Length L Dimension Line (Bottom) */}
-              <div className="absolute bottom-6 flex items-center gap-1 font-mono text-[10px] text-red-400 font-bold">
-                <span className="w-2 h-[1px] bg-red-400" />
+              <div className="absolute bottom-5 flex items-center gap-1 text-[10px] font-semibold tabular-nums opacity-75">
                 <span>◄── L = {dimensions.length} mm ──►</span>
-                <span className="w-2 h-[1px] bg-red-400" />
               </div>
-              {/* Height H Dimension Line (Right) */}
-              <div className="absolute right-6 flex flex-col items-center gap-1 font-mono text-[10px] text-emerald-400 font-bold rotate-90">
+              <div className="absolute right-5 flex flex-col items-center gap-1 text-[10px] font-semibold tabular-nums opacity-75 rotate-90">
                 <span>◄── H = {dimensions.height} mm ──►</span>
               </div>
             </>
@@ -312,12 +294,10 @@ export const ViewCanvas2D: React.FC<ViewCanvas2DProps> = ({
 
           {viewType === 'top' && (
             <>
-              {/* Length L Dimension Line */}
-              <div className="absolute bottom-6 flex items-center gap-1 font-mono text-[10px] text-red-400 font-bold">
+              <div className="absolute bottom-5 flex items-center gap-1 text-[10px] font-semibold tabular-nums opacity-75">
                 <span>◄── L = {dimensions.length} mm ──►</span>
               </div>
-              {/* Width W Dimension Line */}
-              <div className="absolute left-6 flex flex-col items-center gap-1 font-mono text-[10px] text-blue-400 font-bold -rotate-90">
+              <div className="absolute left-5 flex flex-col items-center gap-1 text-[10px] font-semibold tabular-nums opacity-75 -rotate-90">
                 <span>◄── W = {dimensions.width} mm ──►</span>
               </div>
             </>
@@ -325,12 +305,10 @@ export const ViewCanvas2D: React.FC<ViewCanvas2DProps> = ({
 
           {viewType === 'leftSide' && (
             <>
-              {/* Width W Dimension Line (Bottom) */}
-              <div className="absolute bottom-6 flex items-center gap-1 font-mono text-[10px] text-blue-400 font-bold">
+              <div className="absolute bottom-5 flex items-center gap-1 text-[10px] font-semibold tabular-nums opacity-75">
                 <span>◄── W = {dimensions.width} mm ──►</span>
               </div>
-              {/* Height H Dimension Line */}
-              <div className="absolute right-6 flex flex-col items-center gap-1 font-mono text-[10px] text-emerald-400 font-bold rotate-90">
+              <div className="absolute right-5 flex flex-col items-center gap-1 text-[10px] font-semibold tabular-nums opacity-75 rotate-90">
                 <span>◄── H = {dimensions.height} mm ──►</span>
               </div>
             </>
@@ -339,26 +317,14 @@ export const ViewCanvas2D: React.FC<ViewCanvas2DProps> = ({
       )}
 
       {/* Faint Center Crosshair */}
-      <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
-        <div
-          className={`w-4 h-[1px] ${
-            isDark ? 'bg-sky-500/30' : 'bg-slate-400/40'
-          }`}
-        />
-        <div
-          className={`h-4 w-[1px] absolute ${
-            isDark ? 'bg-sky-500/30' : 'bg-slate-400/40'
-          }`}
-        />
+      <div className="absolute inset-0 pointer-events-none flex items-center justify-center opacity-20">
+        <div className="w-4 h-[1px] bg-current" />
+        <div className="h-4 w-[1px] absolute bg-current" />
       </div>
 
-      {/* Quadrant Indicator Badge */}
+      {/* Quadrant Indicator */}
       <div className="absolute bottom-2 right-3 pointer-events-none">
-        <span
-          className={`text-[9px] font-mono tracking-widest uppercase ${
-            isDark ? 'text-slate-500' : 'text-slate-400'
-          }`}
-        >
+        <span className="text-[9px] font-medium tracking-[0.16em] uppercase opacity-40">
           {quadrant}
         </span>
       </div>

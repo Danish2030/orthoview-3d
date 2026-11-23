@@ -50,27 +50,27 @@ export const OrthographicSheet: React.FC<OrthographicSheetProps> = ({
     <div
       id="orthographic-sheet-container"
       className={`relative w-full h-full p-3 flex flex-col select-none transition-colors duration-200 ${
-        isDark ? 'bg-[#060a12]' : 'bg-[#e2e8f0]'
+        isDark ? 'bg-transparent' : 'bg-transparent'
       }`}
     >
       {/* Outer ISO A3 Technical Drawing Sheet Border with Zone Coordinates */}
       <div
-        className={`relative flex-1 rounded-xl border-2 overflow-hidden flex flex-col shadow-2xl transition-colors duration-200 ${
+        className={`relative flex-1 rounded-[24px] border overflow-hidden flex flex-col shadow-xl transition-colors duration-200 ${
           isDark
-            ? 'bg-[#0b101d] border-sky-600/50 shadow-[0_0_35px_rgba(11,16,29,0.9)]'
-            : 'bg-[#f8fafc] border-slate-500 shadow-xl'
+            ? 'bg-[#0b0b0e] border-white/15'
+            : 'bg-[#fafafb] border-black/15'
         }`}
       >
         {/* ISO Standard Zone Coordinate Bar (Top: 1 - 8) */}
         <div
-          className={`h-5 border-b grid grid-cols-8 text-[9px] font-mono font-bold items-center text-center ${
+          className={`h-5 border-b grid grid-cols-8 text-[9px] font-bold items-center text-center ${
             isDark
-              ? 'bg-[#0e1628] border-slate-800 text-slate-500'
-              : 'bg-slate-200 border-slate-300 text-slate-600'
+              ? 'bg-white/[0.03] border-white/10 text-zinc-500'
+              : 'bg-black/[0.03] border-black/10 text-zinc-500'
           }`}
         >
           {['1', '2', '3', '4', '5', '6', '7', '8'].map((zone) => (
-            <div key={zone} className="border-r border-slate-800/40 last:border-r-0">
+            <div key={zone} className="border-r border-current/10 last:border-r-0">
               {zone}
             </div>
           ))}
@@ -80,10 +80,10 @@ export const OrthographicSheet: React.FC<OrthographicSheetProps> = ({
         <div className="relative flex-1 flex overflow-hidden">
           {/* Left Zone Coordinates (A - D) */}
           <div
-            className={`w-5 border-r flex flex-col justify-around text-[9px] font-mono font-bold items-center text-center ${
+            className={`w-5 border-r flex flex-col justify-around text-[9px] font-bold items-center text-center ${
               isDark
-                ? 'bg-[#0e1628] border-slate-800 text-slate-500'
-                : 'bg-slate-200 border-slate-300 text-slate-600'
+                ? 'bg-white/[0.03] border-white/10 text-zinc-500'
+                : 'bg-black/[0.03] border-black/10 text-zinc-500'
             }`}
           >
             {['A', 'B', 'C', 'D'].map((letter) => (
@@ -94,7 +94,7 @@ export const OrthographicSheet: React.FC<OrthographicSheetProps> = ({
           {/* Main 2x2 Orthographic Quadrant Drawing Workspace */}
           <div className="relative flex-1 grid grid-cols-2 grid-rows-2">
             {/* Quadrant 1 (Top-Left): FRONT VIEW (Elevation on VP) */}
-            <div className="relative border-r border-b border-dashed border-slate-600/30 overflow-hidden">
+            <div className="relative border-r border-b border-dashed border-current/15 overflow-hidden">
               <ViewCanvas2D
                 viewType="front"
                 geometry={geometry}
@@ -114,7 +114,7 @@ export const OrthographicSheet: React.FC<OrthographicSheetProps> = ({
             </div>
 
             {/* Quadrant 2 (Top-Right): LEFT-HAND SIDE VIEW (on RPP) */}
-            <div className="relative border-b border-dashed border-slate-600/30 overflow-hidden">
+            <div className="relative border-b border-dashed border-current/15 overflow-hidden">
               <ViewCanvas2D
                 viewType="leftSide"
                 geometry={geometry}
@@ -134,7 +134,7 @@ export const OrthographicSheet: React.FC<OrthographicSheetProps> = ({
             </div>
 
             {/* Quadrant 3 (Bottom-Left): TOP VIEW (Plan on HP) */}
-            <div className="relative border-r border-dashed border-slate-600/30 overflow-hidden">
+            <div className="relative border-r border-dashed border-current/15 overflow-hidden">
               <ViewCanvas2D
                 viewType="top"
                 geometry={geometry}
@@ -254,7 +254,7 @@ export const OrthographicSheet: React.FC<OrthographicSheetProps> = ({
                   y1="18%"
                   x2="28%"
                   y2="82%"
-                  stroke={isDark ? '#38bdf8' : '#3b82f6'}
+                  stroke={isDark ? '#a1a1aa' : '#52525b'}
                   strokeWidth="1"
                   strokeDasharray="3 3"
                   opacity={isDark ? 0.35 : 0.45}
@@ -264,7 +264,7 @@ export const OrthographicSheet: React.FC<OrthographicSheetProps> = ({
                   y1="18%"
                   x2="38%"
                   y2="82%"
-                  stroke={isDark ? '#38bdf8' : '#3b82f6'}
+                  stroke={isDark ? '#a1a1aa' : '#52525b'}
                   strokeWidth="1"
                   strokeDasharray="3 3"
                   opacity={isDark ? 0.35 : 0.45}
@@ -276,7 +276,7 @@ export const OrthographicSheet: React.FC<OrthographicSheetProps> = ({
                   y1="22%"
                   x2="85%"
                   y2="22%"
-                  stroke={isDark ? '#38bdf8' : '#3b82f6'}
+                  stroke={isDark ? '#a1a1aa' : '#52525b'}
                   strokeWidth="1"
                   strokeDasharray="3 3"
                   opacity={isDark ? 0.35 : 0.45}
@@ -286,7 +286,7 @@ export const OrthographicSheet: React.FC<OrthographicSheetProps> = ({
                   y1="36%"
                   x2="85%"
                   y2="36%"
-                  stroke={isDark ? '#38bdf8' : '#3b82f6'}
+                  stroke={isDark ? '#a1a1aa' : '#52525b'}
                   strokeWidth="1"
                   strokeDasharray="3 3"
                   opacity={isDark ? 0.35 : 0.45}
@@ -297,8 +297,8 @@ export const OrthographicSheet: React.FC<OrthographicSheetProps> = ({
             {/* Crisp Horizontal Reference Line X — Y */}
             <div className="absolute top-1/2 left-0 right-0 -translate-y-1/2 pointer-events-none z-30 flex items-center">
               <div
-                className={`absolute left-2 -top-6 px-1.5 py-0.5 rounded font-mono font-bold text-xs ${
-                  isDark ? 'bg-sky-950 text-sky-400 border border-sky-800' : 'bg-white text-slate-800 border border-slate-300'
+                className={`absolute left-2 -top-6 px-1.5 py-0.5 rounded font-bold text-xs ${
+                  isDark ? 'bg-white text-black' : 'bg-[#0d0d10] text-white'
                 }`}
               >
                 X
@@ -306,13 +306,13 @@ export const OrthographicSheet: React.FC<OrthographicSheetProps> = ({
 
               <div
                 className={`w-full h-[2px] ${
-                  isDark ? 'bg-sky-500/80 shadow-[0_0_8px_rgba(56,189,248,0.5)]' : 'bg-slate-700'
+                  isDark ? 'bg-white/60' : 'bg-black/70'
                 }`}
               />
 
               <div
-                className={`absolute right-2 -top-6 px-1.5 py-0.5 rounded font-mono font-bold text-xs ${
-                  isDark ? 'bg-sky-950 text-sky-400 border border-sky-800' : 'bg-white text-slate-800 border border-slate-300'
+                className={`absolute right-2 -top-6 px-1.5 py-0.5 rounded font-bold text-xs ${
+                  isDark ? 'bg-white text-black' : 'bg-[#0d0d10] text-white'
                 }`}
               >
                 Y
@@ -322,8 +322,8 @@ export const OrthographicSheet: React.FC<OrthographicSheetProps> = ({
             {/* Crisp Vertical Reference Line X1 — Y1 */}
             <div className="absolute top-0 bottom-0 left-1/2 -translate-x-1/2 pointer-events-none z-30 flex justify-center">
               <div
-                className={`absolute top-2 -left-8 px-1.5 py-0.5 rounded font-mono font-bold text-xs ${
-                  isDark ? 'bg-amber-950 text-amber-400 border border-amber-800' : 'bg-white text-slate-800 border border-slate-300'
+                className={`absolute top-2 -left-8 px-1.5 py-0.5 rounded font-bold text-xs ${
+                  isDark ? 'bg-white text-black' : 'bg-[#0d0d10] text-white'
                 }`}
               >
                 X₁
@@ -331,13 +331,13 @@ export const OrthographicSheet: React.FC<OrthographicSheetProps> = ({
 
               <div
                 className={`h-full w-[2px] ${
-                  isDark ? 'bg-amber-500/80 shadow-[0_0_8px_rgba(245,158,11,0.5)]' : 'bg-slate-700'
+                  isDark ? 'bg-white/60' : 'bg-black/70'
                 }`}
               />
 
               <div
-                className={`absolute bottom-2 -left-8 px-1.5 py-0.5 rounded font-mono font-bold text-xs ${
-                  isDark ? 'bg-amber-950 text-amber-400 border border-amber-800' : 'bg-white text-slate-800 border border-slate-300'
+                className={`absolute bottom-2 -left-8 px-1.5 py-0.5 rounded font-bold text-xs ${
+                  isDark ? 'bg-white text-black' : 'bg-[#0d0d10] text-white'
                 }`}
               >
                 Y₁
@@ -345,10 +345,10 @@ export const OrthographicSheet: React.FC<OrthographicSheetProps> = ({
 
               {/* Origin Intersection O Badge */}
               <div
-                className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-6 h-6 rounded-full flex items-center justify-center font-mono font-bold text-[10px] border shadow-lg ${
+                className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-6 h-6 rounded-full flex items-center justify-center font-bold text-[10px] border shadow-lg ${
                   isDark
-                    ? 'bg-slate-900 text-sky-300 border-sky-400 shadow-[0_0_12px_rgba(56,189,248,0.4)]'
-                    : 'bg-white text-slate-900 border-slate-600 shadow-md'
+                    ? 'bg-white text-black border-white shadow-md'
+                    : 'bg-[#0d0d10] text-white border-[#0d0d10] shadow-md'
                 }`}
               >
                 O
@@ -358,10 +358,10 @@ export const OrthographicSheet: React.FC<OrthographicSheetProps> = ({
 
           {/* Right Zone Coordinates (A - D) */}
           <div
-            className={`w-5 border-l flex flex-col justify-around text-[9px] font-mono font-bold items-center text-center ${
+            className={`w-5 border-l flex flex-col justify-around text-[9px] font-bold items-center text-center ${
               isDark
-                ? 'bg-[#0e1628] border-slate-800 text-slate-500'
-                : 'bg-slate-200 border-slate-300 text-slate-600'
+                ? 'bg-white/[0.03] border-white/10 text-zinc-500'
+                : 'bg-black/[0.03] border-black/10 text-zinc-500'
             }`}
           >
             {['A', 'B', 'C', 'D'].map((letter) => (
@@ -372,14 +372,14 @@ export const OrthographicSheet: React.FC<OrthographicSheetProps> = ({
 
         {/* ISO Standard Zone Coordinate Bar (Bottom: 1 - 8) */}
         <div
-          className={`h-5 border-t grid grid-cols-8 text-[9px] font-mono font-bold items-center text-center ${
+          className={`h-5 border-t grid grid-cols-8 text-[9px] font-bold items-center text-center ${
             isDark
-              ? 'bg-[#0e1628] border-slate-800 text-slate-500'
-              : 'bg-slate-200 border-slate-300 text-slate-600'
+              ? 'bg-white/[0.03] border-white/10 text-zinc-500'
+              : 'bg-black/[0.03] border-black/10 text-zinc-500'
           }`}
         >
           {['1', '2', '3', '4', '5', '6', '7', '8'].map((zone) => (
-            <div key={zone} className="border-r border-slate-800/40 last:border-r-0">
+            <div key={zone} className="border-r border-current/10 last:border-r-0">
               {zone}
             </div>
           ))}

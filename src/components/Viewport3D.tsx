@@ -80,7 +80,7 @@ export const Viewport3D: React.FC<Viewport3DProps> = ({
 
     // Scene
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(isDark ? 0x070b14 : 0xedf2f7);
+    scene.background = new THREE.Color(isDark ? 0x0a0a0c : 0xf4f5f7);
 
     // Camera
     const camera = new THREE.PerspectiveCamera(
@@ -120,12 +120,12 @@ export const Viewport3D: React.FC<Viewport3DProps> = ({
     scene.add(keyLight);
 
     // 2. Fill Light (Cool Sky Blue)
-    const fillLight = new THREE.DirectionalLight(isDark ? 0x38bdf8 : 0x93c5fd, isDark ? 0.9 : 0.6);
+    const fillLight = new THREE.DirectionalLight(isDark ? 0xe4e4e7 : 0xffffff, isDark ? 0.85 : 0.65);
     fillLight.position.set(-180, 120, -140);
     scene.add(fillLight);
 
     // 3. Rim / Specular Edge Light
-    const rimLight = new THREE.DirectionalLight(isDark ? 0xf59e0b : 0xfde68a, isDark ? 0.8 : 0.5);
+    const rimLight = new THREE.DirectionalLight(isDark ? 0xa1a1aa : 0xe4e4e7, isDark ? 0.75 : 0.5);
     rimLight.position.set(0, -120, -220);
     scene.add(rimLight);
 
@@ -140,8 +140,8 @@ export const Viewport3D: React.FC<Viewport3DProps> = ({
     const gridHelper = new THREE.GridHelper(
       240,
       24,
-      isDark ? 0x38bdf8 : 0x2563eb,
-      isDark ? 0x1e293b : 0xcbd5e1
+      isDark ? 0x52525b : 0x71717a,
+      isDark ? 0x1c1c21 : 0xd4d4d8
     );
     gridHelper.position.y = gridY;
     gridHelper.visible = displayOptions.show3DGrid;
@@ -388,7 +388,7 @@ export const Viewport3D: React.FC<Viewport3DProps> = ({
     // Visible Edge Lines (Razor Sharp Engineering Line Type A)
     const edgesGeom = new THREE.EdgesGeometry(geometry, 24);
     const edgesMaterial = new THREE.LineBasicMaterial({
-      color: isDark ? 0x38bdf8 : 0x0f172a,
+      color: isDark ? 0xf4f4f6 : 0x0d0d10,
       linewidth: 2,
     });
     const edgeLines = new THREE.LineSegments(edgesGeom, edgesMaterial);
@@ -398,7 +398,7 @@ export const Viewport3D: React.FC<Viewport3DProps> = ({
     if (displayOptions.showHiddenLines) {
       const hiddenGeom = edgesGeom.clone();
       const dashedMat = new THREE.LineDashedMaterial({
-        color: isDark ? 0xf59e0b : 0x94a3b8,
+        color: isDark ? 0x71717a : 0x9ca3af,
         dashSize: 3,
         gapSize: 2,
         depthFunc: THREE.GreaterDepth,
@@ -515,28 +515,24 @@ export const Viewport3D: React.FC<Viewport3DProps> = ({
   return (
     <div
       ref={containerRef}
-      className={`relative w-full h-full select-none overflow-hidden ${
-        isDark ? 'bg-[#070b14]' : 'bg-[#edf2f7]'
+      className={`relative w-full h-full select-none overflow-hidden rounded-[24px] border ${
+        isDark
+          ? 'bg-[#0a0a0c] border-white/10 text-[#f4f4f6]'
+          : 'bg-[#f4f5f7] border-black/10 text-[#0d0d10]'
       }`}
     >
       <canvas ref={canvasRef} className="w-full h-full block cursor-grab active:cursor-grabbing" />
 
-      {/* Top Header Badge */}
-      <div className="absolute top-3 left-4 z-10 flex items-center gap-2">
-        <div
-          className={`px-3 py-1.5 rounded-lg border flex items-center gap-2 text-xs font-mono font-semibold backdrop-blur shadow-lg ${
-            isDark
-              ? 'bg-slate-900/90 text-sky-400 border-sky-500/30 shadow-[0_0_15px_rgba(56,189,248,0.15)]'
-              : 'bg-white/95 text-slate-800 border-slate-300'
-          }`}
-        >
-          <Box className="w-4 h-4 text-sky-400" />
-          <span>3D SPACE (FIRST QUADRANT)</span>
+      {/* Top Header Pill */}
+      <div className="absolute top-3.5 left-4 z-10 flex items-center gap-2">
+        <div className="px-3.5 py-1.5 rounded-full glass-pill flex items-center gap-2 text-[11px] font-semibold tracking-[-0.01em]">
+          <Box className="w-3.5 h-3.5 opacity-80" />
+          <span>3D Studio • First Quadrant</span>
         </div>
       </div>
 
       {/* 3D CAD ViewCube (Top Right) */}
-      <div className="absolute top-3 right-4 z-20">
+      <div className="absolute top-4 right-4 z-20">
         <ViewCube
           cameraMatrix={cameraMatrix}
           onSelectView={(view) => {
@@ -552,15 +548,15 @@ export const Viewport3D: React.FC<Viewport3DProps> = ({
         />
       </div>
 
-      {/* Quick Camera Preset Toolbar (Top Center) */}
-      <div className="absolute top-3 left-1/2 -translate-x-1/2 z-10 flex items-center gap-1.5 p-1 rounded-lg border backdrop-blur bg-slate-900/85 border-slate-700/80 text-white shadow-xl">
+      {/* Quick Camera Preset Pill Bar (Top Center) */}
+      <div className="absolute top-3.5 left-1/2 -translate-x-1/2 z-10 flex items-center gap-1 p-1 rounded-full glass-pill shadow-lg">
         <button
           onClick={() => setCameraPreset('isometric')}
-          title="Isometric View (Standard 30° CAD perspective)"
-          className={`px-2 py-1 text-xs font-mono rounded flex items-center gap-1 transition-all ${
+          title="Isometric View"
+          className={`px-3 py-1.5 text-[11px] font-medium rounded-full flex items-center gap-1 transition-all cursor-pointer ${
             cameraMode === 'isometric'
-              ? 'bg-sky-500 text-slate-950 font-bold shadow'
-              : 'hover:bg-slate-800 text-slate-300'
+              ? 'glass-pill-active font-semibold'
+              : 'opacity-70 hover:opacity-100'
           }`}
         >
           <Compass className="w-3.5 h-3.5" />
@@ -569,87 +565,77 @@ export const Viewport3D: React.FC<Viewport3DProps> = ({
 
         <button
           onClick={() => setCameraPreset('front')}
-          title="Direct Front View (Look along +Z onto VP)"
-          className={`px-2 py-1 text-xs font-mono rounded flex items-center gap-1 transition-all ${
+          title="Direct Front View (VP)"
+          className={`px-2.5 py-1.5 text-[11px] font-medium rounded-full transition-all cursor-pointer ${
             cameraMode === 'front'
-              ? 'bg-sky-500 text-slate-950 font-bold shadow'
-              : 'hover:bg-slate-800 text-slate-300'
+              ? 'glass-pill-active font-semibold'
+              : 'opacity-70 hover:opacity-100'
           }`}
         >
-          <span className="text-sky-400 font-bold">FV</span>
+          FV
         </button>
 
         <button
           onClick={() => setCameraPreset('top')}
-          title="Direct Top View (Look down +Y onto HP)"
-          className={`px-2 py-1 text-xs font-mono rounded flex items-center gap-1 transition-all ${
+          title="Direct Top View (HP)"
+          className={`px-2.5 py-1.5 text-[11px] font-medium rounded-full transition-all cursor-pointer ${
             cameraMode === 'top'
-              ? 'bg-sky-500 text-slate-950 font-bold shadow'
-              : 'hover:bg-slate-800 text-slate-300'
+              ? 'glass-pill-active font-semibold'
+              : 'opacity-70 hover:opacity-100'
           }`}
         >
-          <span className="text-emerald-400 font-bold">TV</span>
+          TV
         </button>
 
         <button
           onClick={() => setCameraPreset('side')}
-          title="Direct Left Side View (Look from -X onto RPP)"
-          className={`px-2 py-1 text-xs font-mono rounded flex items-center gap-1 transition-all ${
+          title="Direct Left Side View (RPP)"
+          className={`px-2.5 py-1.5 text-[11px] font-medium rounded-full transition-all cursor-pointer ${
             cameraMode === 'side'
-              ? 'bg-sky-500 text-slate-950 font-bold shadow'
-              : 'hover:bg-slate-800 text-slate-300'
+              ? 'glass-pill-active font-semibold'
+              : 'opacity-70 hover:opacity-100'
           }`}
         >
-          <span className="text-amber-400 font-bold">LHSV</span>
+          LHSV
         </button>
 
-        <div className="w-[1px] h-4 bg-slate-700 mx-1" />
+        <div className="w-[1px] h-4 bg-current opacity-15 mx-0.5" />
 
         <button
           onClick={() => setCameraPreset('reset')}
           title="Reset Camera & Orientation"
-          className="px-2 py-1 text-xs font-mono rounded hover:bg-slate-800 text-slate-300 flex items-center gap-1 transition-all"
+          className="px-2.5 py-1.5 text-[11px] font-medium rounded-full opacity-70 hover:opacity-100 flex items-center gap-1 transition-all cursor-pointer"
         >
-          <RotateCcw className="w-3.5 h-3.5 text-amber-400" />
-          <span>Reset</span>
+          <RotateCcw className="w-3.5 h-3.5" />
+          <span className="hidden sm:inline">Reset</span>
         </button>
       </div>
 
       {/* Glass Box Folding Controller Bar */}
-      <div
-        className={`absolute bottom-14 left-4 right-4 z-10 p-3 rounded-xl border backdrop-blur flex items-center justify-between gap-4 shadow-xl transition-all ${
-          isDark
-            ? 'bg-slate-950/85 border-sky-800/60 text-slate-200'
-            : 'bg-white/95 border-slate-300 text-slate-800'
-        }`}
-      >
+      <div className="absolute bottom-14 left-4 right-4 z-10 px-4 py-3 rounded-[20px] glass-card flex items-center justify-between gap-4 shadow-lg">
         <div className="flex items-center gap-3">
           <button
             onClick={() => setIsUnfoldPlaying(!isUnfoldPlaying)}
-            className={`p-2 rounded-lg font-mono text-xs font-bold flex items-center gap-1.5 transition-all ${
-              isUnfoldPlaying
-                ? 'bg-amber-500 text-slate-950'
-                : 'bg-sky-500 hover:bg-sky-400 text-slate-950'
-            }`}
+            className="px-3.5 py-2 rounded-full glass-pill-active text-[11px] font-semibold flex items-center gap-1.5 transition-all cursor-pointer shrink-0"
           >
             {isUnfoldPlaying ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
             <span>{isUnfoldPlaying ? 'Pause' : 'Unfold Planes'}</span>
           </button>
 
           <div className="hidden sm:flex flex-col">
-            <span className="text-xs font-mono font-bold text-sky-400 flex items-center gap-1">
-              <Sparkles className="w-3.5 h-3.5" />
-              GLASS BOX ROTATION (HP & RPP)
+            <span className="text-xs font-semibold tracking-[-0.01em] flex items-center gap-1.5">
+              <Sparkles className="w-3.5 h-3.5 opacity-75" />
+              Glass Box Rotation
             </span>
-            <span className="text-[10px] text-slate-400">
-              Visual proof of why Top View is below FV & LHSV is on the right
+            <span className="text-[10px] opacity-55">
+              Unfold HP &amp; RPP into 2D orthographic sheet
             </span>
           </div>
         </div>
 
         {/* Unfold Progress Slider */}
-        <div className="flex items-center gap-3 flex-1 max-w-xs">
-          <span className="text-[11px] font-mono font-bold text-slate-400">3D Box</span>
+        <div className="flex items-center gap-2.5 flex-1 max-w-[220px]">
+          <span className="text-[10px] font-medium opacity-55">3D</span>
           <input
             type="range"
             min="0"
@@ -663,49 +649,39 @@ export const Viewport3D: React.FC<Viewport3DProps> = ({
                 unfoldProgress: Number(e.target.value),
               });
             }}
-            className="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-sky-400"
+            className="w-full h-1.5 rounded-full appearance-none cursor-pointer bg-current/15"
           />
-          <span className="text-[11px] font-mono font-bold text-amber-400">2D Sheet</span>
-          <span className="text-xs font-mono font-bold w-10 text-right text-sky-400">
+          <span className="text-[10px] font-medium opacity-55">2D</span>
+          <span className="text-[11px] font-semibold w-9 text-right tabular-nums">
             {displayOptions.unfoldProgress}%
           </span>
         </div>
       </div>
 
       {/* Axis Triad Legend (Bottom Left) */}
-      <div
-        className={`absolute bottom-3 left-4 z-10 px-3 py-1.5 rounded-lg border text-[11px] font-mono backdrop-blur flex items-center gap-3 ${
-          isDark
-            ? 'bg-slate-900/80 border-slate-800 text-slate-300'
-            : 'bg-white/90 border-slate-300 text-slate-700 shadow-sm'
-        }`}
-      >
-        <div className="flex items-center gap-1">
-          <span className="w-2.5 h-2.5 rounded-full bg-red-500 inline-block" />
-          <span className="font-bold">X (Length)</span>
+      <div className="absolute bottom-3 left-4 z-10 px-3 py-1.5 rounded-full glass-pill text-[11px] flex items-center gap-3">
+        <div className="flex items-center gap-1.5">
+          <span className="w-2 h-2 rounded-full bg-rose-500 inline-block" />
+          <span className="font-medium">X</span>
         </div>
-        <div className="flex items-center gap-1">
-          <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block" />
-          <span className="font-bold">Y (Height)</span>
+        <div className="flex items-center gap-1.5">
+          <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" />
+          <span className="font-medium">Y</span>
         </div>
-        <div className="flex items-center gap-1">
-          <span className="w-2.5 h-2.5 rounded-full bg-blue-500 inline-block" />
-          <span className="font-bold">Z (Width)</span>
+        <div className="flex items-center gap-1.5">
+          <span className="w-2 h-2 rounded-full bg-sky-500 inline-block" />
+          <span className="font-medium">Z</span>
         </div>
       </div>
 
       {/* Real-time Orientation Readout */}
-      <div
-        className={`absolute bottom-3 right-4 z-10 px-3 py-1.5 rounded-lg border text-[11px] font-mono backdrop-blur ${
-          isDark
-            ? 'bg-slate-900/80 border-slate-800 text-slate-400'
-            : 'bg-white/90 border-slate-300 text-slate-600 shadow-sm'
-        }`}
-      >
-        <span>Orientation: </span>
-        <span className="text-sky-400 font-bold">θx {rotation.x}°</span> •{' '}
-        <span className="text-emerald-400 font-bold">θy {rotation.y}°</span> •{' '}
-        <span className="text-amber-400 font-bold">θz {rotation.z}°</span>
+      <div className="absolute bottom-3 right-4 z-10 px-3.5 py-1.5 rounded-full glass-pill text-[11px] tabular-nums">
+        <span className="opacity-55">Angle: </span>
+        <span className="font-semibold">X {rotation.x}°</span>
+        <span className="opacity-35 mx-1.5">•</span>
+        <span className="font-semibold">Y {rotation.y}°</span>
+        <span className="opacity-35 mx-1.5">•</span>
+        <span className="font-semibold">Z {rotation.z}°</span>
       </div>
     </div>
   );

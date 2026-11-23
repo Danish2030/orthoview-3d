@@ -78,23 +78,23 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const getSolidIcon = (iconName: string) => {
     switch (iconName) {
       case 'CornerDownRight':
-        return <CornerDownRight className="w-4 h-4 text-violet-600 dark:text-violet-300" />;
+        return <CornerDownRight className="w-4 h-4 text-[#0d0d10] dark:text-white" />;
       case 'SplitSquareVertical':
-        return <SplitSquareVertical className="w-4 h-4 text-violet-600 dark:text-violet-300" />;
+        return <SplitSquareVertical className="w-4 h-4 text-[#0d0d10] dark:text-white" />;
       case 'Hexagon':
-        return <Hexagon className="w-4 h-4 text-violet-600 dark:text-violet-300" />;
+        return <Hexagon className="w-4 h-4 text-[#0d0d10] dark:text-white" />;
       case 'Pyramid':
-        return <Pyramid className="w-4 h-4 text-violet-600 dark:text-violet-300" />;
+        return <Pyramid className="w-4 h-4 text-[#0d0d10] dark:text-white" />;
       case 'Cone':
-        return <Cone className="w-4 h-4 text-violet-600 dark:text-violet-300" />;
+        return <Cone className="w-4 h-4 text-[#0d0d10] dark:text-white" />;
       case 'CircleDot':
-        return <CircleDot className="w-4 h-4 text-violet-600 dark:text-violet-300" />;
+        return <CircleDot className="w-4 h-4 text-[#0d0d10] dark:text-white" />;
       case 'Spline':
-        return <Spline className="w-4 h-4 text-violet-600 dark:text-violet-300" />;
+        return <Spline className="w-4 h-4 text-[#0d0d10] dark:text-white" />;
       case 'Triangle':
-        return <Triangle className="w-4 h-4 text-violet-600 dark:text-violet-300" />;
+        return <Triangle className="w-4 h-4 text-[#0d0d10] dark:text-white" />;
       default:
-        return <Box className="w-4 h-4 text-violet-600 dark:text-violet-300" />;
+        return <Box className="w-4 h-4 text-[#0d0d10] dark:text-white" />;
     }
   };
 
@@ -102,14 +102,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
     return (
       <div
         className={`w-14 h-full flex flex-col items-center py-4 border-r select-none transition-colors duration-200 z-30 ${
-          isDark ? 'glass-panel border-white/10 text-[#f3f2fa]' : 'glass-panel border-indigo-950/10 text-[#141326]'
+          isDark ? 'glass-panel border-white/10 text-[#f4f4f6]' : 'glass-panel border-black/10 text-[#0d0d10]'
         }`}
       >
         <button
           onClick={onToggleCollapse}
           title="Expand Control Panel"
           className={`p-2.5 rounded-lg mb-6 transition-all ${
-            isDark ? 'hover:bg-slate-800 text-violet-600 dark:text-violet-300' : 'hover:bg-slate-100 text-blue-600'
+            isDark ? 'hover:bg-slate-800 text-[#0d0d10] dark:text-white' : 'hover:bg-slate-100 text-blue-600'
           }`}
         >
           <ChevronRight className="w-5 h-5" />
@@ -122,7 +122,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               setActiveTab('solids');
             }}
             title="Engineering Solids"
-            className="p-2 rounded hover:bg-slate-800 text-slate-500 dark:text-[#9b99b8] hover:text-violet-600 dark:text-violet-300"
+            className="p-2 rounded hover:bg-slate-800 text-slate-500 dark:text-[#9b99b8] hover:text-[#0d0d10] dark:text-white"
           >
             <Box className="w-5 h-5" />
           </button>
@@ -132,7 +132,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               setActiveTab('dimensions');
             }}
             title="Parametric Dimensions"
-            className="p-2 rounded hover:bg-slate-800 text-slate-500 dark:text-[#9b99b8] hover:text-violet-600 dark:text-violet-300"
+            className="p-2 rounded hover:bg-slate-800 text-slate-500 dark:text-[#9b99b8] hover:text-[#0d0d10] dark:text-white"
           >
             <Sliders className="w-5 h-5" />
           </button>
@@ -142,7 +142,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               setActiveTab('orientation');
             }}
             title="Orientation & Inclination"
-            className="p-2 rounded hover:bg-slate-800 text-slate-500 dark:text-[#9b99b8] hover:text-violet-600 dark:text-violet-300"
+            className="p-2 rounded hover:bg-slate-800 text-slate-500 dark:text-[#9b99b8] hover:text-[#0d0d10] dark:text-white"
           >
             <Rotate3d className="w-5 h-5" />
           </button>
@@ -152,7 +152,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               setActiveTab('display');
             }}
             title="Display Options"
-            className="p-2 rounded hover:bg-slate-800 text-slate-500 dark:text-[#9b99b8] hover:text-violet-600 dark:text-violet-300"
+            className="p-2 rounded hover:bg-slate-800 text-slate-500 dark:text-[#9b99b8] hover:text-[#0d0d10] dark:text-white"
           >
             <Layers className="w-5 h-5" />
           </button>
@@ -162,7 +162,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <button
             onClick={onToggleTheme}
             title={isDark ? 'Switch to Drawing Sheet (White)' : 'Switch to CAD Blueprint (Dark)'}
-            className="p-2.5 rounded-lg text-amber-400 hover:bg-slate-800"
+            className="p-2.5 rounded-lg opacity-65 hover:bg-slate-800"
           >
             {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5 text-slate-700" />}
           </button>
@@ -174,13 +174,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
   return (
     <aside
       className={`w-80 h-full flex flex-col border-r select-none transition-colors duration-200 z-30 ${
-        isDark ? 'glass-panel border-white/10 text-[#f3f2fa]' : 'glass-panel border-indigo-950/10 text-[#141326]'
+        isDark ? 'glass-panel border-white/10 text-[#f4f4f6]' : 'glass-panel border-black/10 text-[#0d0d10]'
       }`}
     >
       {/* Sidebar Header */}
-      <div className="px-4 py-3.5 border-b border-indigo-950/10 dark:border-white/10 flex items-center justify-between">
+      <div className="px-4 py-3.5 border-b border-black/10 dark:border-white/10 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <SlidersHorizontal className="w-4 h-4 text-violet-600 dark:text-violet-300" />
+          <SlidersHorizontal className="w-4 h-4 text-[#0d0d10] dark:text-white" />
           <span className="font-bold text-xs tracking-wider uppercase">
             CONTROL PALETTE
           </span>
@@ -195,14 +195,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
       </div>
 
       {/* Tabs */}
-      <div className="grid grid-cols-4 border-b border-indigo-950/10 dark:border-white/10 p-1 text-[11px]">
+      <div className="grid grid-cols-4 border-b border-black/10 dark:border-white/10 p-1 text-[11px]">
         <button
           onClick={() => setActiveTab('solids')}
           className={`py-1.5 rounded-xl transition-all text-center flex flex-col items-center gap-1 ${
             activeTab === 'solids'
               ? isDark
-                ? 'glass-pill-active text-white font-semibold'
-                : 'glass-pill-active text-violet-950 font-semibold'
+                ? 'glass-pill-active font-semibold'
+                : 'glass-pill-active font-semibold'
               : isDark ? 'text-[#9b99b8] hover:text-white' : 'text-[#5c5b74] hover:text-[#141326]'
           }`}
         >
@@ -215,8 +215,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
           className={`py-1.5 rounded-xl transition-all text-center flex flex-col items-center gap-1 ${
             activeTab === 'dimensions'
               ? isDark
-                ? 'glass-pill-active text-white font-semibold'
-                : 'glass-pill-active text-violet-950 font-semibold'
+                ? 'glass-pill-active font-semibold'
+                : 'glass-pill-active font-semibold'
               : isDark ? 'text-[#9b99b8] hover:text-white' : 'text-[#5c5b74] hover:text-[#141326]'
           }`}
         >
@@ -229,8 +229,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
           className={`py-1.5 rounded-xl transition-all text-center flex flex-col items-center gap-1 ${
             activeTab === 'orientation'
               ? isDark
-                ? 'glass-pill-active text-white font-semibold'
-                : 'glass-pill-active text-violet-950 font-semibold'
+                ? 'glass-pill-active font-semibold'
+                : 'glass-pill-active font-semibold'
               : isDark ? 'text-[#9b99b8] hover:text-white' : 'text-[#5c5b74] hover:text-[#141326]'
           }`}
         >
@@ -243,8 +243,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
           className={`py-1.5 rounded-xl transition-all text-center flex flex-col items-center gap-1 ${
             activeTab === 'display'
               ? isDark
-                ? 'glass-pill-active text-white font-semibold'
-                : 'glass-pill-active text-violet-950 font-semibold'
+                ? 'glass-pill-active font-semibold'
+                : 'glass-pill-active font-semibold'
               : isDark ? 'text-[#9b99b8] hover:text-white' : 'text-[#5c5b74] hover:text-[#141326]'
           }`}
         >
@@ -260,7 +260,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <div className="space-y-3">
             <div className="text-[11px] font-semibold text-slate-500 dark:text-[#9b99b8] uppercase tracking-wider flex items-center justify-between">
               <span>Standard Engineering Solids</span>
-              <span className="text-[10px] text-violet-600 dark:text-violet-300">{SOLID_PRESETS.length} models</span>
+              <span className="text-[10px] text-[#0d0d10] dark:text-white">{SOLID_PRESETS.length} models</span>
             </div>
 
             <div className="grid grid-cols-1 gap-2">
@@ -276,7 +276,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                           ? 'bg-sky-950/40 border-sky-400 shadow-[0_0_15px_rgba(56,189,248,0.25)]'
                           : 'bg-blue-50 border-blue-500 shadow-sm'
                         : isDark
-                        ? 'bg-slate-900/60 border-indigo-950/10 dark:border-white/10 hover:border-slate-700 hover:bg-slate-800/50'
+                        ? 'bg-slate-900/60 border-black/10 dark:border-white/10 hover:border-slate-700 hover:bg-slate-800/50'
                         : 'bg-slate-50 border-slate-200 hover:border-slate-300 hover:bg-slate-100'
                     }`}
                   >
@@ -329,7 +329,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <div className="space-y-4">
             <div className="text-[11px] font-semibold text-slate-500 dark:text-[#9b99b8] uppercase tracking-wider flex items-center justify-between">
               <span>Parametric Dimensions</span>
-              <span className="text-[10px] text-amber-400">All in mm</span>
+              <span className="text-[10px] opacity-65">All in mm</span>
             </div>
 
             {/* Mode Switcher: By View vs Sliders */}
@@ -338,7 +338,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 onClick={() => setDimInputMode('views')}
                 className={`py-1.5 rounded-md font-semibold transition-all ${
                   dimInputMode === 'views'
-                    ? 'glass-pill-active text-violet-950 dark:text-white'
+                    ? 'glass-pill-active'
                     : 'text-slate-500 dark:text-[#9b99b8] hover:text-slate-900 dark:text-[#f3f2fa]'
                 }`}
               >
@@ -348,7 +348,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 onClick={() => setDimInputMode('sliders')}
                 className={`py-1.5 rounded-md font-semibold transition-all ${
                   dimInputMode === 'sliders'
-                    ? 'glass-pill-active text-violet-950 dark:text-white'
+                    ? 'glass-pill-active'
                     : 'text-slate-500 dark:text-[#9b99b8] hover:text-slate-900 dark:text-[#f3f2fa]'
                 }`}
               >
@@ -365,12 +365,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 {/* Front View (FV): Length x Height */}
                 <div className="p-3.5 rounded-2xl glass-card space-y-2">
                   <div className="flex items-center justify-between text-xs">
-                    <span className="font-bold text-violet-600 dark:text-violet-300">Front View (FV)</span>
+                    <span className="font-bold text-[#0d0d10] dark:text-white">Front View (FV)</span>
                     <span className="text-[10px] text-slate-500 dark:text-[#9b99b8]">L × H</span>
                   </div>
                   <div className="grid grid-cols-2 gap-2">
                     <label className="space-y-1">
-                      <span className="text-[10px] text-red-400 block">Length (L)</span>
+                      <span className="text-[10px] opacity-75 block">Length (L)</span>
                       <div className="relative">
                         <input
                           type="number"
@@ -384,7 +384,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       </div>
                     </label>
                     <label className="space-y-1">
-                      <span className="text-[10px] text-emerald-400 block">Height (H)</span>
+                      <span className="text-[10px] opacity-75 block">Height (H)</span>
                       <div className="relative">
                         <input
                           type="number"
@@ -403,12 +403,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 {/* Top View (TV): Length x Width */}
                 <div className="p-3.5 rounded-2xl glass-card space-y-2">
                   <div className="flex items-center justify-between text-xs">
-                    <span className="font-bold text-violet-600 dark:text-violet-300">Top View (TV)</span>
+                    <span className="font-bold text-[#0d0d10] dark:text-white">Top View (TV)</span>
                     <span className="text-[10px] text-slate-500 dark:text-[#9b99b8]">L × W</span>
                   </div>
                   <div className="grid grid-cols-2 gap-2">
                     <label className="space-y-1">
-                      <span className="text-[10px] text-red-400 block">Length (L)</span>
+                      <span className="text-[10px] opacity-75 block">Length (L)</span>
                       <div className="relative">
                         <input
                           type="number"
@@ -422,7 +422,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       </div>
                     </label>
                     <label className="space-y-1">
-                      <span className="text-[10px] text-blue-400 block">Width (W)</span>
+                      <span className="text-[10px] opacity-75 block">Width (W)</span>
                       <div className="relative">
                         <input
                           type="number"
@@ -441,12 +441,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 {/* Left Side View (LHSV): Width x Height */}
                 <div className="p-3.5 rounded-2xl glass-card space-y-2">
                   <div className="flex items-center justify-between text-xs">
-                    <span className="font-bold text-violet-600 dark:text-violet-300">Left Side View (SV)</span>
+                    <span className="font-bold text-[#0d0d10] dark:text-white">Left Side View (SV)</span>
                     <span className="text-[10px] text-slate-500 dark:text-[#9b99b8]">W × H</span>
                   </div>
                   <div className="grid grid-cols-2 gap-2">
                     <label className="space-y-1">
-                      <span className="text-[10px] text-blue-400 block">Width (W)</span>
+                      <span className="text-[10px] opacity-75 block">Width (W)</span>
                       <div className="relative">
                         <input
                           type="number"
@@ -460,7 +460,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       </div>
                     </label>
                     <label className="space-y-1">
-                      <span className="text-[10px] text-emerald-400 block">Height (H)</span>
+                      <span className="text-[10px] opacity-75 block">Height (H)</span>
                       <div className="relative">
                         <input
                           type="number"
@@ -481,7 +481,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 {/* Length (L) */}
                 <div className="p-3.5 rounded-2xl glass-card space-y-2">
                   <div className="flex items-center justify-between text-xs">
-                    <span className="font-bold text-red-400 flex items-center gap-1.5">
+                    <span className="font-bold opacity-75 flex items-center gap-1.5">
                       <span className="w-2 h-2 rounded-full bg-red-400" />
                       Length (L) [X-axis]
                     </span>
@@ -492,7 +492,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                         max={150}
                         value={dimensions.length}
                         onChange={(e) => handleNumericDim('length', e.target.value)}
-                        className="w-16 px-1.5 py-0.5 text-right text-xs font-bold text-violet-600 dark:text-violet-300 glass-input rounded-lg tabular-nums"
+                        className="w-16 px-1.5 py-0.5 text-right text-xs font-bold text-[#0d0d10] dark:text-white glass-input rounded-lg tabular-nums"
                       />
                       <span className="text-[10px] text-slate-500 dark:text-[#9b99b8]">mm</span>
                     </div>
@@ -506,7 +506,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     onChange={(e) =>
                       onUpdateDimensions({ ...dimensions, length: Number(e.target.value) })
                     }
-                    className="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-red-500"
+                    className="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-zinc-800 dark:accent-white"
                   />
                   <div className="flex justify-between text-[10px] text-slate-500">
                     <span>20 mm</span>
@@ -518,7 +518,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 {/* Width / Depth (W) */}
                 <div className="p-3.5 rounded-2xl glass-card space-y-2">
                   <div className="flex items-center justify-between text-xs">
-                    <span className="font-bold text-blue-400 flex items-center gap-1.5">
+                    <span className="font-bold opacity-75 flex items-center gap-1.5">
                       <span className="w-2 h-2 rounded-full bg-blue-400" />
                       Width / Depth (W) [Z-axis]
                     </span>
@@ -529,7 +529,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                         max={150}
                         value={dimensions.width}
                         onChange={(e) => handleNumericDim('width', e.target.value)}
-                        className="w-16 px-1.5 py-0.5 text-right text-xs font-bold text-violet-600 dark:text-violet-300 glass-input rounded-lg tabular-nums"
+                        className="w-16 px-1.5 py-0.5 text-right text-xs font-bold text-[#0d0d10] dark:text-white glass-input rounded-lg tabular-nums"
                       />
                       <span className="text-[10px] text-slate-500 dark:text-[#9b99b8]">mm</span>
                     </div>
@@ -543,7 +543,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     onChange={(e) =>
                       onUpdateDimensions({ ...dimensions, width: Number(e.target.value) })
                     }
-                    className="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-500"
+                    className="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-zinc-800 dark:accent-white"
                   />
                   <div className="flex justify-between text-[10px] text-slate-500">
                     <span>20 mm</span>
@@ -555,7 +555,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 {/* Height (H) */}
                 <div className="p-3.5 rounded-2xl glass-card space-y-2">
                   <div className="flex items-center justify-between text-xs">
-                    <span className="font-bold text-emerald-400 flex items-center gap-1.5">
+                    <span className="font-bold opacity-75 flex items-center gap-1.5">
                       <span className="w-2 h-2 rounded-full bg-emerald-400" />
                       Height (H) [Y-axis]
                     </span>
@@ -566,7 +566,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                         max={150}
                         value={dimensions.height}
                         onChange={(e) => handleNumericDim('height', e.target.value)}
-                        className="w-16 px-1.5 py-0.5 text-right text-xs font-bold text-violet-600 dark:text-violet-300 glass-input rounded-lg tabular-nums"
+                        className="w-16 px-1.5 py-0.5 text-right text-xs font-bold text-[#0d0d10] dark:text-white glass-input rounded-lg tabular-nums"
                       />
                       <span className="text-[10px] text-slate-500 dark:text-[#9b99b8]">mm</span>
                     </div>
@@ -580,7 +580,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     onChange={(e) =>
                       onUpdateDimensions({ ...dimensions, height: Number(e.target.value) })
                     }
-                    className="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-emerald-500"
+                    className="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-zinc-800 dark:accent-white"
                   />
                   <div className="flex justify-between text-[10px] text-slate-500">
                     <span>20 mm</span>
@@ -592,7 +592,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             )}
 
             {/* Quick Dimension Ratios */}
-            <div className="pt-2 border-t border-indigo-950/10 dark:border-white/10 flex items-center justify-between">
+            <div className="pt-2 border-t border-black/10 dark:border-white/10 flex items-center justify-between">
               <span className="text-[11px] text-slate-500 dark:text-[#9b99b8]">Quick Presets:</span>
               <div className="flex gap-1.5">
                 <button
@@ -619,7 +619,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               <span>Inclination / Rotation</span>
               <button
                 onClick={onResetRotation}
-                className="text-[10px] text-amber-400 hover:underline flex items-center gap-1"
+                className="text-[10px] opacity-65 hover:underline flex items-center gap-1"
               >
                 <RotateCcw className="w-3 h-3" />
                 Reset (0,0,0)
@@ -629,8 +629,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
             {/* Rotate X */}
             <div className="p-3.5 rounded-2xl glass-card space-y-2">
               <div className="flex items-center justify-between text-xs">
-                <span className="font-bold text-red-400">Tilt X (θ to HP)</span>
-                <span className="font-bold text-violet-600 dark:text-violet-300">{rotation.x}°</span>
+                <span className="font-bold opacity-75">Tilt X (θ to HP)</span>
+                <span className="font-bold text-[#0d0d10] dark:text-white">{rotation.x}°</span>
               </div>
               <input
                 type="range"
@@ -641,7 +641,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 onChange={(e) =>
                   onUpdateRotation({ ...rotation, x: Number(e.target.value) })
                 }
-                className="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-red-500"
+                className="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-zinc-800 dark:accent-white"
               />
               <div className="flex gap-1 flex-wrap pt-1">
                 {SNAP_ANGLES.map((angle) => (
@@ -663,8 +663,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
             {/* Rotate Y */}
             <div className="p-3.5 rounded-2xl glass-card space-y-2">
               <div className="flex items-center justify-between text-xs">
-                <span className="font-bold text-emerald-400">Spin Y (Azimuth)</span>
-                <span className="font-bold text-violet-600 dark:text-violet-300">{rotation.y}°</span>
+                <span className="font-bold opacity-75">Spin Y (Azimuth)</span>
+                <span className="font-bold text-[#0d0d10] dark:text-white">{rotation.y}°</span>
               </div>
               <input
                 type="range"
@@ -675,7 +675,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 onChange={(e) =>
                   onUpdateRotation({ ...rotation, y: Number(e.target.value) })
                 }
-                className="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-emerald-500"
+                className="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-zinc-800 dark:accent-white"
               />
               <div className="flex gap-1 flex-wrap pt-1">
                 {SNAP_ANGLES.map((angle) => (
@@ -697,8 +697,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
             {/* Rotate Z */}
             <div className="p-3.5 rounded-2xl glass-card space-y-2">
               <div className="flex items-center justify-between text-xs">
-                <span className="font-bold text-blue-400">Tilt Z (φ to VP)</span>
-                <span className="font-bold text-violet-600 dark:text-violet-300">{rotation.z}°</span>
+                <span className="font-bold opacity-75">Tilt Z (φ to VP)</span>
+                <span className="font-bold text-[#0d0d10] dark:text-white">{rotation.z}°</span>
               </div>
               <input
                 type="range"
@@ -709,7 +709,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 onChange={(e) =>
                   onUpdateRotation({ ...rotation, z: Number(e.target.value) })
                 }
-                className="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-500"
+                className="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-zinc-800 dark:accent-white"
               />
               <div className="flex gap-1 flex-wrap pt-1">
                 {SNAP_ANGLES.map((angle) => (
@@ -837,7 +837,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     showDimensions: e.target.checked,
                   })
                 }
-                className="w-4 h-4 accent-red-500 cursor-pointer"
+                className="w-4 h-4 accent-zinc-800 dark:accent-white cursor-pointer"
               />
             </div>
 
@@ -860,7 +860,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     showSightArrows: e.target.checked,
                   })
                 }
-                className="w-4 h-4 accent-emerald-500 cursor-pointer"
+                className="w-4 h-4 accent-zinc-800 dark:accent-white cursor-pointer"
               />
             </div>
 
@@ -883,7 +883,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     showCenterLines: e.target.checked,
                   })
                 }
-                className="w-4 h-4 accent-red-500 cursor-pointer"
+                className="w-4 h-4 accent-zinc-800 dark:accent-white cursor-pointer"
               />
             </div>
 
@@ -906,7 +906,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     showProjectors: e.target.checked,
                   })
                 }
-                className="w-4 h-4 accent-sky-500 cursor-pointer"
+                className="w-4 h-4 accent-zinc-800 dark:accent-white cursor-pointer"
               />
             </div>
 
@@ -920,7 +920,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   onClick={() => theme !== 'blueprint' && onToggleTheme()}
                   className={`p-2 rounded border text-xs flex items-center justify-center gap-1.5 transition-all ${
                     isDark
-                      ? 'bg-sky-950 border-sky-500 text-sky-300 font-bold shadow'
+                      ? 'glass-pill-active font-semibold'
                       : 'bg-slate-800 border-slate-700 text-slate-500 dark:text-[#9b99b8]'
                   }`}
                 >
@@ -932,7 +932,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   onClick={() => theme !== 'paper' && onToggleTheme()}
                   className={`p-2 rounded border text-xs flex items-center justify-center gap-1.5 transition-all ${
                     !isDark
-                      ? 'bg-white border-blue-600 text-blue-700 font-bold shadow'
+                      ? 'glass-pill-active font-semibold'
                       : 'bg-slate-800 border-slate-700 text-slate-500 dark:text-[#9b99b8]'
                   }`}
                 >
@@ -946,12 +946,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
       </div>
 
       {/* Footer Info Box */}
-      <div className="p-3 border-t border-indigo-950/10 dark:border-white/10 text-[10px] text-slate-500 flex items-center justify-between">
+      <div className="p-3 border-t border-black/10 dark:border-white/10 text-[10px] text-slate-500 flex items-center justify-between">
         <span className="flex items-center gap-1">
-          <Info className="w-3.5 h-3.5 text-violet-600 dark:text-violet-300" />
+          <Info className="w-3.5 h-3.5 text-[#0d0d10] dark:text-white" />
           <span>BIS SP:46 / ISO 128</span>
         </span>
-        <span>v1.2.0 • Liquid Glass</span>
+        <span>v2.1.0 • Studio</span>
       </div>
     </aside>
   );

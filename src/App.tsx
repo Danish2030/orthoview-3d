@@ -397,12 +397,8 @@ export function App() {
               onToggleCollapse={() => setIsSidebarCollapsed((prev) => !prev)}
             />
 
-            <main className="flex-1 grid grid-cols-1 lg:grid-cols-12 overflow-hidden h-full">
-              <section
-                className={`lg:col-span-5 h-full relative border-r overflow-hidden flex flex-col ${
-                  isDark ? 'border-white/10' : 'border-black/10'
-                }`}
-              >
+            <main className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-3 p-3 overflow-hidden h-full">
+              <section className="lg:col-span-5 h-full relative overflow-hidden flex flex-col">
                 <Viewport3D
                   geometry={geometry}
                   dimensions={dimensions}
