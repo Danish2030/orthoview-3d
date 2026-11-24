@@ -1043,9 +1043,16 @@ export function buildAutoCADSheetSVG(params: SheetExportParams): string {
   <!-- Thin Crisp Outer Border -->
   <rect x="${m}" y="${m}" width="${innerW}" height="${innerH}" fill="none" stroke="#000000" stroke-width="1.6"/>
 
-  <!-- Dotted Quadrant Dividers -->
-  <line x1="${W / 2}" y1="${m}" x2="${W / 2}" y2="${H - m}" stroke="#333333" stroke-width="1.1" stroke-dasharray="2 6"/>
-  <line x1="${m}" y1="${H / 2}" x2="${W - m}" y2="${H / 2}" stroke="#333333" stroke-width="1.1" stroke-dasharray="2 6"/>
+  <!-- Quadrant Dividers -->
+  ${
+    (tbOpts.dividerStyle ?? 'dotted') === 'dotted'
+      ? `<line x1="${W / 2}" y1="${m}" x2="${W / 2}" y2="${H - m}" stroke="#333333" stroke-width="1.1" stroke-dasharray="2 6"/>
+  <line x1="${m}" y1="${H / 2}" x2="${W - m}" y2="${H / 2}" stroke="#333333" stroke-width="1.1" stroke-dasharray="2 6"/>`
+      : (tbOpts.dividerStyle ?? 'dotted') === 'solid'
+        ? `<line x1="${W / 2}" y1="${m}" x2="${W / 2}" y2="${H - m}" stroke="#000000" stroke-width="1.1"/>
+  <line x1="${m}" y1="${H / 2}" x2="${W - m}" y2="${H / 2}" stroke="#000000" stroke-width="1.1"/>`
+        : ''
+  }
 
   <!-- QUADRANT 1: FRONT VIEW -->
   <text x="${(fv.bounds.left + fv.bounds.right) / 2}" y="${fvTitleY}" text-anchor="middle" font-size="15" font-weight="600" fill="#000">FRONT VIEW</text>
@@ -1366,10 +1373,16 @@ export function buildAutoCADDXF(params: SheetExportParams): string {
     );
   };
 
-  // A3 Outer Border & Center Dividers
+  // A3 Outer Border & Quadrant Dividers
   addRect(m, m, W - m * 2, H - m * 2, 'BORDER');
-  addLine(midX, m, midX, H - m, 'CENTER', 'CENTER');
-  addLine(m, midY, W - m, midY, 'CENTER', 'CENTER');
+  const dxfDividerStyle = tbOpts.dividerStyle ?? 'dotted';
+  if (dxfDividerStyle === 'dotted') {
+    addLine(midX, m, midX, H - m, 'CENTER', 'CENTER');
+    addLine(m, midY, W - m, midY, 'CENTER', 'CENTER');
+  } else if (dxfDividerStyle === 'solid') {
+    addLine(midX, m, midX, H - m, 'BORDER', 'CONTINUOUS');
+    addLine(m, midY, W - m, midY, 'BORDER', 'CONTINUOUS');
+  }
 
   // Visible Lines
   for (const s of fv.visibleSegments) addLine(s.x1, s.y1, s.x2, s.y2, 'VISIBLE');

@@ -57,9 +57,12 @@ export interface TitleBlockFieldsConfig {
   projectionSymbol: boolean;
 }
 
+export type QuadrantDividerStyle = 'dotted' | 'solid' | 'none';
+
 export interface TitleBlockOptions {
   enabled: boolean;
   showUnitsNote: boolean;
+  dividerStyle?: QuadrantDividerStyle;
   fields: TitleBlockFieldsConfig;
 }
 
@@ -79,6 +82,7 @@ export const DEFAULT_TITLE_BLOCK_FIELDS: TitleBlockFieldsConfig = {
 export const DEFAULT_TITLE_BLOCK_OPTIONS: TitleBlockOptions = {
   enabled: true,
   showUnitsNote: true,
+  dividerStyle: 'dotted',
   fields: DEFAULT_TITLE_BLOCK_FIELDS,
 };
 

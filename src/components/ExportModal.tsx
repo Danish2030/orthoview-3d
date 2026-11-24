@@ -18,6 +18,7 @@ import {
   SolidDimensions,
   SolidRotation,
   ThemeMode,
+  QuadrantDividerStyle,
   TitleBlockFieldsConfig,
   TitleBlockMeta,
   TitleBlockOptions,
@@ -103,6 +104,15 @@ export const ExportModal: React.FC<ExportModalProps> = ({
       enabled,
     });
   };
+
+  const handleDividerStyleChange = (dividerStyle: QuadrantDividerStyle) => {
+    onUpdateTitleBlockOptions({
+      ...titleBlockOptions,
+      dividerStyle,
+    });
+  };
+
+  const activeDividerStyle: QuadrantDividerStyle = titleBlockOptions.dividerStyle ?? 'dotted';
 
   const handleToggleField = (field: keyof TitleBlockFieldsConfig) => {
     onUpdateTitleBlockOptions({
@@ -241,6 +251,39 @@ export const ExportModal: React.FC<ExportModalProps> = ({
 
           {/* Right: Title Block Setup & Download Formats */}
           <div className="lg:col-span-6 space-y-4 flex flex-col">
+            {/* Quadrant Divider Line Style Selector */}
+            <div className="p-3.5 rounded-2xl glass-card border border-current/10 flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <SlidersHorizontal className="w-4 h-4 opacity-75" />
+                <div>
+                  <span className="text-xs font-semibold block">Quadrant Divider Lines</span>
+                  <span className="text-[10px] opacity-55">Line style separating the 4 drawing views</span>
+                </div>
+              </div>
+              <div className="flex items-center rounded-xl bg-current/10 p-0.5 border border-current/10">
+                {(
+                  [
+                    { id: 'dotted' as QuadrantDividerStyle, label: 'Dotted ····' },
+                    { id: 'solid' as QuadrantDividerStyle, label: 'Solid Line ───' },
+                    { id: 'none' as QuadrantDividerStyle, label: 'None' },
+                  ] as const
+                ).map((opt) => (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    onClick={() => handleDividerStyleChange(opt.id)}
+                    className={`px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all cursor-pointer ${
+                      activeDividerStyle === opt.id
+                        ? 'bg-white text-black shadow-sm font-semibold dark:bg-white dark:text-black'
+                        : 'opacity-60 hover:opacity-100'
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             {/* Title Block Configuration Box */}
             <div className="p-4 rounded-2xl glass-card border border-current/10 space-y-3">
               <div className="flex items-center justify-between">
