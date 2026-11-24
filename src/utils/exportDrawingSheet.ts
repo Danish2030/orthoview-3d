@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { SideViewMode, SolidDimensions, SolidRotation, ThemeMode, TitleBlockMeta } from '../types';
+import type { SideViewMode, SolidDimensions, SolidRotation, ThemeMode, TitleBlockMeta } from '../types';
 
 export type ExportFormat = 'png' | 'pdf' | 'dxf' | 'svg' | 'stl';
 
@@ -22,29 +22,93 @@ export interface SheetExportParams {
   showProjectors?: boolean;
 }
 
-interface Seg2D {
+export interface Seg2D {
   x1: number;
   y1: number;
   x2: number;
   y2: number;
 }
 
-interface ProjectedView {
-  segments: Seg2D[];
+export interface ProjectedView {
+  visibleSegments: Seg2D[];
+  hiddenSegments: Seg2D[];
+  centerlines: Seg2D[];
   minX: number;
   maxX: number;
   minY: number;
   maxY: number;
 }
 
+interface FrontTri2D {
+  x1: number;
+  y1: number;
+  x2: number;
+  y2: number;
+  x3: number;
+  y3: number;
+  minX: number;
+  maxX: number;
+  minY: number;
+  maxY: number;
+  maxZ: number;
+  planeA: number;
+  planeB: number;
+  planeC: number;
+  planeD: number;
+}
+
+function pointInTriangle2D(
+  px: number,
+  py: number,
+  x1: number,
+  y1: number,
+  x2: number,
+  y2: number,
+  x3: number,
+  y3: number
+): boolean {
+  const d1 = (px - x2) * (y1 - y2) - (x1 - x2) * (py - y2);
+  const d2 = (px - x3) * (y2 - y3) - (x2 - x3) * (py - y3);
+  const d3 = (px - x1) * (y3 - y1) - (x3 - x1) * (py - y1);
+  const hasNeg = d1 < -1e-5 || d2 < -1e-5 || d3 < -1e-5;
+  const hasPos = d1 > 1e-5 || d2 > 1e-5 || d3 > 1e-5;
+  return !(hasNeg && hasPos);
+}
+
+function projectPointToView(
+  p: THREE.Vector3,
+  view: 'front' | 'top' | 'leftSide' | 'rightSide' | 'isometric'
+): { x: number; y: number; z: number } {
+  switch (view) {
+    case 'front':
+      return { x: p.x, y: p.y, z: p.z };
+    case 'top':
+      return { x: p.x, y: -p.z, z: p.y };
+    case 'leftSide':
+      return { x: -p.z, y: p.y, z: -p.x };
+    case 'rightSide':
+      return { x: p.z, y: p.y, z: p.x };
+    case 'isometric': {
+      const cos30 = 0.8660254037844386; // Math.cos(Math.PI / 6)
+      const sin30 = 0.5;
+      const ix = (p.x - p.z) * cos30;
+      const iy = p.y - (p.x + p.z) * sin30;
+      const iz = (p.x + p.y + p.z) * 0.5773502691896257; // 1 / Math.sqrt(3)
+      return { x: ix, y: iy, z: iz };
+    }
+  }
+}
+
+/**
+ * Projects a 3D geometry into a 2D view, computing both sharp crease edges
+ * and view-dependent silhouette edges, then testing depth occlusion against
+ * all front-facing triangles.
+ */
 function projectGeometryView(
   geometry: THREE.BufferGeometry,
   rotation: SolidRotation,
   view: 'front' | 'top' | 'leftSide' | 'rightSide' | 'isometric'
 ): ProjectedView {
-  const edges = new THREE.EdgesGeometry(geometry, 18);
-  const pos = edges.getAttribute('position');
-
   const euler = new THREE.Euler(
     THREE.MathUtils.degToRad(rotation.x),
     THREE.MathUtils.degToRad(rotation.y),
@@ -53,103 +117,495 @@ function projectGeometryView(
   );
   const rotMat = new THREE.Matrix4().makeRotationFromEuler(euler);
 
-  // Isometric basis vectors (30° classic isometric)
-  const cos30 = Math.cos(Math.PI / 6);
-  const sin30 = 0.5;
+  // 1. Unify vertices to handle both indexed and non-indexed geometries
+  const pos = geometry.getAttribute('position');
+  const index = geometry.index;
+  const vertexPool: THREE.Vector3[] = [];
+  const vertexMap = new Map<string, number>();
 
-  const projectPoint = (v: THREE.Vector3): [number, number] => {
-    const p = v.clone().applyMatrix4(rotMat);
-    switch (view) {
-      case 'front':
-        return [p.x, p.y];
-      case 'top':
-        // First-angle plan looking down +Y: +X right, +Z downward (so -p.z is up in math coords)
-        return [p.x, -p.z];
-      case 'leftSide':
-        // Looking from -X toward +X: +Z is left, -Z is right
-        return [-p.z, p.y];
-      case 'rightSide':
-        return [p.z, p.y];
-      case 'isometric': {
-        const ix = (p.x - p.z) * cos30;
-        const iy = p.y + (p.x + p.z) * sin30 * 0.5 - (p.x + p.z) * sin30;
-        // Standard isometric: x right-down, z left-down, y up -> sx = (x - z)*cos30, sy = y - (x + z)*sin30
-        void iy;
-        return [ix, p.y - (p.x + p.z) * sin30];
-      }
+  const getOrCreateVertex = (v: THREE.Vector3): number => {
+    // Quantize to 0.05 mm precision to merge duplicate vertices at seams
+    const qx = Math.round(v.x * 20) / 20;
+    const qy = Math.round(v.y * 20) / 20;
+    const qz = Math.round(v.z * 20) / 20;
+    const key = `${qx}_${qy}_${qz}`;
+    let idx = vertexMap.get(key);
+    if (idx === undefined) {
+      idx = vertexPool.length;
+      vertexPool.push(new THREE.Vector3(qx, qy, qz));
+      vertexMap.set(key, idx);
     }
+    return idx;
   };
 
-  const segments: Seg2D[] = [];
+  interface TriEntry {
+    v1: number;
+    v2: number;
+    v3: number;
+    normal: THREE.Vector3;
+    p1: THREE.Vector3;
+    p2: THREE.Vector3;
+    p3: THREE.Vector3;
+  }
+
+  const triangles: TriEntry[] = [];
+  const edgeMap = new Map<string, { u: number; v: number; faces: number[] }>();
+
+  const triCount = index ? index.count / 3 : pos.count / 3;
+  const vA = new THREE.Vector3();
+  const vB = new THREE.Vector3();
+  const vC = new THREE.Vector3();
+
+  for (let i = 0; i < triCount; i++) {
+    const i1 = index ? index.getX(i * 3) : i * 3;
+    const i2 = index ? index.getX(i * 3 + 1) : i * 3 + 1;
+    const i3 = index ? index.getX(i * 3 + 2) : i * 3 + 2;
+
+    vA.fromBufferAttribute(pos, i1).applyMatrix4(rotMat);
+    vB.fromBufferAttribute(pos, i2).applyMatrix4(rotMat);
+    vC.fromBufferAttribute(pos, i3).applyMatrix4(rotMat);
+
+    const u = getOrCreateVertex(vA);
+    const v = getOrCreateVertex(vB);
+    const w = getOrCreateVertex(vC);
+
+    if (u === v || v === w || w === u) continue;
+
+    const edge1 = new THREE.Vector3().subVectors(vB, vA);
+    const edge2 = new THREE.Vector3().subVectors(vC, vA);
+    const norm = new THREE.Vector3().crossVectors(edge1, edge2);
+    if (norm.lengthSq() < 1e-8) continue;
+    norm.normalize();
+
+    const triIdx = triangles.length;
+    triangles.push({
+      v1: u,
+      v2: v,
+      v3: w,
+      normal: norm,
+      p1: vertexPool[u].clone(),
+      p2: vertexPool[v].clone(),
+      p3: vertexPool[w].clone(),
+    });
+
+    const pairs = [
+      [u, v],
+      [v, w],
+      [w, u],
+    ];
+    for (let p = 0; p < 3; p++) {
+      const p1 = pairs[p][0];
+      const p2 = pairs[p][1];
+      const minP = Math.min(p1, p2);
+      const maxP = Math.max(p1, p2);
+      const edgeKey = `${minP}_${maxP}`;
+      const existing = edgeMap.get(edgeKey);
+      if (!existing) {
+        edgeMap.set(edgeKey, { u: minP, v: maxP, faces: [triIdx] });
+      } else {
+        existing.faces.push(triIdx);
+      }
+    }
+  }
+
+  // 2. View eye vector pointing from object toward viewer
+  let viewEye: THREE.Vector3;
+  switch (view) {
+    case 'front':
+      viewEye = new THREE.Vector3(0, 0, 1);
+      break;
+    case 'top':
+      viewEye = new THREE.Vector3(0, 1, 0);
+      break;
+    case 'leftSide':
+      viewEye = new THREE.Vector3(-1, 0, 0);
+      break;
+    case 'rightSide':
+      viewEye = new THREE.Vector3(1, 0, 0);
+      break;
+    case 'isometric':
+      viewEye = new THREE.Vector3(1, 1, 1).normalize();
+      break;
+  }
+
+  const faceDot = triangles.map((t) => t.normal.dot(viewEye));
+
+  // 3. Extract candidate edges: both sharp creases (>18°) and view silhouettes
+  interface CandidateEdge {
+    p1: THREE.Vector3;
+    p2: THREE.Vector3;
+  }
+  const candidateEdges: CandidateEdge[] = [];
+  const cos18 = 0.9510565; // Math.cos(THREE.MathUtils.degToRad(18))
+
+  for (const [, edge] of edgeMap) {
+    let isCrease = false;
+    let isSil = false;
+
+    if (edge.faces.length === 1) {
+      isCrease = true;
+    } else if (edge.faces.length >= 2) {
+      const f1 = edge.faces[0];
+      const f2 = edge.faces[1];
+      const n1 = triangles[f1].normal;
+      const n2 = triangles[f2].normal;
+      if (n1.dot(n2) < cos18) {
+        isCrease = true;
+      }
+      const d1 = faceDot[f1];
+      const d2 = faceDot[f2];
+      if ((d1 > 1e-4 && d2 < -1e-4) || (d1 < -1e-4 && d2 > 1e-4)) {
+        isSil = true;
+      }
+    }
+
+    if (isCrease || isSil) {
+      candidateEdges.push({
+        p1: vertexPool[edge.u],
+        p2: vertexPool[edge.v],
+      });
+    }
+  }
+
+  // 4. Build 2D front-facing triangle list for depth/occlusion testing
+  const frontTris2D: FrontTri2D[] = [];
+  for (let i = 0; i < triangles.length; i++) {
+    if (faceDot[i] <= 1e-4) continue;
+    const t = triangles[i];
+    const pt1 = projectPointToView(t.p1, view);
+    const pt2 = projectPointToView(t.p2, view);
+    const pt3 = projectPointToView(t.p3, view);
+
+    // 2D signed area
+    const cp = (pt2.x - pt1.x) * (pt3.y - pt1.y) - (pt2.y - pt1.y) * (pt3.x - pt1.x);
+    if (Math.abs(cp) < 1e-5) continue; // edge-on
+
+    const v1x = pt2.x - pt1.x;
+    const v1y = pt2.y - pt1.y;
+    const v1z = pt2.z - pt1.z;
+    const v2x = pt3.x - pt1.x;
+    const v2y = pt3.y - pt1.y;
+    const v2z = pt3.z - pt1.z;
+
+    const planeA = v1y * v2z - v1z * v2y;
+    const planeB = v1z * v2x - v1x * v2z;
+    const planeC = v1x * v2y - v1y * v2x;
+    const planeD = -(planeA * pt1.x + planeB * pt1.y + planeC * pt1.z);
+
+    frontTris2D.push({
+      x1: pt1.x,
+      y1: pt1.y,
+      x2: pt2.x,
+      y2: pt2.y,
+      x3: pt3.x,
+      y3: pt3.y,
+      minX: Math.min(pt1.x, pt2.x, pt3.x),
+      maxX: Math.max(pt1.x, pt2.x, pt3.x),
+      minY: Math.min(pt1.y, pt2.y, pt3.y),
+      maxY: Math.max(pt1.y, pt2.y, pt3.y),
+      maxZ: Math.max(pt1.z, pt2.z, pt3.z),
+      planeA,
+      planeB,
+      planeC,
+      planeD,
+    });
+  }
+
+  // 5. Test each candidate edge against front-facing triangles
+  const rawVisible: Seg2D[] = [];
+  const rawHidden: Seg2D[] = [];
+
   let minX = Infinity;
   let maxX = -Infinity;
   let minY = Infinity;
   let maxY = -Infinity;
 
-  const v1 = new THREE.Vector3();
-  const v2 = new THREE.Vector3();
+  const updateBounds = (x: number, y: number) => {
+    if (x < minX) minX = x;
+    if (x > maxX) maxX = x;
+    if (y < minY) minY = y;
+    if (y > maxY) maxY = y;
+  };
 
-  for (let i = 0; i < pos.count; i += 2) {
-    v1.fromBufferAttribute(pos, i);
-    v2.fromBufferAttribute(pos, i + 1);
-    const [x1, y1] = projectPoint(v1);
-    const [x2, y2] = projectPoint(v2);
+  const isPointBehindMesh = (px: number, py: number, pz: number): boolean => {
+    for (let j = 0; j < frontTris2D.length; j++) {
+      const tri = frontTris2D[j];
+      if (px < tri.minX - 0.05 || px > tri.maxX + 0.05 || py < tri.minY - 0.05 || py > tri.maxY + 0.05) {
+        continue;
+      }
+      if (pz > tri.maxZ + 0.1) continue;
 
-    // Skip degenerate zero-length edges
-    if (Math.hypot(x2 - x1, y2 - y1) < 0.05) continue;
+      if (pointInTriangle2D(px, py, tri.x1, tri.y1, tri.x2, tri.y2, tri.x3, tri.y3)) {
+        if (Math.abs(tri.planeC) > 1e-6) {
+          const zTri = -(tri.planeA * px + tri.planeB * py + tri.planeD) / tri.planeC;
+          if (zTri > pz + 0.18) {
+            return true;
+          }
+        }
+      }
+    }
+    return false;
+  };
 
-    segments.push({ x1, y1, x2, y2 });
-    if (x1 < minX) minX = x1;
-    if (x1 > maxX) maxX = x1;
-    if (x2 < minX) minX = x2;
-    if (x2 > maxX) maxX = x2;
-    if (y1 < minY) minY = y1;
-    if (y1 > maxY) maxY = y1;
-    if (y2 < minY) minY = y2;
-    if (y2 > maxY) maxY = y2;
+  for (let e = 0; e < candidateEdges.length; e++) {
+    const edge = candidateEdges[e];
+    const ep1 = projectPointToView(edge.p1, view);
+    const ep2 = projectPointToView(edge.p2, view);
+
+    const segLen2D = Math.hypot(ep2.x - ep1.x, ep2.y - ep1.y);
+    if (segLen2D < 0.1) continue; // edge-on
+
+    updateBounds(ep1.x, ep1.y);
+    updateBounds(ep2.x, ep2.y);
+
+    // Collect parameter values t in [0, 1] to split segment where occlusions change
+    const tValues = [0, 1];
+
+    // Find 2D intersections with front-facing triangle edges
+    const xMinS = Math.min(ep1.x, ep2.x);
+    const xMaxS = Math.max(ep1.x, ep2.x);
+    const yMinS = Math.min(ep1.y, ep2.y);
+    const yMaxS = Math.max(ep1.y, ep2.y);
+    const dxS = ep2.x - ep1.x;
+    const dyS = ep2.y - ep1.y;
+
+    for (let j = 0; j < frontTris2D.length; j++) {
+      const tri = frontTris2D[j];
+      if (xMaxS < tri.minX || xMinS > tri.maxX || yMaxS < tri.minY || yMinS > tri.maxY) continue;
+
+      const triEdges = [
+        [tri.x1, tri.y1, tri.x2, tri.y2],
+        [tri.x2, tri.y2, tri.x3, tri.y3],
+        [tri.x3, tri.y3, tri.x1, tri.y1],
+      ];
+
+      for (let k = 0; k < 3; k++) {
+        const [x3, y3, x4, y4] = triEdges[k];
+        const dxT = x4 - x3;
+        const dyT = y4 - y3;
+        const denom = dxS * dyT - dyS * dxT;
+        if (Math.abs(denom) < 1e-6) continue;
+
+        const numS = (x3 - ep1.x) * dyT - (y3 - ep1.y) * dxT;
+        const t = numS / denom;
+        if (t > 0.01 && t < 0.99) {
+          const numT = (x3 - ep1.x) * dyS - (y3 - ep1.y) * dxS;
+          const u = numT / denom;
+          if (u >= -0.001 && u <= 1.001) {
+            tValues.push(t);
+          }
+        }
+      }
+    }
+
+    // Subdivide long segments to catch curved silhouette boundaries
+    if (segLen2D > 12) {
+      const steps = Math.min(8, Math.ceil(segLen2D / 8));
+      for (let s = 1; s < steps; s++) {
+        tValues.push(s / steps);
+      }
+    }
+
+    tValues.sort((a, b) => a - b);
+    const cleanT: number[] = [];
+    for (let i = 0; i < tValues.length; i++) {
+      const cur = tValues[i];
+      if (cleanT.length === 0 || cur - cleanT[cleanT.length - 1] > 1e-3) {
+        cleanT.push(cur);
+      }
+    }
+
+    // Classify each interval [t_k, t_{k+1}]
+    for (let k = 0; k < cleanT.length - 1; k++) {
+      const tA = cleanT[k];
+      const tB = cleanT[k + 1];
+      if ((tB - tA) * segLen2D < 0.05) continue;
+
+      const tMid = (tA + tB) / 2;
+      const mx = ep1.x + tMid * dxS;
+      const my = ep1.y + tMid * dyS;
+      const mz = ep1.z + tMid * (ep2.z - ep1.z);
+
+      const isHidden = isPointBehindMesh(mx, my, mz);
+      const subSeg: Seg2D = {
+        x1: ep1.x + tA * dxS,
+        y1: ep1.y + tA * dyS,
+        x2: ep1.x + tB * dxS,
+        y2: ep1.y + tB * dyS,
+      };
+
+      if (isHidden) {
+        // Do NOT draw hidden lines in Isometric view (pictorial drawing)
+        if (view !== 'isometric') {
+          rawHidden.push(subSeg);
+        }
+      } else {
+        rawVisible.push(subSeg);
+      }
+    }
   }
-
-  edges.dispose();
 
   if (!Number.isFinite(minX)) {
-    return { segments: [], minX: -20, maxX: 20, minY: -20, maxY: 20 };
+    return { visibleSegments: [], hiddenSegments: [], centerlines: [], minX: -20, maxX: 20, minY: -20, maxY: 20 };
   }
-  return { segments, minX, maxX, minY, maxY };
+
+  // 6. Merge collinear segments and eliminate duplicates
+  const mergeCollinear = (segs: Seg2D[]): Seg2D[] => {
+    if (segs.length <= 1) return segs;
+    const res: Seg2D[] = [];
+    const used = new Uint8Array(segs.length);
+
+    for (let i = 0; i < segs.length; i++) {
+      if (used[i]) continue;
+      let sA = segs[i];
+      used[i] = 1;
+
+      for (let j = i + 1; j < segs.length; j++) {
+        if (used[j]) continue;
+        const sB = segs[j];
+
+        // Check if sA and sB are collinear and connect/overlap
+        const dxA = sA.x2 - sA.x1;
+        const dyA = sA.y2 - sA.y1;
+        const lenA = Math.hypot(dxA, dyA);
+        if (lenA < 0.01) continue;
+
+        const cross = Math.abs((sB.x1 - sA.x1) * dyA - (sB.y1 - sA.y1) * dxA) / lenA;
+        const cross2 = Math.abs((sB.x2 - sA.x1) * dyA - (sB.y2 - sA.y1) * dxA) / lenA;
+
+        if (cross < 0.15 && cross2 < 0.15) {
+          // Both points lie on the same line. Project to parameter t along sA:
+          const tB1 = ((sB.x1 - sA.x1) * dxA + (sB.y1 - sA.y1) * dyA) / (lenA * lenA);
+          const tB2 = ((sB.x2 - sA.x1) * dxA + (sB.y2 - sA.y1) * dyA) / (lenA * lenA);
+          const minTB = Math.min(tB1, tB2);
+          const maxTB = Math.max(tB1, tB2);
+
+          // Overlap or connect within 0.05
+          if (maxTB >= -0.05 && minTB <= 1.05) {
+            const minT = Math.min(0, minTB);
+            const maxT = Math.max(1, maxTB);
+            sA = {
+              x1: sA.x1 + minT * dxA,
+              y1: sA.y1 + minT * dyA,
+              x2: sA.x1 + maxT * dxA,
+              y2: sA.y1 + maxT * dyA,
+            };
+            used[j] = 1;
+          }
+        }
+      }
+      res.push(sA);
+    }
+    return res;
+  };
+
+  const visibleSegments = mergeCollinear(rawVisible);
+
+  // Hidden lines that are coincident with visible lines are suppressed (visible overrides hidden)
+  const filteredHidden: Seg2D[] = [];
+  for (let i = 0; i < rawHidden.length; i++) {
+    const h = rawHidden[i];
+    const hLen = Math.hypot(h.x2 - h.x1, h.y2 - h.y1);
+    if (hLen < 0.1) continue;
+
+    const mx = (h.x1 + h.x2) / 2;
+    const my = (h.y1 + h.y2) / 2;
+
+    let coveredByVisible = false;
+    for (let j = 0; j < visibleSegments.length; j++) {
+      const v = visibleSegments[j];
+      const vLen = Math.hypot(v.x2 - v.x1, v.y2 - v.y1);
+      if (vLen < 0.1) continue;
+
+      const dist = Math.abs((mx - v.x1) * (v.y2 - v.y1) - (my - v.y1) * (v.x2 - v.x1)) / vLen;
+      if (dist < 0.3) {
+        const dot = ((mx - v.x1) * (v.x2 - v.x1) + (my - v.y1) * (v.y2 - v.y1)) / (vLen * vLen);
+        if (dot >= -0.05 && dot <= 1.05) {
+          coveredByVisible = true;
+          break;
+        }
+      }
+    }
+    if (!coveredByVisible) {
+      filteredHidden.push(h);
+    }
+  }
+
+  const hiddenSegments = mergeCollinear(filteredHidden);
+
+  // 7. Compute ISO Centerlines through symmetry axes
+  const centerlines: Seg2D[] = [];
+  const midX2D = (minX + maxX) / 2;
+  const midY2D = (minY + maxY) / 2;
+  const extX = (maxX - minX) * 0.1 + 4;
+  const extY = (maxY - minY) * 0.1 + 4;
+
+  if (view === 'front' || view === 'leftSide' || view === 'rightSide') {
+    // Vertical centerline along symmetry axis
+    centerlines.push({
+      x1: midX2D,
+      y1: minY - extY,
+      x2: midX2D,
+      y2: maxY + extY,
+    });
+  } else if (view === 'top') {
+    // Crosshair centerlines through circle/boss center
+    centerlines.push({
+      x1: minX - extX,
+      y1: midY2D,
+      x2: maxX + extX,
+      y2: midY2D,
+    });
+    centerlines.push({
+      x1: midX2D,
+      y1: minY - extY,
+      x2: midX2D,
+      y2: maxY + extY,
+    });
+  }
+
+  return { visibleSegments, hiddenSegments, centerlines, minX, maxX, minY, maxY };
 }
 
-function fitSegmentsToBox(
+interface MappedView {
+  visibleSegments: Seg2D[];
+  hiddenSegments: Seg2D[];
+  centerlines: Seg2D[];
+  bounds: { left: number; right: number; top: number; bottom: number };
+}
+
+function mapOrthographicView(
   pv: ProjectedView,
   cx: number,
   cy: number,
-  maxW: number,
-  maxH: number,
+  scale: number,
   invertY: boolean
-): { segments: Seg2D[]; bounds: { left: number; right: number; top: number; bottom: number } } {
-  const spanX = Math.max(1, pv.maxX - pv.minX);
-  const spanY = Math.max(1, pv.maxY - pv.minY);
-  const scale = Math.min(maxW / spanX, maxH / spanY);
+): MappedView {
   const midX = (pv.minX + pv.maxX) / 2;
   const midY = (pv.minY + pv.maxY) / 2;
 
   const tx = (x: number) => cx + (x - midX) * scale;
   const ty = (y: number) => (invertY ? cy - (y - midY) * scale : cy + (y - midY) * scale);
 
-  const mapped = pv.segments.map((s) => ({
+  const mapSeg = (s: Seg2D): Seg2D => ({
     x1: tx(s.x1),
     y1: ty(s.y1),
     x2: tx(s.x2),
     y2: ty(s.y2),
-  }));
+  });
 
-  const halfW = (spanX * scale) / 2;
-  const halfH = (spanY * scale) / 2;
+  const spanX = (pv.maxX - pv.minX) * scale;
+  const spanY = (pv.maxY - pv.minY) * scale;
+
   return {
-    segments: mapped,
+    visibleSegments: pv.visibleSegments.map(mapSeg),
+    hiddenSegments: pv.hiddenSegments.map(mapSeg),
+    centerlines: pv.centerlines.map(mapSeg),
     bounds: {
-      left: cx - halfW,
-      right: cx + halfW,
-      top: cy - halfH,
-      bottom: cy + halfH,
+      left: cx - spanX / 2,
+      right: cx + spanX / 2,
+      top: cy - spanY / 2,
+      bottom: cy + spanY / 2,
     },
   };
 }
@@ -164,8 +620,9 @@ function escapeXml(str: string): string {
 
 /**
  * Generates an exact AutoCAD-style pure white A3 4-quadrant vector SVG sheet
- * matching the college lab drawing layout (border, dotted dividers, views,
- * dimension lines with arrowheads, Isometric view, and College Title Block).
+ * matching college lab drawing standards with strict First-Angle alignment,
+ * unified scale, true silhouette outlines, ISO dashed hidden lines,
+ * dash-dot centerlines, non-overlapping labels, and untruncated title block.
  */
 export function buildAutoCADSheetSVG(params: SheetExportParams): string {
   const { geometry, solidName, dimensions, rotation, sideViewMode, titleBlockMeta } = params;
@@ -174,27 +631,55 @@ export function buildAutoCADSheetSVG(params: SheetExportParams): string {
   const m = 36;
   const innerW = W - m * 2;
   const innerH = H - m * 2;
-  const midX = W / 2;
-  const midY = H / 2;
 
   const sideType = sideViewMode === 'right' ? 'rightSide' : 'leftSide';
   const sideTitle = sideViewMode === 'right' ? 'RIGHT SIDE VIEW' : 'LEFT SIDE VIEW';
 
+  // 1. Project all 4 views with true silhouettes & hidden line depth testing
   const fvProj = projectGeometryView(geometry, rotation, 'front');
   const svProj = projectGeometryView(geometry, rotation, sideType);
   const tvProj = projectGeometryView(geometry, rotation, 'top');
   const isoProj = projectGeometryView(geometry, rotation, 'isometric');
 
-  const fv = fitSegmentsToBox(fvProj, m + innerW * 0.25, m + innerH * 0.25, 310, 220, true);
-  const sv = fitSegmentsToBox(svProj, m + innerW * 0.75, m + innerH * 0.25, 310, 220, true);
-  const tv = fitSegmentsToBox(tvProj, m + innerW * 0.25, m + innerH * 0.75, 310, 220, true);
-  const iso = fitSegmentsToBox(isoProj, m + innerW * 0.75, m + innerH * 0.65, 290, 210, true);
+  // 2. Compute ONE shared orthographic scale across FV, SV, and TV
+  const fvSpanX = Math.max(1, fvProj.maxX - fvProj.minX);
+  const fvSpanY = Math.max(1, fvProj.maxY - fvProj.minY);
+  const svSpanX = Math.max(1, svProj.maxX - svProj.minX);
+  const svSpanY = Math.max(1, svProj.maxY - svProj.minY);
+  const tvSpanX = Math.max(1, tvProj.maxX - tvProj.minX);
+  const tvSpanY = Math.max(1, tvProj.maxY - tvProj.minY);
 
-  const drawSegs = (segs: Seg2D[], strokeW = 1.6) =>
+  const maxOrthoSpanX = Math.max(fvSpanX, svSpanX, tvSpanX);
+  const maxOrthoSpanY = Math.max(fvSpanY, svSpanY, tvSpanY);
+
+  // Available drawing box per quadrant: max width 310, max height 200
+  const orthoScale = Math.min(310 / maxOrthoSpanX, 200 / maxOrthoSpanY);
+
+  // 3. Exact First-Angle alignment centers:
+  // Front View and Top View share the exact same X-center
+  // Front View and Side View share the exact same Y-center
+  const cxLeft = m + innerW * 0.25; // 368
+  const cxRight = m + innerW * 0.75; // 1032
+  const cyTop = m + innerH * 0.25; // 265.5
+  const cyBottom = m + innerH * 0.75; // 724.5
+
+  const fv = mapOrthographicView(fvProj, cxLeft, cyTop, orthoScale, true);
+  const sv = mapOrthographicView(svProj, cxRight, cyTop, orthoScale, true);
+  const tv = mapOrthographicView(tvProj, cxLeft, cyBottom, orthoScale, true);
+
+  // 4. Isometric view in Quadrant 4 (pictorial solid drawing, no hidden lines)
+  const isoSpanX = Math.max(1, isoProj.maxX - isoProj.minX);
+  const isoSpanY = Math.max(1, isoProj.maxY - isoProj.minY);
+  const isoScale = Math.min(270 / isoSpanX, 185 / isoSpanY);
+  const iso = mapOrthographicView(isoProj, cxRight, m + innerH * 0.63, isoScale, true);
+
+  const drawLines = (segs: Seg2D[], strokeW = 1.6, dash?: string) =>
     segs
       .map(
         (s) =>
-          `<line x1="${s.x1.toFixed(1)}" y1="${s.y1.toFixed(1)}" x2="${s.x2.toFixed(1)}" y2="${s.y2.toFixed(1)}" stroke="#000000" stroke-width="${strokeW}" stroke-linecap="round"/>`
+          `<line x1="${s.x1.toFixed(1)}" y1="${s.y1.toFixed(1)}" x2="${s.x2.toFixed(1)}" y2="${s.y2.toFixed(1)}" stroke="#000000" stroke-width="${strokeW}" ${
+            dash ? `stroke-dasharray="${dash}"` : ''
+          } stroke-linecap="round"/>`
       )
       .join('\n');
 
@@ -202,10 +687,10 @@ export function buildAutoCADSheetSVG(params: SheetExportParams): string {
     const y = yRef + offset;
     const extDir = offset >= 0 ? 1 : -1;
     return `
-      <line x1="${x1.toFixed(1)}" y1="${(yRef + 4 * extDir).toFixed(1)}" x2="${x1.toFixed(1)}" y2="${(y + 6 * extDir).toFixed(1)}" stroke="#000" stroke-width="0.9"/>
-      <line x1="${x2.toFixed(1)}" y1="${(yRef + 4 * extDir).toFixed(1)}" x2="${x2.toFixed(1)}" y2="${(y + 6 * extDir).toFixed(1)}" stroke="#000" stroke-width="0.9"/>
-      <line x1="${x1.toFixed(1)}" y1="${y.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y.toFixed(1)}" stroke="#000" stroke-width="1" marker-start="url(#arrowStart)" marker-end="url(#arrowEnd)"/>
-      <text x="${((x1 + x2) / 2).toFixed(1)}" y="${(y - 5).toFixed(1)}" text-anchor="middle" font-size="13" fill="#000">${escapeXml(label)}</text>
+      <line x1="${x1.toFixed(1)}" y1="${(yRef + 3 * extDir).toFixed(1)}" x2="${x1.toFixed(1)}" y2="${(y + 5 * extDir).toFixed(1)}" stroke="#000" stroke-width="0.85"/>
+      <line x1="${x2.toFixed(1)}" y1="${(yRef + 3 * extDir).toFixed(1)}" x2="${x2.toFixed(1)}" y2="${(y + 5 * extDir).toFixed(1)}" stroke="#000" stroke-width="0.85"/>
+      <line x1="${x1.toFixed(1)}" y1="${y.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y.toFixed(1)}" stroke="#000" stroke-width="0.95" marker-start="url(#arrowStart)" marker-end="url(#arrowEnd)"/>
+      <text x="${((x1 + x2) / 2).toFixed(1)}" y="${(y - 4).toFixed(1)}" text-anchor="middle" font-size="12.5" fill="#000">${escapeXml(label)}</text>
     `;
   };
 
@@ -214,18 +699,80 @@ export function buildAutoCADSheetSVG(params: SheetExportParams): string {
     const extDir = offset >= 0 ? 1 : -1;
     const cy = (y1 + y2) / 2;
     return `
-      <line x1="${(xRef + 4 * extDir).toFixed(1)}" y1="${y1.toFixed(1)}" x2="${(x + 6 * extDir).toFixed(1)}" y2="${y1.toFixed(1)}" stroke="#000" stroke-width="0.9"/>
-      <line x1="${(xRef + 4 * extDir).toFixed(1)}" y1="${y2.toFixed(1)}" x2="${(x + 6 * extDir).toFixed(1)}" y2="${y2.toFixed(1)}" stroke="#000" stroke-width="0.9"/>
-      <line x1="${x.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x.toFixed(1)}" y2="${y2.toFixed(1)}" stroke="#000" stroke-width="1" marker-start="url(#arrowStart)" marker-end="url(#arrowEnd)"/>
-      <text x="${(x - 6).toFixed(1)}" y="${cy.toFixed(1)}" text-anchor="middle" font-size="13" fill="#000" transform="rotate(-90 ${(x - 6).toFixed(1)} ${cy.toFixed(1)})">${escapeXml(label)}</text>
+      <line x1="${(xRef + 3 * extDir).toFixed(1)}" y1="${y1.toFixed(1)}" x2="${(x + 5 * extDir).toFixed(1)}" y2="${y1.toFixed(1)}" stroke="#000" stroke-width="0.85"/>
+      <line x1="${(xRef + 3 * extDir).toFixed(1)}" y1="${y2.toFixed(1)}" x2="${(x + 5 * extDir).toFixed(1)}" y2="${y2.toFixed(1)}" stroke="#000" stroke-width="0.85"/>
+      <line x1="${x.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x.toFixed(1)}" y2="${y2.toFixed(1)}" stroke="#000" stroke-width="0.95" marker-start="url(#arrowStart)" marker-end="url(#arrowEnd)"/>
+      <text x="${(x - 5).toFixed(1)}" y="${cy.toFixed(1)}" text-anchor="middle" font-size="12.5" fill="#000" transform="rotate(-90 ${(x - 5).toFixed(1)} ${cy.toFixed(1)})">${escapeXml(label)}</text>
     `;
   };
 
-  // Title Block Geometry (Bottom-Right anchored inside outer border, matching reference)
+  // Title Block Geometry (anchored inside outer border at bottom-right)
   const tbW = 540;
   const tbH = 162;
   const tbX = W - m - tbW;
   const tbY = H - m - tbH;
+
+  // Title Block Dynamic Font / Multi-line Wrap
+  const renderTitleSvg = (title: string): string => {
+    const clean = title.toUpperCase().trim();
+    if (clean.length <= 26) {
+      return `<text x="196" y="37" font-size="13" font-weight="600" fill="#000">TITLE: ${escapeXml(clean)}</text>`;
+    } else if (clean.length <= 38) {
+      return `<text x="196" y="37" font-size="11.5" font-weight="600" fill="#000">TITLE: ${escapeXml(clean)}</text>`;
+    } else {
+      const splitIdx = clean.lastIndexOf(' ', 32);
+      const cut = splitIdx > 14 ? splitIdx : 30;
+      const l1 = clean.slice(0, cut);
+      const l2 = clean.slice(cut).trim();
+      return `
+        <text x="196" y="27" font-size="11" font-weight="600" fill="#000">TITLE: ${escapeXml(l1)}</text>
+        <text x="242" y="46" font-size="10.5" font-weight="600" fill="#000">${escapeXml(l2)}</text>
+      `;
+    }
+  };
+
+  // Check for composite / slotted-cylinder-bracket feature callouts
+  const isSlottedCylinder =
+    solidName.toLowerCase().includes('slotted cylinder') ||
+    solidName.toLowerCase().includes('bracket') ||
+    (dimensions.length === 140 && dimensions.width === 50 && dimensions.height === 50);
+
+  let extraCalloutsSvg = '';
+  if (isSlottedCylinder) {
+    const fvWidthPx = fv.bounds.right - fv.bounds.left;
+    const fvHeightPx = fv.bounds.bottom - fv.bounds.top;
+    const fvMidX = (fv.bounds.left + fv.bounds.right) / 2;
+
+    // Ø64 Boss diameter dimension above Front View
+    const bossRadiusPx = (32 / dimensions.length) * fvWidthPx;
+    const bossDimSvg = drawHorizDim(fvMidX - bossRadiusPx, fvMidX + bossRadiusPx, fv.bounds.top, -18, 'Ø64');
+
+    // 10 mm Base plate thickness vertical dimension on left of Front View
+    const baseThickPx = (10 / dimensions.height) * fvHeightPx;
+    const baseDimSvg = drawVertDim(fv.bounds.bottom - baseThickPx, fv.bounds.bottom, fv.bounds.left, -26, '10');
+
+    // Blind hole callout pointing to hole dashed line
+    const holeRadiusPx = (20 / dimensions.length) * fvWidthPx;
+    const holeDepthPx = (24 / dimensions.height) * fvHeightPx;
+    const holeCalloutSvg = `
+      <path d="M ${(fvMidX - holeRadiusPx).toFixed(1)} ${(fv.bounds.top + holeDepthPx * 0.5).toFixed(1)} L ${(fv.bounds.left - 10).toFixed(1)} ${(fv.bounds.top + 34).toFixed(1)} L ${(fv.bounds.left - 36).toFixed(1)} ${(fv.bounds.top + 34).toFixed(1)}" stroke="#000" stroke-width="0.9" fill="none" marker-start="url(#arrowStart)"/>
+      <text x="${(fv.bounds.left - 40).toFixed(1)}" y="${(fv.bounds.top + 38).toFixed(1)}" text-anchor="end" font-size="12" font-weight="600" fill="#000">Ø40, 24 DEEP</text>
+    `;
+
+    // Slot depth 30 mm horizontal dimension below Top View
+    const slotDepthPx = (30 / dimensions.length) * (tv.bounds.right - tv.bounds.left);
+    const slotDimSvg = drawHorizDim(tv.bounds.left, tv.bounds.left + slotDepthPx, tv.bounds.bottom, 26, '30');
+
+    extraCalloutsSvg = `
+      ${bossDimSvg}
+      ${baseDimSvg}
+      ${holeCalloutSvg}
+      ${slotDimSvg}
+    `;
+  }
+
+  const fvTitleY = isSlottedCylinder ? fv.bounds.top - 46 : fv.bounds.top - 28;
+  const tvTitleY = tv.bounds.top - 54; // Sits at least 32px above the top dimension line (which is at tv.bounds.top - 18)
 
   return `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" style="font-family: Arial, Helvetica, sans-serif; background: #ffffff;">
@@ -244,43 +791,65 @@ export function buildAutoCADSheetSVG(params: SheetExportParams): string {
   <!-- Thin Crisp Outer Border -->
   <rect x="${m}" y="${m}" width="${innerW}" height="${innerH}" fill="none" stroke="#000000" stroke-width="1.6"/>
 
-  <!-- Dotted Quadrant Dividers (matching AutoCAD 4-quadrant reference) -->
-  <line x1="${midX}" y1="${m}" x2="${midX}" y2="${H - m}" stroke="#333333" stroke-width="1.1" stroke-dasharray="2 6"/>
-  <line x1="${m}" y1="${midY}" x2="${W - m}" y2="${midY}" stroke="#333333" stroke-width="1.1" stroke-dasharray="2 6"/>
+  <!-- Dotted Quadrant Dividers -->
+  <line x1="${W / 2}" y1="${m}" x2="${W / 2}" y2="${H - m}" stroke="#333333" stroke-width="1.1" stroke-dasharray="2 6"/>
+  <line x1="${m}" y1="${H / 2}" x2="${W - m}" y2="${H / 2}" stroke="#333333" stroke-width="1.1" stroke-dasharray="2 6"/>
 
   <!-- QUADRANT 1: FRONT VIEW -->
-  <text x="${(fv.bounds.left + fv.bounds.right) / 2}" y="${fv.bounds.top - 28}" text-anchor="middle" font-size="15" font-weight="500" fill="#000">FRONT VIEW</text>
-  ${drawSegs(fv.segments, 1.5)}
-  ${drawHorizDim(fv.bounds.left, fv.bounds.right, fv.bounds.bottom, 30, `${dimensions.length}`)}
-  ${drawVertDim(fv.bounds.top, fv.bounds.bottom, fv.bounds.right, 30, `${dimensions.height}`)}
+  <text x="${(fv.bounds.left + fv.bounds.right) / 2}" y="${fvTitleY}" text-anchor="middle" font-size="15" font-weight="600" fill="#000">FRONT VIEW</text>
+  <!-- Centerlines -->
+  ${drawLines(fv.centerlines, 0.75, '10 3 2 3')}
+  <!-- Hidden Lines (ISO Dashed) -->
+  ${drawLines(fv.hiddenSegments, 0.95, '5 3')}
+  <!-- Visible Lines (Solid) -->
+  ${drawLines(fv.visibleSegments, 1.6)}
+  <!-- Dimensions -->
+  ${drawHorizDim(fv.bounds.left, fv.bounds.right, fv.bounds.bottom, 32, `${dimensions.length}`)}
+  ${drawVertDim(fv.bounds.top, fv.bounds.bottom, fv.bounds.right, 32, `${dimensions.height}`)}
 
-  <!-- QUADRANT 2: SIDE VIEW -->
-  <text x="${(sv.bounds.left + sv.bounds.right) / 2}" y="${sv.bounds.top - 28}" text-anchor="middle" font-size="15" font-weight="500" fill="#000">${sideTitle}</text>
-  ${drawSegs(sv.segments, 1.5)}
-  ${drawHorizDim(sv.bounds.left, sv.bounds.right, sv.bounds.bottom, 30, `${dimensions.width}`)}
-  ${drawVertDim(sv.bounds.top, sv.bounds.bottom, sv.bounds.left, -30, `${dimensions.height}`)}
+  <!-- QUADRANT 2: SIDE VIEW (Exact Y-alignment with Front View) -->
+  <text x="${(sv.bounds.left + sv.bounds.right) / 2}" y="${sv.bounds.top - 28}" text-anchor="middle" font-size="15" font-weight="600" fill="#000">${sideTitle}</text>
+  <!-- Centerlines -->
+  ${drawLines(sv.centerlines, 0.75, '10 3 2 3')}
+  <!-- Hidden Lines (ISO Dashed) -->
+  ${drawLines(sv.hiddenSegments, 0.95, '5 3')}
+  <!-- Visible Lines (Solid) -->
+  ${drawLines(sv.visibleSegments, 1.6)}
+  <!-- Dimensions -->
+  ${drawHorizDim(sv.bounds.left, sv.bounds.right, sv.bounds.bottom, 32, `${dimensions.width}`)}
+  ${drawVertDim(sv.bounds.top, sv.bounds.bottom, sv.bounds.right, 32, `${dimensions.height}`)}
 
-  <!-- QUADRANT 3: TOP VIEW -->
-  <text x="${(tv.bounds.left + tv.bounds.right) / 2}" y="${tv.bounds.top - 32}" text-anchor="middle" font-size="15" font-weight="500" fill="#000">TOP VIEW</text>
-  ${drawSegs(tv.segments, 1.5)}
-  ${drawHorizDim(tv.bounds.left, tv.bounds.right, tv.bounds.top, -16, `${dimensions.length}`)}
-  ${drawVertDim(tv.bounds.top, tv.bounds.bottom, tv.bounds.right, 30, `${dimensions.width}`)}
+  <!-- QUADRANT 3: TOP VIEW (Exact X-alignment with Front View) -->
+  <!-- Top View title placed cleanly above dimension line -->
+  <text x="${(tv.bounds.left + tv.bounds.right) / 2}" y="${tvTitleY}" text-anchor="middle" font-size="15" font-weight="600" fill="#000">TOP VIEW</text>
+  <!-- Centerlines -->
+  ${drawLines(tv.centerlines, 0.75, '10 3 2 3')}
+  <!-- Hidden Lines (ISO Dashed) -->
+  ${drawLines(tv.hiddenSegments, 0.95, '5 3')}
+  <!-- Visible Lines (Solid) -->
+  ${drawLines(tv.visibleSegments, 1.6)}
+  <!-- Dimensions (top dimension sits below title without overlap) -->
+  ${drawHorizDim(tv.bounds.left, tv.bounds.right, tv.bounds.top, -18, `${dimensions.length}`)}
+  ${drawVertDim(tv.bounds.top, tv.bounds.bottom, tv.bounds.right, 32, `${dimensions.width}`)}
 
-  <!-- QUADRANT 4: ISOMETRIC VIEW -->
-  <text x="${iso.bounds.left + 10}" y="${iso.bounds.top - 14}" text-anchor="start" font-size="15" font-weight="500" fill="#000">ISOMETRIC VIEW</text>
-  ${drawSegs(iso.segments, 1.35)}
+  <!-- Special Machine Feature Callouts -->
+  ${extraCalloutsSvg}
 
-  <!-- "All dimensions are in mm" note above Title Block -->
+  <!-- QUADRANT 4: ISOMETRIC VIEW (Clean Pictorial Solid, No Hidden Lines) -->
+  <text x="${iso.bounds.left}" y="${iso.bounds.top - 16}" text-anchor="start" font-size="15" font-weight="600" fill="#000">ISOMETRIC VIEW</text>
+  ${drawLines(iso.visibleSegments, 1.5)}
+
+  <!-- Note above Title Block -->
   <text x="${tbX + tbW - 145}" y="${tbY - 12}" text-anchor="middle" font-size="13" fill="#000">All dimensions are in mm</text>
 
-  <!-- COLLEGE LAB TITLE BLOCK (Exact Match to Reference Sheet) -->
+  <!-- COLLEGE LAB TITLE BLOCK -->
   <g transform="translate(${tbX}, ${tbY})">
     <rect x="0" y="0" width="${tbW}" height="${tbH}" fill="#ffffff" stroke="#000000" stroke-width="1.4"/>
     <!-- Row 1: NAME | TITLE (height 64) -->
     <line x1="0" y1="64" x2="${tbW}" y2="64" stroke="#000" stroke-width="1.2"/>
     <line x1="185" y1="0" x2="185" y2="${tbH}" stroke="#000" stroke-width="1.2"/>
-    <text x="14" y="37" font-size="13" fill="#000">NAME: ${escapeXml(titleBlockMeta.name || '')}</text>
-    <text x="200" y="37" font-size="13" fill="#000">TITLE: ${escapeXml(solidName.toUpperCase().slice(0, 32))}</text>
+    <text x="14" y="37" font-size="13" font-weight="500" fill="#000">NAME: ${escapeXml(titleBlockMeta.name || '')}</text>
+    ${renderTitleSvg(solidName)}
 
     <!-- Lower Rows: CLASS / ROLL NO / DATE | DWG NO / GRADE / VALUED BY | SCALE + Symbol -->
     <line x1="365" y1="64" x2="365" y2="${tbH}" stroke="#000" stroke-width="1.2"/>
@@ -310,8 +879,8 @@ export function buildAutoCADSheetSVG(params: SheetExportParams): string {
 }
 
 /**
- * Generates a real ASCII R12 AutoCAD DXF file (opens directly in AutoCAD, LibreCAD,
- * SolidWorks, Fusion 360 — save as .DWG directly inside AutoCAD).
+ * Generates a real ASCII R12 AutoCAD DXF file with synchronized layers:
+ * VISIBLE, HIDDEN, CENTER, ISOMETRIC, BORDER, TITLEBLOCK, and TEXT.
  */
 export function buildAutoCADDXF(params: SheetExportParams): string {
   const { geometry, solidName, dimensions, rotation, sideViewMode, titleBlockMeta } = params;
@@ -324,27 +893,222 @@ export function buildAutoCADDXF(params: SheetExportParams): string {
   const sideType = sideViewMode === 'right' ? 'rightSide' : 'leftSide';
   const sideTitle = sideViewMode === 'right' ? 'RIGHT SIDE VIEW' : 'LEFT SIDE VIEW';
 
-  const fv = fitSegmentsToBox(projectGeometryView(geometry, rotation, 'front'), W * 0.25, H * 0.75, 110, 75, false);
-  const sv = fitSegmentsToBox(projectGeometryView(geometry, rotation, sideType), W * 0.75, H * 0.75, 110, 75, false);
-  const tv = fitSegmentsToBox(projectGeometryView(geometry, rotation, 'top'), W * 0.25, H * 0.25, 110, 75, false);
-  const iso = fitSegmentsToBox(projectGeometryView(geometry, rotation, 'isometric'), W * 0.75, H * 0.36, 95, 65, false);
+  const fvProj = projectGeometryView(geometry, rotation, 'front');
+  const svProj = projectGeometryView(geometry, rotation, sideType);
+  const tvProj = projectGeometryView(geometry, rotation, 'top');
+  const isoProj = projectGeometryView(geometry, rotation, 'isometric');
+
+  // Unified orthographic scale for DXF
+  const fvSpanX = Math.max(1, fvProj.maxX - fvProj.minX);
+  const fvSpanY = Math.max(1, fvProj.maxY - fvProj.minY);
+  const svSpanX = Math.max(1, svProj.maxX - svProj.minX);
+  const svSpanY = Math.max(1, svProj.maxY - svProj.minY);
+  const tvSpanX = Math.max(1, tvProj.maxX - tvProj.minX);
+  const tvSpanY = Math.max(1, tvProj.maxY - tvProj.minY);
+
+  const maxSpanX = Math.max(fvSpanX, svSpanX, tvSpanX);
+  const maxSpanY = Math.max(fvSpanY, svSpanY, tvSpanY);
+  const orthoScaleDXF = Math.min(105 / maxSpanX, 70 / maxSpanY);
+
+  const cxLeft = W * 0.25; // 105
+  const cxRight = W * 0.75; // 315
+  const cyTop = H * 0.72; // 213.8 (DXF Y=0 is at bottom)
+  const cyBottom = H * 0.28; // 83.2
+
+  const fv = mapOrthographicView(fvProj, cxLeft, cyTop, orthoScaleDXF, false);
+  const sv = mapOrthographicView(svProj, cxRight, cyTop, orthoScaleDXF, false);
+  const tv = mapOrthographicView(tvProj, cxLeft, cyBottom, orthoScaleDXF, false);
+
+  const isoSpanX = Math.max(1, isoProj.maxX - isoProj.minX);
+  const isoSpanY = Math.max(1, isoProj.maxY - isoProj.minY);
+  const isoScaleDXF = Math.min(90 / isoSpanX, 60 / isoSpanY);
+  const iso = mapOrthographicView(isoProj, cxRight, H * 0.58, isoScaleDXF, false);
 
   const lines: string[] = [
-    '0', 'SECTION',
-    '2', 'HEADER',
-    '9', '$ACADVER', '1', 'AC1009',
-    '9', '$INSUNITS', '70', '4',
-    '0', 'ENDSEC',
-    '0', 'SECTION',
-    '2', 'ENTITIES',
+    '0',
+    'SECTION',
+    '2',
+    'HEADER',
+    '9',
+    '$ACADVER',
+    '1',
+    'AC1009',
+    '9',
+    '$INSUNITS',
+    '70',
+    '4',
+    '0',
+    'ENDSEC',
+    '0',
+    'SECTION',
+    '2',
+    'TABLES',
+    '0',
+    'TABLE',
+    '2',
+    'LTYPE',
+    '70',
+    '3',
+    '0',
+    'LTYPE',
+    '2',
+    'CONTINUOUS',
+    '70',
+    '64',
+    '3',
+    'Solid line',
+    '72',
+    '65',
+    '73',
+    '0',
+    '40',
+    '0.0',
+    '0',
+    'LTYPE',
+    '2',
+    'HIDDEN',
+    '70',
+    '64',
+    '3',
+    'Hidden __ __ __ __ __',
+    '72',
+    '65',
+    '73',
+    '2',
+    '40',
+    '9.525',
+    '49',
+    '6.35',
+    '49',
+    '-3.175',
+    '0',
+    'LTYPE',
+    '2',
+    'CENTER',
+    '70',
+    '64',
+    '3',
+    'Center ____ _ ____ _',
+    '72',
+    '65',
+    '73',
+    '4',
+    '40',
+    '31.75',
+    '49',
+    '19.05',
+    '49',
+    '-3.175',
+    '49',
+    '3.175',
+    '49',
+    '-3.175',
+    '0',
+    'ENDTAB',
+    '0',
+    'TABLE',
+    '2',
+    'LAYER',
+    '70',
+    '7',
+    '0',
+    'LAYER',
+    '2',
+    'VISIBLE',
+    '70',
+    '64',
+    '62',
+    '7',
+    '6',
+    'CONTINUOUS',
+    '0',
+    'LAYER',
+    '2',
+    'HIDDEN',
+    '70',
+    '64',
+    '62',
+    '8',
+    '6',
+    'HIDDEN',
+    '0',
+    'LAYER',
+    '2',
+    'CENTER',
+    '70',
+    '64',
+    '62',
+    '3',
+    '6',
+    'CENTER',
+    '0',
+    'LAYER',
+    '2',
+    'ISOMETRIC',
+    '70',
+    '64',
+    '62',
+    '7',
+    '6',
+    'CONTINUOUS',
+    '0',
+    'LAYER',
+    '2',
+    'BORDER',
+    '70',
+    '64',
+    '62',
+    '7',
+    '6',
+    'CONTINUOUS',
+    '0',
+    'LAYER',
+    '2',
+    'TITLEBLOCK',
+    '70',
+    '64',
+    '62',
+    '7',
+    '6',
+    'CONTINUOUS',
+    '0',
+    'LAYER',
+    '2',
+    'TEXT',
+    '70',
+    '64',
+    '62',
+    '7',
+    '6',
+    'CONTINUOUS',
+    '0',
+    'ENDTAB',
+    '0',
+    'ENDSEC',
+    '0',
+    'SECTION',
+    '2',
+    'ENTITIES',
   ];
 
-  const addLine = (x1: number, y1: number, x2: number, y2: number, layer = 'VISIBLE') => {
+  const addLine = (x1: number, y1: number, x2: number, y2: number, layer = 'VISIBLE', linetype?: string) => {
+    lines.push('0', 'LINE', '8', layer);
+    if (linetype) {
+      lines.push('6', linetype);
+    }
     lines.push(
-      '0', 'LINE',
-      '8', layer,
-      '10', x1.toFixed(3), '20', y1.toFixed(3), '30', '0.0',
-      '11', x2.toFixed(3), '21', y2.toFixed(3), '31', '0.0'
+      '10',
+      x1.toFixed(3),
+      '20',
+      y1.toFixed(3),
+      '30',
+      '0.0',
+      '11',
+      x2.toFixed(3),
+      '21',
+      y2.toFixed(3),
+      '31',
+      '0.0'
     );
   };
 
@@ -357,33 +1121,52 @@ export function buildAutoCADDXF(params: SheetExportParams): string {
 
   const addText = (x: number, y: number, height: number, text: string, layer = 'TEXT') => {
     lines.push(
-      '0', 'TEXT',
-      '8', layer,
-      '10', x.toFixed(3), '20', y.toFixed(3), '30', '0.0',
-      '40', height.toFixed(2),
-      '1', text
+      '0',
+      'TEXT',
+      '8',
+      layer,
+      '10',
+      x.toFixed(3),
+      '20',
+      y.toFixed(3),
+      '30',
+      '0.0',
+      '40',
+      height.toFixed(2),
+      '1',
+      text
     );
   };
 
   // A3 Outer Border & Center Dividers
   addRect(m, m, W - m * 2, H - m * 2, 'BORDER');
-  addLine(midX, m, midX, H - m, 'CENTER');
-  addLine(m, midY, W - m, midY, 'CENTER');
+  addLine(midX, m, midX, H - m, 'CENTER', 'CENTER');
+  addLine(m, midY, W - m, midY, 'CENTER', 'CENTER');
 
-  // Views
-  for (const s of fv.segments) addLine(s.x1, s.y1, s.x2, s.y2, 'VISIBLE');
-  for (const s of sv.segments) addLine(s.x1, s.y1, s.x2, s.y2, 'VISIBLE');
-  for (const s of tv.segments) addLine(s.x1, s.y1, s.x2, s.y2, 'VISIBLE');
-  for (const s of iso.segments) addLine(s.x1, s.y1, s.x2, s.y2, 'ISOMETRIC');
+  // Visible Lines
+  for (const s of fv.visibleSegments) addLine(s.x1, s.y1, s.x2, s.y2, 'VISIBLE');
+  for (const s of sv.visibleSegments) addLine(s.x1, s.y1, s.x2, s.y2, 'VISIBLE');
+  for (const s of tv.visibleSegments) addLine(s.x1, s.y1, s.x2, s.y2, 'VISIBLE');
+  for (const s of iso.visibleSegments) addLine(s.x1, s.y1, s.x2, s.y2, 'ISOMETRIC');
+
+  // Hidden Lines (DXF layer HIDDEN)
+  for (const s of fv.hiddenSegments) addLine(s.x1, s.y1, s.x2, s.y2, 'HIDDEN', 'HIDDEN');
+  for (const s of sv.hiddenSegments) addLine(s.x1, s.y1, s.x2, s.y2, 'HIDDEN', 'HIDDEN');
+  for (const s of tv.hiddenSegments) addLine(s.x1, s.y1, s.x2, s.y2, 'HIDDEN', 'HIDDEN');
+
+  // Centerlines (DXF layer CENTER)
+  for (const s of fv.centerlines) addLine(s.x1, s.y1, s.x2, s.y2, 'CENTER', 'CENTER');
+  for (const s of sv.centerlines) addLine(s.x1, s.y1, s.x2, s.y2, 'CENTER', 'CENTER');
+  for (const s of tv.centerlines) addLine(s.x1, s.y1, s.x2, s.y2, 'CENTER', 'CENTER');
 
   // View Titles
   addText(W * 0.2, H * 0.91, 4.5, 'FRONT VIEW');
   addText(W * 0.7, H * 0.91, 4.5, sideTitle);
-  addText(W * 0.2, H * 0.43, 4.5, 'TOP VIEW');
-  addText(W * 0.65, H * 0.46, 4.5, 'ISOMETRIC VIEW');
+  addText(W * 0.2, H * 0.44, 4.5, 'TOP VIEW');
+  addText(W * 0.65, H * 0.51, 4.5, 'ISOMETRIC VIEW');
   addText(W - 140, 62, 3.5, `All dimensions are in mm (${dimensions.length}x${dimensions.width}x${dimensions.height})`);
 
-  // College Lab Title Block (Bottom-Right in DXF coords where Y=0 is bottom)
+  // College Lab Title Block (DXF coordinates: Y=0 is bottom)
   const tbW = 165;
   const tbH = 48;
   const tbX = W - m - tbW;
@@ -396,7 +1179,9 @@ export function buildAutoCADDXF(params: SheetExportParams): string {
   addLine(tbX, tbY + 10, tbX + 115, tbY + 10, 'TITLEBLOCK');
 
   addText(tbX + 3, tbY + 37, 3.2, `NAME: ${titleBlockMeta.name || ''}`);
-  addText(tbX + 58, tbY + 37, 3.2, `TITLE: ${solidName.toUpperCase().slice(0, 28)}`);
+  const fullDxfTitle = solidName.toUpperCase().trim();
+  const titleHeight = fullDxfTitle.length > 28 ? 2.5 : 3.0;
+  addText(tbX + 58, tbY + 37, titleHeight, `TITLE: ${fullDxfTitle}`);
   addText(tbX + 3, tbY + 23, 2.8, `CLASS: ${titleBlockMeta.className || ''}`);
   addText(tbX + 3, tbY + 13, 2.8, `ROLL NO: ${titleBlockMeta.rollNo || ''}`);
   addText(tbX + 3, tbY + 3, 2.8, `DATE: ${titleBlockMeta.date || ''}`);
@@ -499,7 +1284,7 @@ export async function exportSheetInFormat(
   <head>
     <title>${baseFilename} — A3 AutoCAD Sheet</title>
     <style>
-      @page { size: A3 landscape; margin: 6mm; }
+      @page { size: A3 landscape; margin: 0; }
       html, body { margin: 0; padding: 0; background: #fff; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; }
       svg { width: 100%; height: auto; max-height: 100vh; }
     </style>

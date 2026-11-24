@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { CompositePartSpec, SolidDimensions, SolidType } from '../types';
+import type { CompositePartSpec, SolidDimensions, SolidType } from '../types';
 
 export const DEFAULT_SLOTTED_CYLINDER_SPEC: CompositePartSpec = {
   baseLength: 140,
