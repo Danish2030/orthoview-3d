@@ -1040,22 +1040,30 @@ export function buildAutoCADSheetSVG(params: SheetExportParams): string {
       ${drawVertDim(fv.bounds.top, fv.bounds.bottom, fv.bounds.right, 32, '30')}
     `;
 
-    // SV: 30 (rear block depth) + 20 (front tongue depth) along bottom, 30 (total height) on left, 10 (tongue height) on right
-    const svStepX = sv.bounds.left + tongueDPx;
+    // SV: match exact geometry orientation (in LHSV, front tongue 20×10 is on left & rear 30×30 wall is on right; reversed in RHSV)
     const tongueHPx = 10 * unitPx;
-    svDimsSvg = `
+    const isLeftSide = sideViewMode !== 'right';
+    const svStepX = isLeftSide ? sv.bounds.left + tongueDPx : sv.bounds.left + 30 * unitPx;
+    svDimsSvg = isLeftSide
+      ? `
       ${drawHorizDim(sv.bounds.left, svStepX, sv.bounds.bottom, 26, '20')}
       ${drawHorizDim(svStepX, sv.bounds.right, sv.bounds.bottom, 26, '30')}
+      ${drawVertDim(sv.bounds.bottom - tongueHPx, sv.bounds.bottom, sv.bounds.left, -26, '10')}
+      ${drawVertDim(sv.bounds.top, sv.bounds.bottom, sv.bounds.right, 28, '30')}
+    `
+      : `
+      ${drawHorizDim(sv.bounds.left, svStepX, sv.bounds.bottom, 26, '30')}
+      ${drawHorizDim(svStepX, sv.bounds.right, sv.bounds.bottom, 26, '20')}
       ${drawVertDim(sv.bounds.top, sv.bounds.bottom, sv.bounds.left, -28, '30')}
       ${drawVertDim(sv.bounds.bottom - tongueHPx, sv.bounds.bottom, sv.bounds.right, 26, '10')}
     `;
 
-    // TV: 40 (total width) at top, 10 (left wing steps), 20 (tongue width & depth), 10 (step depth), and radial leader R10
+    // TV: 40 (total width) at top, 10 (left wing width), 20 (tongue width & depth), 10 (step depth), and radial leader R10 outside right wall
     const arcCenterY = tv.bounds.top + 20 * unitPx;
     const r10TargetX = tvMidX + grooveRPx * Math.cos(Math.PI / 4);
     const r10TargetY = arcCenterY - grooveRPx * Math.sin(Math.PI / 4);
-    const r10ElbowX = tvMidX + 24;
-    const r10ElbowY = arcCenterY - 18;
+    const r10ElbowX = tv.bounds.right + 18;
+    const r10ElbowY = tv.bounds.top + 6;
     const r10ShelfX = r10ElbowX + 28;
 
     const r10LeaderSvg = `
@@ -1064,8 +1072,8 @@ export function buildAutoCADSheetSVG(params: SheetExportParams): string {
     `;
 
     tvDimsSvg = `
-      ${drawHorizDim(tv.bounds.left, tv.bounds.right, tv.bounds.top, -26, '40')}
-      ${drawHorizDim(tv.bounds.left, tv.bounds.left + wingWPx, tv.bounds.top, -12, '10')}
+      ${drawHorizDim(tv.bounds.left, tv.bounds.right, tv.bounds.top, -34, '40')}
+      ${drawHorizDim(tv.bounds.left, tv.bounds.left + wingWPx, tv.bounds.top, -14, '10')}
       ${drawHorizDim(tvMidX - tongueHalfWPx, tvMidX + tongueHalfWPx, tv.bounds.bottom, 26, '20')}
       ${drawVertDim(tv.bounds.bottom - tongueDPx, tv.bounds.bottom, tvMidX - tongueHalfWPx, -22, '20')}
       ${drawVertDim(arcCenterY, arcCenterY + stepDPx, tv.bounds.left, -24, '10')}
@@ -1087,7 +1095,7 @@ export function buildAutoCADSheetSVG(params: SheetExportParams): string {
   }
 
   const fvTitleY = fv.bounds.top - 28;
-  const tvTitleY = tv.bounds.top - 54; // Sits at least 28px above top dimension line (offset -26)
+  const tvTitleY = isSteppedTBlock ? tv.bounds.top - 60 : tv.bounds.top - 54; // Sits at least 28px above top dimension line (offset -26)
 
   // Units Note
   const unitsNoteSvg = tbOpts.showUnitsNote
