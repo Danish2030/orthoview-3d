@@ -20,6 +20,7 @@ import { Q1_DEFAULT_LINE, Q2_DEFAULT_PLANOMETRIC } from './utils/examBank';
 import {
   AppView,
   CompositePartSpec,
+  DEFAULT_TITLE_BLOCK_OPTIONS,
   DisplayOptions,
   LineProblemParams,
   PlanometricParams,
@@ -31,6 +32,7 @@ import {
   StudioModule,
   ThemeMode,
   TitleBlockMeta,
+  TitleBlockOptions,
   UserProfile,
 } from './types';
 
@@ -143,16 +145,50 @@ export function App() {
   const [isExportModalOpen, setIsExportModalOpen] = useState<boolean>(false);
   const [compositeSpec, setCompositeSpec] = useState<CompositePartSpec>(DEFAULT_SLOTTED_CYLINDER_SPEC);
   const [customPartName, setCustomPartName] = useState<string | null>(null);
-  const [titleBlockMeta, setTitleBlockMeta] = useState<TitleBlockMeta>(() => ({
-    name: user?.name || 'Danish Jubily',
-    className: user?.branch || 'RBA',
-    rollNo: '28',
-    dwgNo: 'EXP-01',
-    date: new Date().toLocaleDateString('en-GB'),
-    scale: '1:1',
-    grade: '',
-    valuedBy: '',
-  }));
+  const [titleBlockMeta, setTitleBlockMeta] = useState<TitleBlockMeta>(() => {
+    try {
+      const saved = localStorage.getItem('orthoview-titleblock-meta');
+      if (saved) return JSON.parse(saved) as TitleBlockMeta;
+    } catch {
+      // ignore
+    }
+    return {
+      name: user?.name || 'Danish Jubily',
+      className: user?.branch || 'RBA',
+      rollNo: '28',
+      dwgNo: 'EXP-01',
+      date: new Date().toLocaleDateString('en-GB'),
+      scale: '1:1',
+      grade: '',
+      valuedBy: '',
+    };
+  });
+
+  const [titleBlockOptions, setTitleBlockOptions] = useState<TitleBlockOptions>(() => {
+    try {
+      const saved = localStorage.getItem('orthoview-titleblock-options');
+      if (saved) return JSON.parse(saved) as TitleBlockOptions;
+    } catch {
+      // ignore
+    }
+    return DEFAULT_TITLE_BLOCK_OPTIONS;
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('orthoview-titleblock-meta', JSON.stringify(titleBlockMeta));
+    } catch {
+      // ignore
+    }
+  }, [titleBlockMeta]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('orthoview-titleblock-options', JSON.stringify(titleBlockOptions));
+    } catch {
+      // ignore
+    }
+  }, [titleBlockOptions]);
 
   useEffect(() => {
     const root = document.documentElement;
@@ -600,6 +636,9 @@ export function App() {
         rotation={rotation}
         sideViewMode={displayOptions.sideViewMode}
         titleBlockMeta={titleBlockMeta}
+        titleBlockOptions={titleBlockOptions}
+        onUpdateTitleBlockMeta={setTitleBlockMeta}
+        onUpdateTitleBlockOptions={setTitleBlockOptions}
       />
 
       <ImageSolverModal

@@ -44,6 +44,44 @@ export interface TitleBlockMeta {
   valuedBy: string;
 }
 
+export interface TitleBlockFieldsConfig {
+  name: boolean;
+  title: boolean;
+  className: boolean;
+  rollNo: boolean;
+  dwgNo: boolean;
+  date: boolean;
+  grade: boolean;
+  valuedBy: boolean;
+  scale: boolean;
+  projectionSymbol: boolean;
+}
+
+export interface TitleBlockOptions {
+  enabled: boolean;
+  showUnitsNote: boolean;
+  fields: TitleBlockFieldsConfig;
+}
+
+export const DEFAULT_TITLE_BLOCK_FIELDS: TitleBlockFieldsConfig = {
+  name: true,
+  title: true,
+  className: true,
+  rollNo: true,
+  dwgNo: true,
+  date: true,
+  grade: true,
+  valuedBy: true,
+  scale: true,
+  projectionSymbol: true,
+};
+
+export const DEFAULT_TITLE_BLOCK_OPTIONS: TitleBlockOptions = {
+  enabled: true,
+  showUnitsNote: true,
+  fields: DEFAULT_TITLE_BLOCK_FIELDS,
+};
+
 export interface SolidDimensions {
   length: number; // L in mm (along X)
   width: number;  // W in mm (along Z)

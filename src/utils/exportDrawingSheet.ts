@@ -1,5 +1,13 @@
 import * as THREE from 'three';
-import type { SideViewMode, SolidDimensions, SolidRotation, ThemeMode, TitleBlockMeta } from '../types';
+import type {
+  SideViewMode,
+  SolidDimensions,
+  SolidRotation,
+  ThemeMode,
+  TitleBlockMeta,
+  TitleBlockOptions,
+} from '../types/index.ts';
+import { DEFAULT_TITLE_BLOCK_OPTIONS } from '../types/index.ts';
 
 export type ExportFormat = 'png' | 'pdf' | 'dxf' | 'svg' | 'stl';
 
@@ -10,6 +18,7 @@ export interface SheetExportParams {
   rotation: SolidRotation;
   sideViewMode: SideViewMode;
   titleBlockMeta: TitleBlockMeta;
+  titleBlockOptions?: TitleBlockOptions;
   // Legacy optional fields kept for backwards compatibility
   canvases?: {
     front: HTMLCanvasElement | null;
@@ -367,6 +376,58 @@ function projectGeometryView(
     }
   }
 
+  // 3b. For Isometric View of composite slotted cylinder bracket, inject the analytical
+  // cylinder-to-base intersection curves so the isometric solid body shows true AutoCAD boolean seams
+  if (isSlottedCylinder && view === 'isometric') {
+    if (!geometry.boundingBox) geometry.computeBoundingBox();
+    const bb = geometry.boundingBox!;
+    const minX = bb.min.x;
+    const maxX = bb.max.x;
+    const minY = bb.min.y;
+    const L3D = Math.max(1, maxX - minX);
+    const scale3D = L3D / 140;
+    const rBoss = 32 * scale3D;
+    const halfBaseW = 25 * scale3D;
+    const yBaseTop = minY + 10 * scale3D;
+
+    const xSeam = Math.sqrt(Math.max(0, rBoss * rBoss - halfBaseW * halfBaseW));
+    const thetaMax = Math.asin(Math.min(1, halfBaseW / rBoss));
+    const arcSteps = 18;
+
+    // Right curved intersection arc on base top along x^2 + z^2 = rBoss^2
+    for (let i = 0; i < arcSteps; i++) {
+      const th1 = -thetaMax + (2 * thetaMax * i) / arcSteps;
+      const th2 = -thetaMax + (2 * thetaMax * (i + 1)) / arcSteps;
+      const p1 = new THREE.Vector3(rBoss * Math.cos(th1), yBaseTop, rBoss * Math.sin(th1)).applyMatrix4(rotMat);
+      const p2 = new THREE.Vector3(rBoss * Math.cos(th2), yBaseTop, rBoss * Math.sin(th2)).applyMatrix4(rotMat);
+      candidateEdges.push({ p1, p2 });
+    }
+
+    // Left curved intersection arc on base top along x^2 + z^2 = rBoss^2
+    for (let i = 0; i < arcSteps; i++) {
+      const th1 = -thetaMax + (2 * thetaMax * i) / arcSteps;
+      const th2 = -thetaMax + (2 * thetaMax * (i + 1)) / arcSteps;
+      const p1 = new THREE.Vector3(-rBoss * Math.cos(th1), yBaseTop, rBoss * Math.sin(th1)).applyMatrix4(rotMat);
+      const p2 = new THREE.Vector3(-rBoss * Math.cos(th2), yBaseTop, rBoss * Math.sin(th2)).applyMatrix4(rotMat);
+      candidateEdges.push({ p1, p2 });
+    }
+
+    // The 4 vertical intersection seams where the vertical sides of the base plate meet the curved cylinder wall
+    const vertCorners = [
+      [xSeam, halfBaseW],
+      [xSeam, -halfBaseW],
+      [-xSeam, halfBaseW],
+      [-xSeam, -halfBaseW],
+    ];
+
+    for (let c = 0; c < vertCorners.length; c++) {
+      const [vx, vz] = vertCorners[c];
+      const p1 = new THREE.Vector3(vx, minY, vz).applyMatrix4(rotMat);
+      const p2 = new THREE.Vector3(vx, yBaseTop, vz).applyMatrix4(rotMat);
+      candidateEdges.push({ p1, p2 });
+    }
+  }
+
   // 4. Build 2D front-facing triangle list for depth/occlusion testing
   const frontTris2D: FrontTri2D[] = [];
   for (let i = 0; i < triangles.length; i++) {
@@ -616,7 +677,7 @@ function projectGeometryView(
 
       const dist = Math.abs((mx - v.x1) * (v.y2 - v.y1) - (my - v.y1) * (v.x2 - v.x1)) / vLen;
       if (dist < 0.3) {
-        const dot = ((mx - v.x1) * (v.x2 - v.x1) + (my - v.y1) * (v.y2 - v.y1)) / (vLen * vLen);
+        const dot = ((mx - v.x1) * (v.y2 - v.y1) + (my - v.y1) * (v.y2 - v.y1)) / (vLen * vLen);
         if (dot >= -0.05 && dot <= 1.05) {
           coveredByVisible = true;
           break;
@@ -724,6 +785,9 @@ function escapeXml(str: string): string {
  */
 export function buildAutoCADSheetSVG(params: SheetExportParams): string {
   const { geometry, solidName, dimensions, rotation, sideViewMode, titleBlockMeta } = params;
+  const tbOpts = params.titleBlockOptions || DEFAULT_TITLE_BLOCK_OPTIONS;
+  const isTbEnabled = tbOpts.enabled;
+
   const W = 1400;
   const H = 990;
   const m = 36;
@@ -768,11 +832,15 @@ export function buildAutoCADSheetSVG(params: SheetExportParams): string {
   const tv = mapOrthographicView(tvProj, cxLeft, cyBottom, orthoScale, true, 'top');
 
   // 4. Isometric view in Quadrant 4 (pictorial solid drawing, no hidden lines)
-  // Sits cleanly below horizontal divider y = H/2 (495) with >= 25px whitespace above heading
+  // When Title Block is ON: isoScale up to 295x175, positioned cleanly below y = H/2 with >=20px whitespace above heading
+  // When Title Block is OFF: expands to 370x250, centered cleanly at cyBottom in Quadrant 4
   const isoSpanX = Math.max(1, isoProj.maxX - isoProj.minX);
   const isoSpanY = Math.max(1, isoProj.maxY - isoProj.minY);
-  const isoScale = Math.min(240 / isoSpanX, 150 / isoSpanY);
-  const iso = mapOrthographicView(isoProj, cxRight, 625, isoScale, true, undefined);
+  const isoScale = isTbEnabled
+    ? Math.min(295 / isoSpanX, 175 / isoSpanY)
+    : Math.min(370 / isoSpanX, 250 / isoSpanY);
+  const isoCenterY = isTbEnabled ? 633.5 : cyBottom;
+  const iso = mapOrthographicView(isoProj, cxRight, isoCenterY, isoScale, true, undefined);
 
   const drawLines = (segs: Seg2D[], strokeW = 1.6, dash?: string) =>
     segs
@@ -873,13 +941,13 @@ export function buildAutoCADSheetSVG(params: SheetExportParams): string {
       <text x="${(e64X + 4).toFixed(1)}" y="${(e64Y - 4).toFixed(1)}" text-anchor="start" font-size="12" font-weight="600" fill="#000">Ø64</text>
     `;
 
-    // 4. Circular callout Ø40 on Top View inner hole circle
+    // 4. Circular callout Ø40 on Top View inner hole circle:
+    // Routed up-left so its horizontal shelf sits cleanly above tvBaseTop with zero overlap
     const r40Px = 20 * unitPx;
-    const angle40 = (142 * Math.PI) / 180;
-    const t40X = tvMidX + r40Px * Math.cos(angle40);
-    const t40Y = tvMidY - r40Px * Math.sin(angle40);
-    const e40X = t40X - 22;
-    const e40Y = t40Y - 18;
+    const t40X = tvMidX - r40Px * 0.7071;
+    const t40Y = tvMidY - r40Px * 0.7071;
+    const e40X = tvMidX - r64Px - 16;
+    const e40Y = tvBaseTop - 18;
     const s40X = e40X - 32;
     const callout40Svg = `
       <path d="M ${t40X.toFixed(1)} ${t40Y.toFixed(1)} L ${e40X.toFixed(1)} ${e40Y.toFixed(1)} L ${s40X.toFixed(1)} ${e40Y.toFixed(1)}" stroke="#000" stroke-width="0.95" fill="none" marker-start="url(#arrowStart)"/>
@@ -905,7 +973,58 @@ export function buildAutoCADSheetSVG(params: SheetExportParams): string {
   }
 
   const fvTitleY = fv.bounds.top - 28;
-  const tvTitleY = tv.bounds.top - 54; // Sits at least 32px above the top dimension line (which is at tv.bounds.top - 18)
+  const tvTitleY = tv.bounds.top - 54; // Sits at least 28px above top dimension line (offset -26)
+
+  // Units Note
+  const unitsNoteSvg = tbOpts.showUnitsNote
+    ? isTbEnabled
+      ? `<text x="${tbX + tbW - 145}" y="${tbY - 12}" text-anchor="middle" font-size="13" fill="#000">All dimensions are in mm</text>`
+      : `<text x="${W - m - 145}" y="${H - m - 14}" text-anchor="middle" font-size="13" fill="#000">All dimensions are in mm</text>`
+    : '';
+
+  // College Lab Title Block (conditional on isTbEnabled and individual field toggles)
+  let titleBlockSvg = '';
+  if (isTbEnabled) {
+    const f = tbOpts.fields;
+    titleBlockSvg = `
+  <!-- COLLEGE LAB TITLE BLOCK -->
+  <g transform="translate(${tbX}, ${tbY})">
+    <rect x="0" y="0" width="${tbW}" height="${tbH}" fill="#ffffff" stroke="#000000" stroke-width="1.4"/>
+    <!-- Row 1: NAME | TITLE (height 64) -->
+    <line x1="0" y1="64" x2="${tbW}" y2="64" stroke="#000" stroke-width="1.2"/>
+    <line x1="185" y1="0" x2="185" y2="${tbH}" stroke="#000" stroke-width="1.2"/>
+    ${f.name ? `<text x="14" y="37" font-size="13" font-weight="500" fill="#000">NAME: ${escapeXml(titleBlockMeta.name || '')}</text>` : ''}
+    ${f.title ? renderTitleSvg(solidName) : ''}
+
+    <!-- Lower Rows: CLASS / ROLL NO / DATE | DWG NO / GRADE / VALUED BY | SCALE + Symbol -->
+    <line x1="365" y1="64" x2="365" y2="${tbH}" stroke="#000" stroke-width="1.2"/>
+    <line x1="0" y1="97" x2="${tbW}" y2="97" stroke="#000" stroke-width="1.1"/>
+    <line x1="0" y1="130" x2="365" y2="130" stroke="#000" stroke-width="1.1"/>
+
+    ${f.className ? `<text x="12" y="86" font-size="12" fill="#000">CLASS: ${escapeXml(titleBlockMeta.className || '')}</text>` : ''}
+    ${f.rollNo ? `<text x="12" y="119" font-size="12" fill="#000">ROLL NO.: ${escapeXml(titleBlockMeta.rollNo || '')}</text>` : ''}
+    ${f.date ? `<text x="12" y="151" font-size="12" fill="#000">DATE: ${escapeXml(titleBlockMeta.date || '')}</text>` : ''}
+
+    ${f.dwgNo ? `<text x="196" y="86" font-size="12" fill="#000">DWG. NO.: ${escapeXml(titleBlockMeta.dwgNo || '')}</text>` : ''}
+    ${f.grade ? `<text x="196" y="119" font-size="12" fill="#000">GRADE: ${escapeXml(titleBlockMeta.grade || '')}</text>` : ''}
+    ${f.valuedBy ? `<text x="196" y="151" font-size="12" fill="#000">VALUED BY: ${escapeXml(titleBlockMeta.valuedBy || '')}</text>` : ''}
+
+    ${f.scale ? `<text x="378" y="86" font-size="12" fill="#000">SCALE: ${escapeXml(titleBlockMeta.scale || '1:1')}</text>` : ''}
+
+    ${
+      f.projectionSymbol
+        ? `<!-- First-Angle Projection Symbol -->
+    <g transform="translate(382, 102)">
+      <line x1="2" y1="26" x2="144" y2="26" stroke="#16a34a" stroke-width="1" stroke-dasharray="8 3 2 3"/>
+      <line x1="112" y1="2" x2="112" y2="50" stroke="#16a34a" stroke-width="1" stroke-dasharray="8 3 2 3"/>
+      <polygon points="12,16 64,6 64,46 12,36" fill="none" stroke="#000000" stroke-width="1.4"/>
+      <circle cx="112" cy="26" r="20" fill="none" stroke="#000000" stroke-width="1.4"/>
+      <circle cx="112" cy="26" r="10" fill="none" stroke="#000000" stroke-width="1.4"/>
+    </g>`
+        : ''
+    }
+  </g>`;
+  }
 
   return `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" style="font-family: Arial, Helvetica, sans-serif; background: #ffffff;">
@@ -962,52 +1081,20 @@ export function buildAutoCADSheetSVG(params: SheetExportParams): string {
   <!-- Visible Lines (Solid) -->
   ${drawLines(tv.visibleSegments, 1.6)}
   <!-- Dimensions (snap to base plate walls) -->
-  ${drawHorizDim(tv.bounds.left, tv.bounds.right, tv.bounds.top, -18, `${dimensions.length}`)}
+  ${drawHorizDim(tv.bounds.left, tv.bounds.right, tv.bounds.top, -26, `${dimensions.length}`)}
   ${drawVertDim(tvBaseTop, tvBaseBottom, tv.bounds.right, 32, `${dimensions.width}`)}
 
   <!-- Special Machine Feature Callouts -->
   ${extraCalloutsSvg}
 
   <!-- QUADRANT 4: ISOMETRIC VIEW (Clean Pictorial Solid, No Hidden Lines) -->
-  <text x="${iso.bounds.left}" y="${iso.bounds.top - 16}" text-anchor="start" font-size="15" font-weight="600" fill="#000">ISOMETRIC VIEW</text>
+  <text x="${iso.bounds.left}" y="${(iso.bounds.top - 16).toFixed(1)}" text-anchor="start" font-size="15" font-weight="600" fill="#000">ISOMETRIC VIEW</text>
   ${drawLines(iso.visibleSegments, 1.5)}
 
-  <!-- Note above Title Block -->
-  <text x="${tbX + tbW - 145}" y="${tbY - 12}" text-anchor="middle" font-size="13" fill="#000">All dimensions are in mm</text>
+  <!-- Note above Title Block / bottom note -->
+  ${unitsNoteSvg}
 
-  <!-- COLLEGE LAB TITLE BLOCK -->
-  <g transform="translate(${tbX}, ${tbY})">
-    <rect x="0" y="0" width="${tbW}" height="${tbH}" fill="#ffffff" stroke="#000000" stroke-width="1.4"/>
-    <!-- Row 1: NAME | TITLE (height 64) -->
-    <line x1="0" y1="64" x2="${tbW}" y2="64" stroke="#000" stroke-width="1.2"/>
-    <line x1="185" y1="0" x2="185" y2="${tbH}" stroke="#000" stroke-width="1.2"/>
-    <text x="14" y="37" font-size="13" font-weight="500" fill="#000">NAME: ${escapeXml(titleBlockMeta.name || '')}</text>
-    ${renderTitleSvg(solidName)}
-
-    <!-- Lower Rows: CLASS / ROLL NO / DATE | DWG NO / GRADE / VALUED BY | SCALE + Symbol -->
-    <line x1="365" y1="64" x2="365" y2="${tbH}" stroke="#000" stroke-width="1.2"/>
-    <line x1="0" y1="97" x2="${tbW}" y2="97" stroke="#000" stroke-width="1.1"/>
-    <line x1="0" y1="130" x2="365" y2="130" stroke="#000" stroke-width="1.1"/>
-
-    <text x="12" y="86" font-size="12" fill="#000">CLASS: ${escapeXml(titleBlockMeta.className || '')}</text>
-    <text x="12" y="119" font-size="12" fill="#000">ROLL NO.: ${escapeXml(titleBlockMeta.rollNo || '')}</text>
-    <text x="12" y="151" font-size="12" fill="#000">DATE: ${escapeXml(titleBlockMeta.date || '')}</text>
-
-    <text x="196" y="86" font-size="12" fill="#000">DWG. NO.: ${escapeXml(titleBlockMeta.dwgNo || '')}</text>
-    <text x="196" y="119" font-size="12" fill="#000">GRADE: ${escapeXml(titleBlockMeta.grade || '')}</text>
-    <text x="196" y="151" font-size="12" fill="#000">VALUED BY: ${escapeXml(titleBlockMeta.valuedBy || '')}</text>
-
-    <text x="378" y="86" font-size="12" fill="#000">SCALE: ${escapeXml(titleBlockMeta.scale || '1:1')}</text>
-
-    <!-- First-Angle Projection Symbol -->
-    <g transform="translate(382, 102)">
-      <line x1="2" y1="26" x2="144" y2="26" stroke="#16a34a" stroke-width="1" stroke-dasharray="8 3 2 3"/>
-      <line x1="112" y1="2" x2="112" y2="50" stroke="#16a34a" stroke-width="1" stroke-dasharray="8 3 2 3"/>
-      <polygon points="12,16 64,6 64,46 12,36" fill="none" stroke="#000000" stroke-width="1.4"/>
-      <circle cx="112" cy="26" r="20" fill="none" stroke="#000000" stroke-width="1.4"/>
-      <circle cx="112" cy="26" r="10" fill="none" stroke="#000000" stroke-width="1.4"/>
-    </g>
-  </g>
+  ${titleBlockSvg}
 </svg>`;
 }
 
@@ -1017,6 +1104,9 @@ export function buildAutoCADSheetSVG(params: SheetExportParams): string {
  */
 export function buildAutoCADDXF(params: SheetExportParams): string {
   const { geometry, solidName, dimensions, rotation, sideViewMode, titleBlockMeta } = params;
+  const tbOpts = params.titleBlockOptions || DEFAULT_TITLE_BLOCK_OPTIONS;
+  const isTbEnabled = tbOpts.enabled;
+
   const W = 420; // A3 width in mm
   const H = 297; // A3 height in mm
   const m = 10;
@@ -1056,8 +1146,11 @@ export function buildAutoCADDXF(params: SheetExportParams): string {
 
   const isoSpanX = Math.max(1, isoProj.maxX - isoProj.minX);
   const isoSpanY = Math.max(1, isoProj.maxY - isoProj.minY);
-  const isoScaleDXF = Math.min(80 / isoSpanX, 50 / isoSpanY);
-  const iso = mapOrthographicView(isoProj, cxRight, 100, isoScaleDXF, false, undefined);
+  const isoScaleDXF = isTbEnabled
+    ? Math.min(85 / isoSpanX, 55 / isoSpanY)
+    : Math.min(105 / isoSpanX, 70 / isoSpanY);
+  const isoCenterYDXF = isTbEnabled ? 100 : cyBottom;
+  const iso = mapOrthographicView(isoProj, cxRight, isoCenterYDXF, isoScaleDXF, false, undefined);
 
   const lines: string[] = [
     '0',
@@ -1303,49 +1396,60 @@ export function buildAutoCADDXF(params: SheetExportParams): string {
   addText(W * 0.2, H * 0.91, 4.5, 'FRONT VIEW');
   addText(W * 0.7, H * 0.91, 4.5, sideTitle);
   addText(W * 0.2, H * 0.44, 4.5, 'TOP VIEW');
-  addText(W * 0.65, H * 0.45, 4.5, 'ISOMETRIC VIEW');
-  addText(W - 140, 62, 3.5, `All dimensions are in mm (${dimensions.length}x${dimensions.width}x${dimensions.height})`);
+  const isoTitleY = isTbEnabled ? H * 0.45 : H * 0.44;
+  addText(W * 0.65, isoTitleY, 4.5, 'ISOMETRIC VIEW');
 
-  // College Lab Title Block (DXF coordinates: Y=0 is bottom)
-  const tbW = 165;
-  const tbH = 48;
-  const tbX = W - m - tbW;
-  const tbY = m;
-  addRect(tbX, tbY, tbW, tbH, 'TITLEBLOCK');
-  addLine(tbX, tbY + 30, tbX + tbW, tbY + 30, 'TITLEBLOCK');
-  addLine(tbX + 55, tbY, tbX + 55, tbY + tbH, 'TITLEBLOCK');
-  addLine(tbX + 115, tbY, tbX + 115, tbY + 30, 'TITLEBLOCK');
-  addLine(tbX, tbY + 20, tbX + tbW, tbY + 20, 'TITLEBLOCK');
-  addLine(tbX, tbY + 10, tbX + 115, tbY + 10, 'TITLEBLOCK');
-
-  addText(tbX + 3, tbY + 37, 3.2, `NAME: ${titleBlockMeta.name || ''}`);
-  const fullDxfTitle = solidName.toUpperCase().trim();
-  if (fullDxfTitle.length <= 28) {
-    addText(tbX + 58, tbY + 37, 3.0, `TITLE: ${fullDxfTitle}`);
-  } else {
-    const splitIdx = fullDxfTitle.lastIndexOf(' ', 30);
-    const cut = splitIdx > 14 ? splitIdx : 28;
-    const l1 = fullDxfTitle.slice(0, cut);
-    const l2 = fullDxfTitle.slice(cut).trim();
-    addText(tbX + 58, tbY + 41, 2.4, `TITLE: ${l1}`);
-    addText(tbX + 58, tbY + 33, 2.4, l2);
+  if (tbOpts.showUnitsNote) {
+    const noteY = isTbEnabled ? 62 : 14;
+    addText(W - 140, noteY, 3.5, `All dimensions are in mm (${dimensions.length}x${dimensions.width}x${dimensions.height})`);
   }
 
-  addText(tbX + 3, tbY + 23, 2.8, `CLASS: ${titleBlockMeta.className || ''}`);
-  addText(tbX + 3, tbY + 13, 2.8, `ROLL NO: ${titleBlockMeta.rollNo || ''}`);
-  addText(tbX + 3, tbY + 3, 2.8, `DATE: ${titleBlockMeta.date || ''}`);
-  addText(tbX + 58, tbY + 23, 2.8, `DWG NO: ${titleBlockMeta.dwgNo || ''}`);
-  addText(tbX + 58, tbY + 13, 2.8, `GRADE: ${titleBlockMeta.grade || ''}`);
-  addText(tbX + 58, tbY + 3, 2.8, `VALUED BY: ${titleBlockMeta.valuedBy || ''}`);
-  addText(tbX + 118, tbY + 23, 2.8, `SCALE: ${titleBlockMeta.scale || '1:1'}`);
+  // College Lab Title Block (DXF coordinates: Y=0 is bottom)
+  if (isTbEnabled) {
+    const f = tbOpts.fields;
+    const tbW = 165;
+    const tbH = 48;
+    const tbX = W - m - tbW;
+    const tbY = m;
+    addRect(tbX, tbY, tbW, tbH, 'TITLEBLOCK');
+    addLine(tbX, tbY + 30, tbX + tbW, tbY + 30, 'TITLEBLOCK');
+    addLine(tbX + 55, tbY, tbX + 55, tbY + tbH, 'TITLEBLOCK');
+    addLine(tbX + 115, tbY, tbX + 115, tbY + 30, 'TITLEBLOCK');
+    addLine(tbX, tbY + 20, tbX + tbW, tbY + 20, 'TITLEBLOCK');
+    addLine(tbX, tbY + 10, tbX + 115, tbY + 10, 'TITLEBLOCK');
 
-  // First-Angle Symbol in DXF
-  addLine(tbX + 120, tbY + 6, tbX + 136, tbY + 3, 'TITLEBLOCK');
-  addLine(tbX + 136, tbY + 3, tbX + 136, tbY + 17, 'TITLEBLOCK');
-  addLine(tbX + 136, tbY + 17, tbX + 120, tbY + 14, 'TITLEBLOCK');
-  addLine(tbX + 120, tbY + 14, tbX + 120, tbY + 6, 'TITLEBLOCK');
-  lines.push('0', 'CIRCLE', '8', 'TITLEBLOCK', '10', (tbX + 151).toFixed(2), '20', (tbY + 10).toFixed(2), '30', '0.0', '40', '6.5');
-  lines.push('0', 'CIRCLE', '8', 'TITLEBLOCK', '10', (tbX + 151).toFixed(2), '20', (tbY + 10).toFixed(2), '30', '0.0', '40', '3.2');
+    if (f.name) addText(tbX + 3, tbY + 37, 3.2, `NAME: ${titleBlockMeta.name || ''}`);
+    if (f.title) {
+      const fullDxfTitle = solidName.toUpperCase().trim();
+      if (fullDxfTitle.length <= 28) {
+        addText(tbX + 58, tbY + 37, 3.0, `TITLE: ${fullDxfTitle}`);
+      } else {
+        const splitIdx = fullDxfTitle.lastIndexOf(' ', 30);
+        const cut = splitIdx > 14 ? splitIdx : 28;
+        const l1 = fullDxfTitle.slice(0, cut);
+        const l2 = fullDxfTitle.slice(cut).trim();
+        addText(tbX + 58, tbY + 41, 2.4, `TITLE: ${l1}`);
+        addText(tbX + 58, tbY + 33, 2.4, l2);
+      }
+    }
+    if (f.className) addText(tbX + 3, tbY + 23, 2.8, `CLASS: ${titleBlockMeta.className || ''}`);
+    if (f.rollNo) addText(tbX + 3, tbY + 13, 2.8, `ROLL NO: ${titleBlockMeta.rollNo || ''}`);
+    if (f.date) addText(tbX + 3, tbY + 3, 2.8, `DATE: ${titleBlockMeta.date || ''}`);
+    if (f.dwgNo) addText(tbX + 58, tbY + 23, 2.8, `DWG NO: ${titleBlockMeta.dwgNo || ''}`);
+    if (f.grade) addText(tbX + 58, tbY + 13, 2.8, `GRADE: ${titleBlockMeta.grade || ''}`);
+    if (f.valuedBy) addText(tbX + 58, tbY + 3, 2.8, `VALUED BY: ${titleBlockMeta.valuedBy || ''}`);
+    if (f.scale) addText(tbX + 118, tbY + 23, 2.8, `SCALE: ${titleBlockMeta.scale || '1:1'}`);
+
+    if (f.projectionSymbol) {
+      // First-Angle Symbol in DXF
+      addLine(tbX + 120, tbY + 6, tbX + 136, tbY + 3, 'TITLEBLOCK');
+      addLine(tbX + 136, tbY + 3, tbX + 136, tbY + 17, 'TITLEBLOCK');
+      addLine(tbX + 136, tbY + 17, tbX + 120, tbY + 14, 'TITLEBLOCK');
+      addLine(tbX + 120, tbY + 14, tbX + 120, tbY + 6, 'TITLEBLOCK');
+      lines.push('0', 'CIRCLE', '8', 'TITLEBLOCK', '10', (tbX + 151).toFixed(2), '20', (tbY + 10).toFixed(2), '30', '0.0', '40', '6.5');
+      lines.push('0', 'CIRCLE', '8', 'TITLEBLOCK', '10', (tbX + 151).toFixed(2), '20', (tbY + 10).toFixed(2), '30', '0.0', '40', '3.2');
+    }
+  }
 
   lines.push('0', 'ENDSEC', '0', 'EOF');
   return lines.join('\n');
