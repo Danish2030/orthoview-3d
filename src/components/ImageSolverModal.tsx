@@ -12,10 +12,19 @@ import {
   ChevronDown,
   ChevronUp,
   Wand2,
+  Server,
+  Layers,
 } from 'lucide-react';
-import { CompositePartSpec, SideViewMode, SolidDimensions, SolidType, ThemeMode } from '../types';
 import {
-  analyzeIsometricImageWithGemini,
+  CompositePartSpec,
+  SideViewMode,
+  SolidDimensions,
+  SolidType,
+  ThemeMode,
+  UniversalPartBlueprint,
+} from '../types';
+import {
+  analyzeIsometricImage,
   ImageCadExtraction,
   OFFLINE_IMAGE_PRESETS,
   parseQuickPhotoDimensions,
@@ -30,7 +39,8 @@ interface ImageSolverModalProps {
     solidType: SolidType;
     dimensions: SolidDimensions;
     sideViewMode: SideViewMode;
-    compositeSpec: CompositePartSpec;
+    compositeSpec?: CompositePartSpec;
+    universalBlueprint?: UniversalPartBlueprint;
   }) => void;
 }
 
@@ -46,11 +56,19 @@ export const ImageSolverModal: React.FC<ImageSolverModalProps> = ({
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [quickDimsText, setQuickDimsText] = useState<string>('');
   const [extraction, setExtraction] = useState<ImageCadExtraction>(OFFLINE_IMAGE_PRESETS[0]);
-  const [hasSelectedShape, setHasSelectedShape] = useState<boolean>(true);
+  const [isAnalyzing, setIsAnalyzing] = useState<boolean>(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  // Optional Advanced AI Vision (hidden by default so normal users never see API key friction)
-  const [showAdvancedAI, setShowAdvancedAI] = useState<boolean>(false);
+  // Advanced Self-Host / Key Settings Drawer
+  const [showAdvanced, setShowAdvanced] = useState<boolean>(false);
+  const [customProxyUrl, setCustomProxyUrl] = useState<string>(() => {
+    try {
+      return localStorage.getItem('orthoview-proxy-url') || '';
+    } catch {
+      return '';
+    }
+  });
   const [apiKey, setApiKey] = useState<string>(() => {
     try {
       return localStorage.getItem('orthoview-gemini-key') || '';
@@ -58,8 +76,6 @@ export const ImageSolverModal: React.FC<ImageSolverModalProps> = ({
       return '';
     }
   });
-  const [isAnalyzing, setIsAnalyzing] = useState<boolean>(false);
-  const [error, setError] = useState<string | null>(null);
 
   if (!isOpen) return null;
 
@@ -76,6 +92,44 @@ export const ImageSolverModal: React.FC<ImageSolverModalProps> = ({
     }
   };
 
+  const handleSaveProxy = (val: string) => {
+    setCustomProxyUrl(val);
+    try {
+      if (val.trim()) {
+        localStorage.setItem('orthoview-proxy-url', val.trim());
+      } else {
+        localStorage.removeItem('orthoview-proxy-url');
+      }
+    } catch {
+      // ignore
+    }
+  };
+
+  const runAnalysis = async (dataUrl: string, hint?: string) => {
+    setIsAnalyzing(true);
+    setError(null);
+    setStatusMessage('Analyzing drawing geometry & dimensions...');
+    try {
+      const result = await analyzeIsometricImage(dataUrl, {
+        userHint: hint,
+        apiKey: apiKey.trim() || undefined,
+        proxyUrl: customProxyUrl.trim() || undefined,
+      });
+      setExtraction(result);
+      setStatusMessage(
+        result.source === 'serverless-proxy' || result.source === 'gemini-vision'
+          ? 'CAD AI detected geometry & dimensions! Ready to generate.'
+          : result.source === 'ocr-inference'
+          ? 'On-image dimensions detected via OCR! Ready to generate.'
+          : 'Dimensions parsed! Ready to generate.'
+      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Analysis failed.');
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -83,11 +137,10 @@ export const ImageSolverModal: React.FC<ImageSolverModalProps> = ({
     const reader = new FileReader();
     reader.onload = () => {
       if (typeof reader.result === 'string') {
-        setImagePreview(reader.result);
-        setHasSelectedShape(false);
-        setStatusMessage(
-          'Photo loaded as reference! Please select the matching shape below (or use Advanced AI Auto-Scan) before generating.'
-        );
+        const dataUrl = reader.result;
+        setImagePreview(dataUrl);
+        // Instant 1-step automatic analysis!
+        runAnalysis(dataUrl, quickDimsText);
       }
     };
     reader.readAsDataURL(file);
@@ -98,39 +151,17 @@ export const ImageSolverModal: React.FC<ImageSolverModalProps> = ({
     if (!quickDimsText.trim()) return;
     const updated = parseQuickPhotoDimensions(quickDimsText, extraction);
     setExtraction(updated);
-    setHasSelectedShape(true);
     setStatusMessage(updated.summary);
   };
 
-  const handleAnalyzeWithAI = async () => {
-    if (!imagePreview) {
-      setError('Upload a photo first to run AI Vision.');
-      return;
-    }
-    if (!apiKey.trim()) {
-      setError('Paste a Google AI Studio key to use optional AI auto-scan, or just use the free controls above.');
-      return;
-    }
-    setIsAnalyzing(true);
-    setError(null);
-    try {
-      const result = await analyzeIsometricImageWithGemini(apiKey, imagePreview, quickDimsText);
-      setExtraction(result);
-      setHasSelectedShape(true);
-      setStatusMessage('AI Vision extracted all dimensions! Verify below and click Generate.');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to analyze image.');
-    } finally {
-      setIsAnalyzing(false);
-    }
-  };
-
-  const updateSpecField = <K extends keyof CompositePartSpec>(key: K, val: CompositePartSpec[K]) => {
+  const updateSpecField = <K extends keyof CompositePartSpec>(
+    key: K,
+    val: CompositePartSpec[K]
+  ) => {
     const nextSpec = { ...extraction.compositeSpec, [key]: val };
-    setHasSelectedShape(true);
     setExtraction({
       ...extraction,
-      solidType: 'custom-composite',
+      solidType: extraction.universalBlueprint ? extraction.solidType : 'custom-composite',
       compositeSpec: nextSpec,
       dimensions: {
         length: nextSpec.baseLength,
@@ -141,16 +172,13 @@ export const ImageSolverModal: React.FC<ImageSolverModalProps> = ({
   };
 
   const handleApply = () => {
-    if (imagePreview && !hasSelectedShape) {
-      setError('Photo loaded as reference — select the matching shape below (or use Advanced AI Auto-Scan) before generating.');
-      return;
-    }
     onApplyImageSolution({
       partName: extraction.partName,
       solidType: extraction.solidType,
       dimensions: extraction.dimensions,
       sideViewMode: extraction.sideViewMode,
       compositeSpec: extraction.compositeSpec,
+      universalBlueprint: extraction.universalBlueprint,
     });
     onClose();
   };
@@ -174,10 +202,10 @@ export const ImageSolverModal: React.FC<ImageSolverModalProps> = ({
             </div>
             <div>
               <h2 className="text-sm font-semibold tracking-[-0.01em]">
-                Photo-to-CAD Drawing Builder (No API Key Needed)
+                Photo-to-CAD Drawing Builder (Universal 1-Step)
               </h2>
               <p className="text-[11px] opacity-60">
-                Upload your question photo as a side-by-side reference, pick the closest shape, and generate the AutoCAD 4-view sheet
+                Upload any engineering drawing photo to automatically extract 3D solids and generate AutoCAD sheets
               </p>
             </div>
           </div>
@@ -191,12 +219,12 @@ export const ImageSolverModal: React.FC<ImageSolverModalProps> = ({
 
         {/* Body */}
         <div className="p-6 space-y-5 overflow-y-auto custom-scrollbar">
-          {/* Side-by-Side Photo Reference + Shape Picker */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-            {/* Left: Uploaded Question Photo Reference */}
+          {/* Main 2-Column Layout */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+            {/* Left Column: Image Upload & Dropzone */}
             <div className="lg:col-span-5 flex flex-col gap-2">
               <div className="text-[11px] font-semibold uppercase tracking-wider opacity-60">
-                1. Your Question Photo (Optional)
+                1. Upload Question Photo
               </div>
               <input
                 ref={fileInputRef}
@@ -205,99 +233,122 @@ export const ImageSolverModal: React.FC<ImageSolverModalProps> = ({
                 onChange={handleFileChange}
                 className="hidden"
               />
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                className="w-full flex-1 min-h-[190px] rounded-2xl border border-dashed border-current/25 glass-card flex flex-col items-center justify-center gap-2 overflow-hidden relative cursor-pointer"
+              <div
+                onClick={() => !isAnalyzing && fileInputRef.current?.click()}
+                className={`w-full min-h-[220px] rounded-2xl border border-dashed border-current/25 glass-card flex flex-col items-center justify-center gap-2 overflow-hidden relative cursor-pointer transition-all ${
+                  isAnalyzing ? 'pointer-events-none opacity-80' : 'hover:border-current/40'
+                }`}
               >
                 {imagePreview ? (
-                  <img
-                    src={imagePreview}
-                    alt="Uploaded isometric problem"
-                    className="w-full h-full max-h-56 object-contain p-2"
-                  />
+                  <div className="w-full h-full relative flex items-center justify-center p-2">
+                    <img
+                      src={imagePreview}
+                      alt="Uploaded engineering diagram"
+                      className="max-h-60 max-w-full object-contain rounded-xl"
+                    />
+                    {isAnalyzing && (
+                      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex flex-col items-center justify-center gap-2 text-white p-4 text-center">
+                        <Loader2 className="w-7 h-7 animate-spin text-blue-400" />
+                        <span className="text-xs font-semibold">Extracting 3D Geometry...</span>
+                        <span className="text-[10px] opacity-75">
+                          Detecting contours, slots, bosses &amp; dimensions
+                        </span>
+                      </div>
+                    )}
+                  </div>
                 ) : (
                   <>
-                    <Upload className="w-6 h-6 opacity-60" />
-                    <span className="text-xs font-semibold">Tap to Upload Question Photo</span>
-                    <span className="text-[10px] opacity-55 px-5 text-center">
-                      Keeps your textbook diagram right here so you can copy dimensions easily
+                    <div className="w-11 h-11 rounded-2xl bg-current/5 border border-current/10 flex items-center justify-center">
+                      <Upload className="w-5 h-5 opacity-70" />
+                    </div>
+                    <span className="text-xs font-semibold">Click to Upload Drawing Photo</span>
+                    <span className="text-[10px] opacity-55 px-6 text-center">
+                      PNG, JPG, or WebP. Auto-detects dimensions and 3D primitives
                     </span>
                   </>
                 )}
-              </button>
-              {imagePreview && (
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="text-[11px] opacity-65 hover:opacity-100 underline self-start cursor-pointer"
-                >
-                  Change photo
-                </button>
+              </div>
+
+              {imagePreview && !isAnalyzing && (
+                <div className="flex items-center justify-between text-[11px]">
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="opacity-65 hover:opacity-100 underline cursor-pointer"
+                  >
+                    Change photo
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => runAnalysis(imagePreview, quickDimsText)}
+                    className="opacity-75 hover:opacity-100 flex items-center gap-1 cursor-pointer font-medium"
+                  >
+                    <Sparkles className="w-3 h-3 text-blue-400" />
+                    <span>Re-scan</span>
+                  </button>
+                </div>
               )}
             </div>
 
-            {/* Right: 1-Tap Shape Templates + Plain-English Quick Dimensions */}
+            {/* Right Column: Detected Geometry & Plain-English Quick Edits */}
             <div className="lg:col-span-7 flex flex-col justify-between gap-3">
-              {imagePreview && !hasSelectedShape && (
-                <div className="p-3 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-600 dark:text-amber-300 text-xs flex items-start gap-2">
-                  <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
-                  <div>
-                    <span className="font-semibold block">Photo loaded as reference</span>
-                    <span>Select the matching shape below (or use Advanced AI Auto-Scan) before generating.</span>
-                  </div>
-                </div>
-              )}
-
-              <div
-                className={`space-y-2 transition-all rounded-2xl ${
-                  imagePreview && !hasSelectedShape
-                    ? 'p-2.5 border-2 border-amber-400/60 bg-amber-400/5 shadow-md shadow-amber-500/10'
-                    : ''
-                }`}
-              >
-                <div className="flex items-center justify-between">
-                  <div className="text-[11px] font-semibold uppercase tracking-wider opacity-60">
-                    2. Pick Closest Shape (Works 100% Free &amp; Offline)
-                  </div>
-                  {imagePreview && !hasSelectedShape && (
-                    <span className="text-[10px] font-bold text-amber-500 dark:text-amber-300 animate-pulse uppercase tracking-wider">
-                      Select Shape Below
-                    </span>
-                  )}
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  {OFFLINE_IMAGE_PRESETS.map((preset) => {
-                    const selected = extraction.partName === preset.partName;
-                    return (
-                      <button
-                        key={preset.partName}
-                        type="button"
-                        onClick={() => {
-                          setExtraction(preset);
-                          setHasSelectedShape(true);
-                          setStatusMessage(`Loaded "${preset.partName}" — tweak any dimensions below or click Generate.`);
-                          setError(null);
-                        }}
-                        className={`p-2.5 rounded-2xl text-left transition-all cursor-pointer ${
-                          selected ? 'glass-pill-active font-semibold' : 'glass-card opacity-85 hover:opacity-100'
-                        }`}
-                      >
-                        <div className="text-xs font-semibold truncate">{preset.partName}</div>
-                        <div className="text-[10px] opacity-70 truncate mt-0.5">
-                          {preset.callouts.join(' • ')}
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
+              <div className="text-[11px] font-semibold uppercase tracking-wider opacity-60">
+                2. Detected CAD Blueprint
               </div>
 
-              {/* Plain-English Quick Dimensions Input */}
-              <form onSubmit={handleQuickApplyText} className="p-3 rounded-2xl glass-card space-y-2">
+              {/* Extraction Summary Card */}
+              <div className="p-4 rounded-2xl glass-card space-y-2.5">
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <h3 className="text-xs font-bold tracking-tight">{extraction.partName}</h3>
+                    <p className="text-[11px] opacity-70 mt-0.5 leading-relaxed">
+                      {extraction.summary}
+                    </p>
+                  </div>
+                  <span
+                    className={`text-[10px] px-2 py-0.5 rounded-full font-semibold shrink-0 uppercase tracking-wider ${
+                      extraction.source === 'serverless-proxy' || extraction.source === 'gemini-vision'
+                        ? 'bg-blue-500/15 text-blue-500 dark:text-blue-300 border border-blue-500/30'
+                        : extraction.source === 'ocr-inference'
+                        ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-300 border border-emerald-500/30'
+                        : 'bg-current/10 opacity-70'
+                    }`}
+                  >
+                    {extraction.source}
+                  </span>
+                </div>
+
+                {extraction.callouts.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 pt-1">
+                    {extraction.callouts.map((c, i) => (
+                      <span
+                        key={i}
+                        className="text-[10px] px-2 py-0.5 rounded-lg bg-current/5 border border-current/10 opacity-80"
+                      >
+                        {c}
+                      </span>
+                    ))}
+                  </div>
+                )}
+
+                {extraction.universalBlueprint && (
+                  <div className="text-[10px] opacity-65 flex items-center gap-1.5 pt-1 border-t border-current/10">
+                    <Layers className="w-3 h-3" />
+                    <span>
+                      True CSG 3D Solid ({extraction.universalBlueprint.operations.length} boolean operations)
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              {/* Quick-Type Override */}
+              <form
+                onSubmit={handleQuickApplyText}
+                className="p-3 rounded-2xl glass-card space-y-1.5"
+              >
                 <div className="text-[11px] font-semibold flex items-center gap-1.5">
                   <Wand2 className="w-3.5 h-3.5 opacity-75" />
-                  <span>Quick-Type Numbers from Photo (Optional)</span>
+                  <span>Manual Dimension Override (Optional)</span>
                 </div>
                 <div className="flex gap-2">
                   <input
@@ -328,17 +379,17 @@ export const ImageSolverModal: React.FC<ImageSolverModalProps> = ({
 
           {statusMessage && !error && (
             <div className="px-3.5 py-2.5 rounded-2xl glass-card text-xs flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4 opacity-80 shrink-0" />
+              <CheckCircle2 className="w-4 h-4 opacity-80 shrink-0 text-emerald-500" />
               <span className="opacity-85">{statusMessage}</span>
             </div>
           )}
 
-          {/* Step 3: Clean Editable Dimensions Grid */}
+          {/* Step 3: Exact Parametric Dimension Controls */}
           <div className="p-4 rounded-2xl glass-card space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="text-xs font-semibold flex items-center gap-1.5">
                 <Sliders className="w-3.5 h-3.5 opacity-80" />
-                <span>3. Fine-Tune Exact Dimensions (mm)</span>
+                <span>3. Exact Parameter Dimensions (mm)</span>
               </div>
               <div className="flex items-center gap-2 text-[11px]">
                 <span className="opacity-55">Side View:</span>
@@ -346,7 +397,9 @@ export const ImageSolverModal: React.FC<ImageSolverModalProps> = ({
                   type="button"
                   onClick={() => setExtraction({ ...extraction, sideViewMode: 'left' })}
                   className={`px-2.5 py-0.5 rounded-full cursor-pointer ${
-                    extraction.sideViewMode === 'left' ? 'glass-pill-active font-semibold' : 'glass-pill opacity-70'
+                    extraction.sideViewMode === 'left'
+                      ? 'glass-pill-active font-semibold'
+                      : 'glass-pill opacity-70'
                   }`}
                 >
                   LHSV
@@ -355,7 +408,9 @@ export const ImageSolverModal: React.FC<ImageSolverModalProps> = ({
                   type="button"
                   onClick={() => setExtraction({ ...extraction, sideViewMode: 'right' })}
                   className={`px-2.5 py-0.5 rounded-full cursor-pointer ${
-                    extraction.sideViewMode === 'right' ? 'glass-pill-active font-semibold' : 'glass-pill opacity-70'
+                    extraction.sideViewMode === 'right'
+                      ? 'glass-pill-active font-semibold'
+                      : 'glass-pill opacity-70'
                   }`}
                 >
                   RHSV
@@ -380,7 +435,9 @@ export const ImageSolverModal: React.FC<ImageSolverModalProps> = ({
                   <input
                     type="number"
                     value={extraction.compositeSpec[f.k]}
-                    onChange={(e) => updateSpecField(f.k, Math.max(0, Number(e.target.value) || 0))}
+                    onChange={(e) =>
+                      updateSpecField(f.k, Math.max(0, Number(e.target.value) || 0))
+                    }
                     className="w-full px-2.5 py-1.5 text-xs rounded-xl glass-input tabular-nums"
                   />
                 </label>
@@ -391,7 +448,10 @@ export const ImageSolverModal: React.FC<ImageSolverModalProps> = ({
                 <select
                   value={extraction.compositeSpec.bossShape}
                   onChange={(e) =>
-                    updateSpecField('bossShape', e.target.value as CompositePartSpec['bossShape'])
+                    updateSpecField(
+                      'bossShape',
+                      e.target.value as CompositePartSpec['bossShape']
+                    )
                   }
                   className="w-full px-2.5 py-1.5 text-xs rounded-xl glass-input"
                 >
@@ -422,59 +482,54 @@ export const ImageSolverModal: React.FC<ImageSolverModalProps> = ({
             </div>
           </div>
 
-          {/* Collapsible Optional Advanced AI Vision Drawer (Hidden by Default) */}
+          {/* Collapsible Advanced Settings (Self-Host Endpoint / Custom API Key) */}
           <div className="rounded-2xl border border-current/10 overflow-hidden">
             <button
               type="button"
-              onClick={() => setShowAdvancedAI((v) => !v)}
+              onClick={() => setShowAdvanced((v) => !v)}
               className="w-full px-4 py-2.5 text-[11px] font-medium opacity-70 hover:opacity-100 flex items-center justify-between cursor-pointer"
             >
               <span className="flex items-center gap-1.5">
-                <Sparkles className="w-3.5 h-3.5" />
-                <span>Advanced (Optional): Auto-scan photo using your own Gemini Vision key</span>
+                <Server className="w-3.5 h-3.5" />
+                <span>Advanced / Self-Host Settings (Optional Custom Proxy or Gemini Key)</span>
               </span>
-              {showAdvancedAI ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+              {showAdvanced ? (
+                <ChevronUp className="w-3.5 h-3.5" />
+              ) : (
+                <ChevronDown className="w-3.5 h-3.5" />
+              )}
             </button>
 
-            {showAdvancedAI && (
-              <div className="px-4 pb-4 pt-1 space-y-2.5 border-t border-current/10">
-                <div className="flex flex-col sm:flex-row gap-2">
-                  <div className="relative flex-1">
+            {showAdvanced && (
+              <div className="px-4 pb-4 pt-2 space-y-3 border-t border-current/10 text-xs">
+                <div className="space-y-1">
+                  <label className="text-[10px] opacity-60 block">
+                    Custom Cloudflare Worker / Serverless Proxy URL:
+                  </label>
+                  <input
+                    type="url"
+                    value={customProxyUrl}
+                    onChange={(e) => handleSaveProxy(e.target.value)}
+                    placeholder="https://your-worker.yourname.workers.dev/analyze"
+                    className="w-full px-3 py-1.5 text-xs rounded-xl glass-input"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[10px] opacity-60 block">
+                    Direct Gemini API Key (stored locally in browser):
+                  </label>
+                  <div className="relative">
                     <KeyRound className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 opacity-50" />
                     <input
                       type="password"
                       value={apiKey}
                       onChange={(e) => handleSaveKey(e.target.value)}
-                      placeholder="Paste optional Google AI Studio key (stored locally in your browser)"
-                      className="w-full pl-9 pr-3 py-2 text-xs rounded-xl glass-input"
+                      placeholder="AIzaSy..."
+                      className="w-full pl-9 pr-3 py-1.5 text-xs rounded-xl glass-input"
                     />
                   </div>
-                  <button
-                    type="button"
-                    onClick={handleAnalyzeWithAI}
-                    disabled={isAnalyzing}
-                    className="px-4 py-2 rounded-xl glass-pill-active text-xs font-semibold flex items-center justify-center gap-1.5 disabled:opacity-50 cursor-pointer shrink-0"
-                  >
-                    {isAnalyzing ? (
-                      <>
-                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                        <span>Scanning...</span>
-                      </>
-                    ) : (
-                      <>
-                        <Sparkles className="w-3.5 h-3.5" />
-                        <span>Auto-Scan Photo</span>
-                      </>
-                    )}
-                  </button>
                 </div>
-
-                {error && (
-                  <div className="text-[11px] text-rose-400 flex items-center gap-1.5">
-                    <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-                    <span>{error}</span>
-                  </div>
-                )}
               </div>
             )}
           </div>
@@ -490,12 +545,16 @@ export const ImageSolverModal: React.FC<ImageSolverModalProps> = ({
             Generates Front, Side, Top &amp; Isometric Views + College Title Block
           </span>
           <div className="flex items-center gap-2 ml-auto">
-            <button onClick={onClose} className="px-4 py-2 text-xs rounded-full glass-pill cursor-pointer">
+            <button
+              onClick={onClose}
+              className="px-4 py-2 text-xs rounded-full glass-pill cursor-pointer"
+            >
               Cancel
             </button>
             <button
               onClick={handleApply}
-              className="px-5 py-2 text-xs font-semibold rounded-full glass-pill-active flex items-center gap-1.5 cursor-pointer"
+              disabled={isAnalyzing}
+              className="px-5 py-2 text-xs font-semibold rounded-full glass-pill-active flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
             >
               <CheckCircle2 className="w-3.5 h-3.5" />
               <span>Generate Accurate AutoCAD Sheet</span>

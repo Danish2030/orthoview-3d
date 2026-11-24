@@ -16,6 +16,7 @@ export type SolidType =
   | 'ribbed-block'
   | 'slotted-cylinder-bracket'
   | 'stepped-t-block'
+  | 'universal-cad'
   | 'custom-composite';
 
 export interface CompositePartSpec {
@@ -32,6 +33,30 @@ export interface CompositePartSpec {
   hasHole: boolean;
   holeDiameter: number;   // inner hole diameter (e.g. 40)
   holeDepth: number;      // blind depth from top, or >= totalHeight for through hole (e.g. 24)
+}
+
+export interface CadPrimitiveOp {
+  op: 'add' | 'subtract';
+  shape: 'box' | 'cylinder';
+  /** Center coordinates in mm: X=length, Y=height (y=0 is bottom of part), Z=width */
+  x: number;
+  y: number;
+  z: number;
+  /** Box dimensions in mm */
+  dx?: number;
+  dy?: number;
+  dz?: number;
+  /** Cylinder dimensions in mm */
+  radius?: number;
+  height?: number;
+  axis?: 'x' | 'y' | 'z';
+}
+
+export interface UniversalPartBlueprint {
+  overallLength: number;
+  overallWidth: number;
+  overallHeight: number;
+  operations: CadPrimitiveOp[];
 }
 
 export interface TitleBlockMeta {
@@ -217,6 +242,7 @@ export interface SavedQuestionRecord {
   lineParams?: LineProblemParams;
   planometricParams?: PlanometricParams;
   compositeSpec?: CompositePartSpec;
+  universalBlueprint?: UniversalPartBlueprint;
   createdAt: string;
 }
 

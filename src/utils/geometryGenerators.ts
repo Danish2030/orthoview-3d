@@ -1,5 +1,6 @@
 import * as THREE from 'three';
-import type { CompositePartSpec, SolidDimensions, SolidType } from '../types';
+import { Brush, Evaluator, ADDITION, SUBTRACTION } from 'three-bvh-csg';
+import type { CompositePartSpec, SolidDimensions, SolidType, UniversalPartBlueprint } from '../types';
 
 export const DEFAULT_SLOTTED_CYLINDER_SPEC: CompositePartSpec = {
   baseLength: 140,
@@ -150,10 +151,92 @@ function buildCompositePartGeometry(spec: CompositePartSpec): THREE.BufferGeomet
   return merged;
 }
 
+export function buildUniversalBlueprintGeometry(bp: UniversalPartBlueprint): THREE.BufferGeometry {
+  const L = bp.overallLength || 50;
+  const W = bp.overallWidth || 50;
+  const H = bp.overallHeight || 50;
+
+  if (!bp.operations || bp.operations.length === 0) {
+    return new THREE.BoxGeometry(L, H, W);
+  }
+
+  try {
+    const evaluator = new Evaluator();
+    evaluator.useGroups = false;
+
+    let currentBrush: Brush | null = null;
+    const halfH = H / 2;
+
+    for (const op of bp.operations) {
+      let geom: THREE.BufferGeometry;
+      if (op.shape === 'cylinder') {
+        const r = Math.max(0.5, op.radius || 10);
+        const h = Math.max(1, op.height || 20);
+        const cyl = new THREE.CylinderGeometry(r, r, h, 36);
+        if (op.axis === 'x') {
+          cyl.rotateZ(Math.PI / 2);
+        } else if (op.axis === 'z') {
+          cyl.rotateX(Math.PI / 2);
+        }
+        geom = cyl;
+      } else {
+        const dx = Math.max(1, op.dx || 20);
+        const dy = Math.max(1, op.dy || 20);
+        const dz = Math.max(1, op.dz || 20);
+        geom = new THREE.BoxGeometry(dx, dy, dz);
+      }
+
+      const brush = new Brush(geom);
+      // Coordinate convention: y=0 is bottom surface of part
+      const posX = op.x || 0;
+      const posY = (typeof op.y === 'number' ? op.y : halfH) - halfH;
+      const posZ = op.z || 0;
+      brush.position.set(posX, posY, posZ);
+      brush.updateMatrixWorld();
+
+      if (!currentBrush) {
+        if (op.op === 'subtract') {
+          const baseBox = new Brush(new THREE.BoxGeometry(L, H, W));
+          baseBox.position.set(0, 0, 0);
+          baseBox.updateMatrixWorld();
+          currentBrush = evaluator.evaluate(baseBox, brush, SUBTRACTION);
+        } else {
+          currentBrush = brush;
+        }
+      } else {
+        if (op.op === 'subtract') {
+          currentBrush = evaluator.evaluate(currentBrush, brush, SUBTRACTION);
+        } else {
+          currentBrush = evaluator.evaluate(currentBrush, brush, ADDITION);
+        }
+      }
+    }
+
+    if (!currentBrush) {
+      return new THREE.BoxGeometry(L, H, W);
+    }
+
+    const finalGeom = currentBrush.geometry.clone();
+    finalGeom.computeVertexNormals();
+    finalGeom.center();
+
+    const maxSpan = Math.max(L, W, H);
+    if (maxSpan > 110) {
+      const scaleFactor = 105 / maxSpan;
+      finalGeom.scale(scaleFactor, scaleFactor, scaleFactor);
+    }
+    return finalGeom;
+  } catch (err) {
+    console.warn('CSG Blueprint generation error, falling back to bounding box:', err);
+    return new THREE.BoxGeometry(L, H, W);
+  }
+}
+
 export function createSolidGeometry(
   type: SolidType,
   dim: SolidDimensions,
-  compositeSpec?: CompositePartSpec
+  compositeSpec?: CompositePartSpec,
+  universalBlueprint?: UniversalPartBlueprint
 ): THREE.BufferGeometry {
   const { length: L, width: W, height: H } = dim;
 
@@ -451,6 +534,13 @@ export function createSolidGeometry(
 
     case 'custom-composite': {
       return buildCompositePartGeometry(compositeSpec || DEFAULT_SLOTTED_CYLINDER_SPEC);
+    }
+
+    case 'universal-cad': {
+      if (universalBlueprint) {
+        return buildUniversalBlueprintGeometry(universalBlueprint);
+      }
+      return new THREE.BoxGeometry(L, H, W);
     }
 
     default:

@@ -35,6 +35,7 @@ import {
   ThemeMode,
   TitleBlockMeta,
   TitleBlockOptions,
+  UniversalPartBlueprint,
   UserProfile,
 } from './types';
 
@@ -146,6 +147,7 @@ export function App() {
   const [isImageSolverOpen, setIsImageSolverOpen] = useState<boolean>(false);
   const [isExportModalOpen, setIsExportModalOpen] = useState<boolean>(false);
   const [compositeSpec, setCompositeSpec] = useState<CompositePartSpec>(DEFAULT_SLOTTED_CYLINDER_SPEC);
+  const [universalBlueprint, setUniversalBlueprint] = useState<UniversalPartBlueprint | undefined>(undefined);
   const [customPartName, setCustomPartName] = useState<string | null>(null);
   const [titleBlockMeta, setTitleBlockMeta] = useState<TitleBlockMeta>(() => {
     try {
@@ -273,8 +275,8 @@ export function App() {
   });
 
   const geometry = useMemo(() => {
-    return createSolidGeometry(currentSolid, dimensions, compositeSpec);
-  }, [currentSolid, dimensions, compositeSpec]);
+    return createSolidGeometry(currentSolid, dimensions, compositeSpec, universalBlueprint);
+  }, [currentSolid, dimensions, compositeSpec, universalBlueprint]);
 
   const currentPreset = useMemo(() => {
     return SOLID_PRESETS.find((p) => p.id === currentSolid) || SOLID_PRESETS[0];
@@ -304,6 +306,7 @@ export function App() {
 
   const handleSelectSolid = (type: SolidType) => {
     setCustomPartName(null);
+    setUniversalBlueprint(undefined);
     setCurrentSolid(type);
     const preset = SOLID_PRESETS.find((p) => p.id === type);
     if (preset) {
@@ -413,6 +416,10 @@ export function App() {
     } else if (mod === 'planometric' && record.planometricParams) {
       setPlanometricParams(record.planometricParams);
     } else {
+      if (record.compositeSpec) {
+        setCompositeSpec(record.compositeSpec);
+      }
+      setUniversalBlueprint(record.universalBlueprint);
       setCurrentSolid(record.solidType);
       setDimensions(record.dimensions);
       setRotation(record.rotation);
@@ -429,15 +436,18 @@ export function App() {
     dimensions: nextDims,
     sideViewMode,
     compositeSpec: nextSpec,
+    universalBlueprint: nextBp,
   }: {
     partName: string;
     solidType: SolidType;
     dimensions: SolidDimensions;
     sideViewMode: SideViewMode;
-    compositeSpec: CompositePartSpec;
+    compositeSpec?: CompositePartSpec;
+    universalBlueprint?: UniversalPartBlueprint;
   }) => {
     setActiveModule('orthographic');
-    setCompositeSpec(nextSpec);
+    if (nextSpec) setCompositeSpec(nextSpec);
+    setUniversalBlueprint(nextBp);
     setCustomPartName(partName);
     setCurrentSolid(solidType);
     setDimensions(nextDims);
@@ -454,6 +464,7 @@ export function App() {
         rotation: { x: 0, y: 0, z: 0 },
         sideViewMode,
         compositeSpec: nextSpec,
+        universalBlueprint: nextBp,
         createdAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       },
       ...prev,
