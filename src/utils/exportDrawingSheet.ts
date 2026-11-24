@@ -5,6 +5,7 @@ interface ExportParams {
     front: HTMLCanvasElement | null;
     top: HTMLCanvasElement | null;
     leftSide: HTMLCanvasElement | null;
+    isometric?: HTMLCanvasElement | null;
   };
   solidName: string;
   dimensions: SolidDimensions;
@@ -84,6 +85,11 @@ export async function exportSheetAsPNG({
   // Quadrant 3: Top View (Bottom-Left)
   if (canvases.top) {
     ctx.drawImage(canvases.top, qLeft + 10, cy + 10, qWidth - 20, qHeight - 20);
+  }
+
+  // Quadrant 4: Isometric View (Bottom-Right above Title Block)
+  if (canvases.isometric) {
+    ctx.drawImage(canvases.isometric, cx + 20, cy + 10, qWidth - 40, qHeight - 190);
   }
 
   // Faint Projector Rays

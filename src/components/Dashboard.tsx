@@ -16,6 +16,7 @@ import {
   Sliders,
   Ruler,
   Layers,
+  Image as ImageIcon,
 } from 'lucide-react';
 import {
   SavedQuestionRecord,
@@ -38,6 +39,7 @@ interface DashboardProps {
   onGoHome: () => void;
   onOpenStudio: (mod?: StudioModule) => void;
   onOpenSolverModal: () => void;
+  onOpenImageSolver: () => void;
   onOpenTheory: () => void;
   onOpenQuiz: () => void;
   onLoadRecord: (record: SavedQuestionRecord) => void;
@@ -55,6 +57,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
   onGoHome,
   onOpenStudio,
   onOpenSolverModal,
+  onOpenImageSolver,
   onOpenTheory,
   onOpenQuiz,
   onLoadRecord,
@@ -156,6 +159,15 @@ export const Dashboard: React.FC<DashboardProps> = ({
               >
                 <Layers className="w-4 h-4 shrink-0" />
                 <span className="truncate">Planometric</span>
+              </button>
+              <button
+                onClick={onOpenImageSolver}
+                className={`px-3.5 py-2.5 rounded-full flex items-center gap-2.5 transition-colors cursor-pointer ${
+                  isDark ? 'text-zinc-400 hover:bg-white/10 hover:text-white' : 'text-zinc-600 hover:bg-black/5 hover:text-black'
+                }`}
+              >
+                <ImageIcon className="w-4 h-4 shrink-0" />
+                <span className="truncate">Image → CAD</span>
               </button>
               <button
                 onClick={onOpenSolverModal}
@@ -265,6 +277,15 @@ export const Dashboard: React.FC<DashboardProps> = ({
               </button>
 
               {/* Quick Ask Circle Button */}
+              <button
+                onClick={onOpenImageSolver}
+                className={`px-3.5 py-2.5 rounded-full flex items-center gap-2.5 transition-colors cursor-pointer ${
+                  isDark ? 'text-zinc-400 hover:bg-white/10 hover:text-white' : 'text-zinc-600 hover:bg-black/5 hover:text-black'
+                }`}
+              >
+                <ImageIcon className="w-4 h-4 shrink-0" />
+                <span className="truncate">Image → CAD</span>
+              </button>
               <button
                 onClick={onOpenSolverModal}
                 title="Open Question Solver"

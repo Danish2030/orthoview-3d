@@ -13,7 +13,36 @@ export type SolidType =
   | 'v-block'
   | 'tri-prism'
   | 'machined-bracket'
-  | 'ribbed-block';
+  | 'ribbed-block'
+  | 'slotted-cylinder-bracket'
+  | 'custom-composite';
+
+export interface CompositePartSpec {
+  baseLength: number;     // X (e.g. 140)
+  baseWidth: number;      // Z (e.g. 50)
+  baseThickness: number;  // Y (e.g. 10)
+  hasEndSlots: boolean;
+  slotDepth: number;      // along X from each end (e.g. 30)
+  slotWidth: number;      // along Z (e.g. 20)
+  bossShape: 'cylinder' | 'box' | 'none';
+  bossDiameter: number;   // outer diameter or X width (e.g. 64)
+  bossDepth: number;      // Z width for box boss
+  totalHeight: number;    // total Y height from bottom of base (e.g. 50)
+  hasHole: boolean;
+  holeDiameter: number;   // inner hole diameter (e.g. 40)
+  holeDepth: number;      // blind depth from top, or >= totalHeight for through hole (e.g. 24)
+}
+
+export interface TitleBlockMeta {
+  name: string;
+  className: string;
+  rollNo: string;
+  dwgNo: string;
+  date: string;
+  scale: string;
+  grade: string;
+  valuedBy: string;
+}
 
 export interface SolidDimensions {
   length: number; // L in mm (along X)
@@ -35,21 +64,21 @@ export type AppView = 'landing' | 'dashboard' | 'studio';
 export type StudioModule = 'orthographic' | 'lines' | 'planometric';
 
 export interface LineProblemParams {
-  trueLength: number; // mm
-  distHP: number;     // End A distance above HP (mm)
-  distVP: number;     // End A distance in front of VP (mm)
-  thetaHP: number;    // True inclination to HP (degrees)
-  phiVP: number;      // True inclination to VP (degrees)
+  trueLength: number;
+  distHP: number;
+  distVP: number;
+  thetaHP: number;
+  phiVP: number;
 }
 
 export interface PlanometricBlock {
   id: string;
   label: string;
-  x: number;  // offset from left edge (mm)
-  y: number;  // offset from bottom edge (mm)
-  dx: number; // length along X (mm)
-  dy: number; // depth along Y (mm)
-  dz: number; // height along Z (mm)
+  x: number;
+  y: number;
+  dx: number;
+  dy: number;
+  dz: number;
 }
 
 export interface PlanometricParams {
@@ -76,6 +105,7 @@ export interface SavedQuestionRecord {
   sideViewMode?: SideViewMode;
   lineParams?: LineProblemParams;
   planometricParams?: PlanometricParams;
+  compositeSpec?: CompositePartSpec;
   createdAt: string;
 }
 

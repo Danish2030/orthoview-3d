@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { SolidDimensions, SolidRotation, ThemeMode } from '../types';
 
 interface ViewCanvas2DProps {
-  viewType: 'front' | 'top' | 'leftSide' | 'rightSide';
+  viewType: 'front' | 'top' | 'leftSide' | 'rightSide' | 'isometric';
   geometry: THREE.BufferGeometry;
   dimensions: SolidDimensions;
   rotation: SolidRotation;
@@ -16,7 +16,7 @@ interface ViewCanvas2DProps {
   planeName: string;
   quadrant: string;
   dimensionsSummary: string;
-  onCanvasReady?: (type: 'front' | 'top' | 'leftSide' | 'rightSide', canvas: HTMLCanvasElement) => void;
+  onCanvasReady?: (type: 'front' | 'top' | 'leftSide' | 'rightSide' | 'isometric', canvas: HTMLCanvasElement) => void;
 }
 
 export const ViewCanvas2D: React.FC<ViewCanvas2DProps> = ({
@@ -192,7 +192,7 @@ export const ViewCanvas2D: React.FC<ViewCanvas2DProps> = ({
       camera.position.set(-camDistance, 0, 0);
       camera.up.set(0, 1, 0);
       camera.lookAt(0, 0, 0);
-    } else {
+    } else if (viewType === 'rightSide') {
       camera = new THREE.OrthographicCamera(
         (-frustumSize * aspect) / 2,
         (frustumSize * aspect) / 2,
@@ -202,6 +202,19 @@ export const ViewCanvas2D: React.FC<ViewCanvas2DProps> = ({
         1000
       );
       camera.position.set(camDistance, 0, 0);
+      camera.up.set(0, 1, 0);
+      camera.lookAt(0, 0, 0);
+    } else {
+      const isoFrustum = 160;
+      camera = new THREE.OrthographicCamera(
+        (-isoFrustum * aspect) / 2,
+        (isoFrustum * aspect) / 2,
+        isoFrustum / 2,
+        -isoFrustum / 2,
+        1,
+        1200
+      );
+      camera.position.set(camDistance * 0.72, camDistance * 0.68, camDistance * 0.72);
       camera.up.set(0, 1, 0);
       camera.lookAt(0, 0, 0);
     }
@@ -222,15 +235,16 @@ export const ViewCanvas2D: React.FC<ViewCanvas2DProps> = ({
       if (w === 0 || h === 0) return;
 
       const newAspect = w / h;
+      const activeFrustum = viewType === 'isometric' ? 160 : frustumSize;
       if (viewType === 'leftSide') {
-        camera.left = (frustumSize * newAspect) / 2;
-        camera.right = (-frustumSize * newAspect) / 2;
+        camera.left = (activeFrustum * newAspect) / 2;
+        camera.right = (-activeFrustum * newAspect) / 2;
       } else {
-        camera.left = (-frustumSize * newAspect) / 2;
-        camera.right = (frustumSize * newAspect) / 2;
+        camera.left = (-activeFrustum * newAspect) / 2;
+        camera.right = (activeFrustum * newAspect) / 2;
       }
-      camera.top = frustumSize / 2;
-      camera.bottom = -frustumSize / 2;
+      camera.top = activeFrustum / 2;
+      camera.bottom = -activeFrustum / 2;
       camera.updateProjectionMatrix();
 
       renderer.setSize(w, h);

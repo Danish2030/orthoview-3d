@@ -1,8 +1,8 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import * as THREE from 'three';
 import { ViewCanvas2D } from './ViewCanvas2D';
 import { TitleBlock } from './TitleBlock';
-import { DisplayOptions, SolidDimensions, SolidRotation, ThemeMode } from '../types';
+import { DisplayOptions, SolidDimensions, SolidRotation, ThemeMode, TitleBlockMeta } from '../types';
 
 interface OrthographicSheetProps {
   geometry: THREE.BufferGeometry;
@@ -11,12 +11,13 @@ interface OrthographicSheetProps {
   theme: ThemeMode;
   displayOptions: DisplayOptions;
   solidName: string;
-  studentName?: string;
-  studentBranch?: string;
+  titleBlockMeta: TitleBlockMeta;
+  onUpdateTitleBlockMeta: (next: TitleBlockMeta) => void;
   onCanvasesReady?: (canvases: {
     front: HTMLCanvasElement | null;
     top: HTMLCanvasElement | null;
     leftSide: HTMLCanvasElement | null;
+    isometric: HTMLCanvasElement | null;
   }) => void;
 }
 
@@ -27,25 +28,32 @@ export const OrthographicSheet: React.FC<OrthographicSheetProps> = ({
   theme,
   displayOptions,
   solidName,
-  studentName,
-  studentBranch,
+  titleBlockMeta,
+  onUpdateTitleBlockMeta,
   onCanvasesReady,
 }) => {
   const isDark = theme === 'blueprint';
+  const [q4Mode, setQ4Mode] = useState<'isometric' | 'miter'>('isometric');
   const frontCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const topCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const sideCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const isoCanvasRef = useRef<HTMLCanvasElement | null>(null);
 
-  const handleCanvasReady = (type: 'front' | 'top' | 'leftSide' | 'rightSide', canvas: HTMLCanvasElement) => {
+  const handleCanvasReady = (
+    type: 'front' | 'top' | 'leftSide' | 'rightSide' | 'isometric',
+    canvas: HTMLCanvasElement
+  ) => {
     if (type === 'front') frontCanvasRef.current = canvas;
     if (type === 'top') topCanvasRef.current = canvas;
     if (type === 'leftSide' || type === 'rightSide') sideCanvasRef.current = canvas;
+    if (type === 'isometric') isoCanvasRef.current = canvas;
 
     if (onCanvasesReady) {
       onCanvasesReady({
         front: frontCanvasRef.current,
         top: topCanvasRef.current,
         leftSide: sideCanvasRef.current,
+        isometric: isoCanvasRef.current,
       });
     }
   };
@@ -157,92 +165,91 @@ export const OrthographicSheet: React.FC<OrthographicSheetProps> = ({
               />
             </div>
 
-            {/* Quadrant 4 (Bottom-Right): 45° MITER / COMPASS ARCS & TITLE BLOCK */}
+            {/* Quadrant 4 (Bottom-Right): AutoCAD Isometric View + College Lab Title Block */}
             <div
-              className={`relative p-3 flex flex-col justify-between overflow-hidden ${
-                isDark ? 'bg-[#0d1424]' : 'bg-[#f1f5f9]'
+              className={`relative p-2.5 flex flex-col justify-between overflow-hidden ${
+                isDark ? 'bg-[#0b0b0e]' : 'bg-[#fafafb]'
               }`}
             >
-              {/* 45-Degree Miter or Compass Arcs Graphics */}
-              <div className="relative flex-1 flex flex-col items-center justify-center p-1">
-                <svg className="w-full h-full max-h-[140px]" viewBox="0 0 220 120" preserveAspectRatio="xMidYMid meet">
-                  {displayOptions.showMiterLine && (
-                    <>
-                      {displayOptions.transferMethod === 'miter' ? (
-                        /* 45° Straight Miter Line Method */
+              {/* Toggle pill for Isometric vs Miter */}
+              <div className="absolute top-2 right-2.5 z-20 flex items-center gap-1 p-0.5 rounded-full glass-pill text-[9px] font-semibold">
+                <button
+                  type="button"
+                  onClick={() => setQ4Mode('isometric')}
+                  className={`px-2 py-0.5 rounded-full cursor-pointer ${
+                    q4Mode === 'isometric' ? 'glass-pill-active' : 'opacity-60'
+                  }`}
+                >
+                  Isometric
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setQ4Mode('miter')}
+                  className={`px-2 py-0.5 rounded-full cursor-pointer ${
+                    q4Mode === 'miter' ? 'glass-pill-active' : 'opacity-60'
+                  }`}
+                >
+                  45° Miter
+                </button>
+              </div>
+
+              <div className="relative flex-1 min-h-0 overflow-hidden">
+                {q4Mode === 'isometric' ? (
+                  <ViewCanvas2D
+                    viewType="isometric"
+                    geometry={geometry}
+                    dimensions={dimensions}
+                    rotation={rotation}
+                    theme={theme}
+                    showHiddenLines={displayOptions.showHiddenLines}
+                    showDimensions={false}
+                    showCenterLines={false}
+                    label="ISOMETRIC VIEW"
+                    sublabel="3D PICTORIAL"
+                    planeName="ISO"
+                    quadrant=""
+                    dimensionsSummary={`${dimensions.length}×${dimensions.width}×${dimensions.height} mm`}
+                    onCanvasReady={handleCanvasReady}
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center p-2">
+                    <svg className="w-full h-full max-h-[140px]" viewBox="0 0 220 120" preserveAspectRatio="xMidYMid meet">
+                      {displayOptions.showMiterLine && (
                         <g>
                           <line
                             x1="10"
                             y1="10"
                             x2="160"
                             y2="110"
-                            stroke={isDark ? '#38bdf8' : '#2563eb'}
+                            stroke={isDark ? '#a1a1aa' : '#3f3f46'}
                             strokeWidth="1.5"
                             strokeDasharray="4 3"
                           />
                           <text
                             x="95"
                             y="62"
-                            fill={isDark ? '#38bdf8' : '#2563eb'}
+                            fill={isDark ? '#a1a1aa' : '#3f3f46'}
                             fontSize="9"
-                            fontFamily="monospace"
                             fontWeight="bold"
                           >
                             45° MITER LINE
                           </text>
-
-                          {/* Projector rays reflecting at 45° */}
-                          {displayOptions.showProjectors && (
-                            <g
-                              stroke={isDark ? 'rgba(56, 189, 248, 0.45)' : 'rgba(37, 99, 235, 0.4)'}
-                              strokeWidth="1"
-                              strokeDasharray="2 2"
-                            >
-                              <line x1="10" y1="45" x2="60" y2="45" />
-                              <line x1="60" y1="45" x2="60" y2="5" />
-
-                              <line x1="10" y1="85" x2="116" y2="85" />
-                              <line x1="116" y1="85" x2="116" y2="5" />
-                            </g>
-                          )}
-                        </g>
-                      ) : (
-                        /* Compass Arc Projection Method */
-                        <g>
-                          <path
-                            d="M 10,50 A 45,45 0 0,0 55,5"
-                            fill="none"
-                            stroke={isDark ? '#38bdf8' : '#2563eb'}
-                            strokeWidth="1.5"
-                            strokeDasharray="4 3"
-                          />
-                          <path
-                            d="M 10,90 A 85,85 0 0,0 95,5"
-                            fill="none"
-                            stroke={isDark ? '#38bdf8' : '#2563eb'}
-                            strokeWidth="1.5"
-                            strokeDasharray="4 3"
-                          />
-                          <text
-                            x="70"
-                            y="55"
-                            fill={isDark ? '#38bdf8' : '#2563eb'}
-                            fontSize="9"
-                            fontFamily="monospace"
-                            fontWeight="bold"
-                          >
-                            COMPASS ARCS
-                          </text>
                         </g>
                       )}
-                    </>
-                  )}
-                </svg>
+                    </svg>
+                  </div>
+                )}
               </div>
 
-              {/* Title Block in bottom right */}
-              <div className="w-full mt-auto">
-                <TitleBlock studentName={studentName} studentBranch={studentBranch} solidName={solidName} dimensions={dimensions} theme={theme} />
+              {/* College Lab Title Block in bottom right */}
+              <div className="w-full mt-1.5 z-10">
+                <TitleBlock
+                  solidName={solidName}
+                  dimensions={dimensions}
+                  theme={theme}
+                  meta={titleBlockMeta}
+                  onUpdateMeta={onUpdateTitleBlockMeta}
+                />
               </div>
             </div>
 

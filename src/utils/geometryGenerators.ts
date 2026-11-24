@@ -1,7 +1,160 @@
 import * as THREE from 'three';
-import { SolidDimensions, SolidType } from '../types';
+import { CompositePartSpec, SolidDimensions, SolidType } from '../types';
 
-export function createSolidGeometry(type: SolidType, dim: SolidDimensions): THREE.BufferGeometry {
+export const DEFAULT_SLOTTED_CYLINDER_SPEC: CompositePartSpec = {
+  baseLength: 140,
+  baseWidth: 50,
+  baseThickness: 10,
+  hasEndSlots: true,
+  slotDepth: 30,
+  slotWidth: 20,
+  bossShape: 'cylinder',
+  bossDiameter: 64,
+  bossDepth: 64,
+  totalHeight: 50,
+  hasHole: true,
+  holeDiameter: 40,
+  holeDepth: 24,
+};
+
+function mergeNonIndexedGeometries(geoms: THREE.BufferGeometry[]): THREE.BufferGeometry {
+  const normalized = geoms.map((g) => {
+    const nonIdx = g.index ? g.toNonIndexed() : g.clone();
+    if (!nonIdx.getAttribute('normal')) {
+      nonIdx.computeVertexNormals();
+    }
+    return nonIdx;
+  });
+
+  let totalVerts = 0;
+  for (const g of normalized) {
+    totalVerts += g.getAttribute('position').count;
+  }
+
+  const positions = new Float32Array(totalVerts * 3);
+  const normals = new Float32Array(totalVerts * 3);
+  let offset = 0;
+
+  for (const g of normalized) {
+    const pos = g.getAttribute('position');
+    const norm = g.getAttribute('normal');
+    for (let i = 0; i < pos.count; i++) {
+      positions[offset * 3] = pos.getX(i);
+      positions[offset * 3 + 1] = pos.getY(i);
+      positions[offset * 3 + 2] = pos.getZ(i);
+      normals[offset * 3] = norm.getX(i);
+      normals[offset * 3 + 1] = norm.getY(i);
+      normals[offset * 3 + 2] = norm.getZ(i);
+      offset++;
+    }
+    g.dispose();
+  }
+
+  const merged = new THREE.BufferGeometry();
+  merged.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  merged.setAttribute('normal', new THREE.BufferAttribute(normals, 3));
+  return merged;
+}
+
+function buildCompositePartGeometry(spec: CompositePartSpec): THREE.BufferGeometry {
+  const parts: THREE.BufferGeometry[] = [];
+  const L = Math.max(20, spec.baseLength);
+  const W = Math.max(20, spec.baseWidth);
+  const T = Math.max(4, Math.min(spec.totalHeight - 2, spec.baseThickness));
+  const H = Math.max(T + 4, spec.totalHeight);
+  const halfL = L / 2;
+  const halfW = W / 2;
+  const halfH = H / 2;
+
+  // 1. Base Plate (with optional U-slots on left and right ends)
+  const baseShape = new THREE.Shape();
+  if (spec.hasEndSlots && spec.slotDepth > 0 && spec.slotWidth > 0 && spec.slotWidth < W - 4) {
+    const sD = Math.min(spec.slotDepth, halfL - 6);
+    const sHalfW = Math.min(spec.slotWidth / 2, halfW - 3);
+    baseShape.moveTo(-halfL, -halfW);
+    baseShape.lineTo(halfL, -halfW);
+    baseShape.lineTo(halfL, -sHalfW);
+    baseShape.lineTo(halfL - sD, -sHalfW);
+    baseShape.lineTo(halfL - sD, sHalfW);
+    baseShape.lineTo(halfL, sHalfW);
+    baseShape.lineTo(halfL, halfW);
+    baseShape.lineTo(-halfL, halfW);
+    baseShape.lineTo(-halfL, sHalfW);
+    baseShape.lineTo(-halfL + sD, sHalfW);
+    baseShape.lineTo(-halfL + sD, -sHalfW);
+    baseShape.lineTo(-halfL, -sHalfW);
+    baseShape.closePath();
+  } else {
+    baseShape.moveTo(-halfL, -halfW);
+    baseShape.lineTo(halfL, -halfW);
+    baseShape.lineTo(halfL, halfW);
+    baseShape.lineTo(-halfL, halfW);
+    baseShape.closePath();
+  }
+
+  const baseGeom = new THREE.ExtrudeGeometry(baseShape, {
+    steps: 1,
+    depth: T,
+    bevelEnabled: false,
+  });
+  // Extrude is in XY with depth +Z -> rotateX(-PI/2) puts shape in XZ and thickness along +Y
+  baseGeom.rotateX(-Math.PI / 2);
+  baseGeom.translate(0, -halfH, 0);
+  parts.push(baseGeom);
+
+  // 2. Central Boss (Cylinder with blind/through hole, or Box)
+  if (spec.bossShape === 'cylinder') {
+    const rOut = Math.max(6, spec.bossDiameter / 2);
+    const rHole = spec.hasHole ? Math.max(2, Math.min(rOut - 2, spec.holeDiameter / 2)) : 0;
+    const hDepth = spec.hasHole ? Math.max(2, Math.min(H, spec.holeDepth)) : 0;
+
+    if (spec.hasHole && rHole > 0) {
+      const pts: THREE.Vector2[] = [];
+      if (hDepth >= H - 0.5) {
+        // Through hole
+        pts.push(new THREE.Vector2(rHole, -halfH));
+        pts.push(new THREE.Vector2(rOut, -halfH));
+        pts.push(new THREE.Vector2(rOut, halfH));
+        pts.push(new THREE.Vector2(rHole, halfH));
+        pts.push(new THREE.Vector2(rHole, -halfH));
+      } else {
+        // Blind hole from top (e.g. Ø40, 24 deep)
+        const floorY = halfH - hDepth;
+        pts.push(new THREE.Vector2(0.01, -halfH));
+        pts.push(new THREE.Vector2(rOut, -halfH));
+        pts.push(new THREE.Vector2(rOut, halfH));
+        pts.push(new THREE.Vector2(rHole, halfH));
+        pts.push(new THREE.Vector2(rHole, floorY));
+        pts.push(new THREE.Vector2(0.01, floorY));
+      }
+      const bossGeom = new THREE.LatheGeometry(pts, 48);
+      parts.push(bossGeom);
+    } else {
+      const bossGeom = new THREE.CylinderGeometry(rOut, rOut, H, 48, 1);
+      parts.push(bossGeom);
+    }
+  } else if (spec.bossShape === 'box') {
+    const bL = Math.max(10, spec.bossDiameter);
+    const bW = Math.max(10, spec.bossDepth || spec.bossDiameter);
+    const bossGeom = new THREE.BoxGeometry(bL, H, bW);
+    parts.push(bossGeom);
+  }
+
+  // Scale down gently if very large so it fits nicely in the 135-unit orthographic camera frustum
+  const merged = mergeNonIndexedGeometries(parts);
+  const maxSpan = Math.max(L, W, H);
+  if (maxSpan > 110) {
+    const scaleFactor = 105 / maxSpan;
+    merged.scale(scaleFactor, scaleFactor, scaleFactor);
+  }
+  return merged;
+}
+
+export function createSolidGeometry(
+  type: SolidType,
+  dim: SolidDimensions,
+  compositeSpec?: CompositePartSpec
+): THREE.BufferGeometry {
   const { length: L, width: W, height: H } = dim;
 
   switch (type) {
@@ -352,5 +505,13 @@ export const SOLID_PRESETS: {
     description: 'Tapered symmetrical block with central slot for FV, TV, and Left-Hand Side View (LHSV).',
     defaultDimensions: { length: 86, width: 34, height: 56 },
     iconName: 'Spline',
+  },
+  {
+    id: 'slotted-cylinder-bracket',
+    name: 'Slotted Cylinder Bracket (Ø64 / Ø40×24)',
+    category: 'Exam Machine Parts',
+    description: '140×50 mm forked base plate (10 mm thick, 30 mm slots) with central Ø64×50 mm cylinder boss and Ø40×24 mm blind hole.',
+    defaultDimensions: { length: 140, width: 50, height: 50 },
+    iconName: 'CircleDot',
   },
 ];

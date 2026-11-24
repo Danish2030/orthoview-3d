@@ -8,15 +8,17 @@ import { PlanometricStudio } from './components/PlanometricStudio';
 import { TheoryModal } from './components/TheoryModal';
 import { QuizModal } from './components/QuizModal';
 import { QuestionSolverModal } from './components/QuestionSolverModal';
+import { ImageSolverModal } from './components/ImageSolverModal';
 import { LandingPage } from './components/LandingPage';
 import { Dashboard } from './components/Dashboard';
 import { AuthModal } from './components/AuthModal';
-import { createSolidGeometry, SOLID_PRESETS } from './utils/geometryGenerators';
+import { createSolidGeometry, DEFAULT_SLOTTED_CYLINDER_SPEC, SOLID_PRESETS } from './utils/geometryGenerators';
 import { exportSheetAsPNG } from './utils/exportDrawingSheet';
 import { parseEngineeringQuestion } from './utils/questionParser';
 import { Q1_DEFAULT_LINE, Q2_DEFAULT_PLANOMETRIC } from './utils/examBank';
 import {
   AppView,
+  CompositePartSpec,
   DisplayOptions,
   LineProblemParams,
   PlanometricParams,
@@ -27,6 +29,7 @@ import {
   SolidType,
   StudioModule,
   ThemeMode,
+  TitleBlockMeta,
   UserProfile,
 } from './types';
 
@@ -135,6 +138,19 @@ export function App() {
   const [isTheoryOpen, setIsTheoryOpen] = useState<boolean>(false);
   const [isQuizOpen, setIsQuizOpen] = useState<boolean>(false);
   const [isSolverOpen, setIsSolverOpen] = useState<boolean>(false);
+  const [isImageSolverOpen, setIsImageSolverOpen] = useState<boolean>(false);
+  const [compositeSpec, setCompositeSpec] = useState<CompositePartSpec>(DEFAULT_SLOTTED_CYLINDER_SPEC);
+  const [customPartName, setCustomPartName] = useState<string | null>(null);
+  const [titleBlockMeta, setTitleBlockMeta] = useState<TitleBlockMeta>(() => ({
+    name: user?.name || 'Danish Jubily',
+    className: user?.branch || 'RBA',
+    rollNo: '28',
+    dwgNo: 'EXP-01',
+    date: new Date().toLocaleDateString('en-GB'),
+    scale: '1:1',
+    grade: '',
+    valuedBy: '',
+  }));
   const [isExporting, setIsExporting] = useState<boolean>(false);
 
   useEffect(() => {
@@ -194,15 +210,17 @@ export function App() {
     front: HTMLCanvasElement | null;
     top: HTMLCanvasElement | null;
     leftSide: HTMLCanvasElement | null;
+    isometric: HTMLCanvasElement | null;
   }>({
     front: null,
     top: null,
     leftSide: null,
+    isometric: null,
   });
 
   const geometry = useMemo(() => {
-    return createSolidGeometry(currentSolid, dimensions);
-  }, [currentSolid, dimensions]);
+    return createSolidGeometry(currentSolid, dimensions, compositeSpec);
+  }, [currentSolid, dimensions, compositeSpec]);
 
   const currentPreset = useMemo(() => {
     return SOLID_PRESETS.find((p) => p.id === currentSolid) || SOLID_PRESETS[0];
@@ -231,6 +249,7 @@ export function App() {
   };
 
   const handleSelectSolid = (type: SolidType) => {
+    setCustomPartName(null);
     setCurrentSolid(type);
     const preset = SOLID_PRESETS.find((p) => p.id === type);
     if (preset) {
@@ -349,6 +368,44 @@ export function App() {
     setView('studio');
   };
 
+  const handleApplyImageSolution = ({
+    partName,
+    solidType,
+    dimensions: nextDims,
+    sideViewMode,
+    compositeSpec: nextSpec,
+  }: {
+    partName: string;
+    solidType: SolidType;
+    dimensions: SolidDimensions;
+    sideViewMode: SideViewMode;
+    compositeSpec: CompositePartSpec;
+  }) => {
+    setActiveModule('orthographic');
+    setCompositeSpec(nextSpec);
+    setCustomPartName(partName);
+    setCurrentSolid(solidType);
+    setDimensions(nextDims);
+    setRotation({ x: 0, y: 0, z: 0 });
+    setDisplayOptions((prev) => ({ ...prev, sideViewMode }));
+    setSavedQuestions((prev) => [
+      {
+        id: `img-${Date.now()}`,
+        title: partName.slice(0, 42),
+        question: `Image-to-CAD: ${partName}`,
+        module: 'orthographic',
+        solidType,
+        dimensions: nextDims,
+        rotation: { x: 0, y: 0, z: 0 },
+        sideViewMode,
+        compositeSpec: nextSpec,
+        createdAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      },
+      ...prev,
+    ].slice(0, 12));
+    setView('studio');
+  };
+
   const handleResetRotation = () => {
     setRotation({ x: 0, y: 0, z: 0 });
   };
@@ -418,6 +475,7 @@ export function App() {
             setView('studio');
           }}
           onOpenSolverModal={() => setIsSolverOpen(true)}
+          onOpenImageSolver={() => setIsImageSolverOpen(true)}
           onOpenTheory={() => setIsTheoryOpen(true)}
           onOpenQuiz={() => setIsQuizOpen(true)}
           onLoadRecord={handleLoadRecord}
@@ -451,6 +509,7 @@ export function App() {
             onOpenTheory={() => setIsTheoryOpen(true)}
             onOpenQuiz={() => setIsQuizOpen(true)}
             onOpenSolver={handleOpenSolverGated}
+            onOpenImageSolver={() => setIsImageSolverOpen(true)}
             onExportSheet={handleExportSheet}
             isExporting={isExporting}
           />
@@ -522,9 +581,9 @@ export function App() {
                     rotation={rotation}
                     theme={theme}
                     displayOptions={displayOptions}
-                    solidName={currentPreset.name}
-                    studentName={user?.name}
-                    studentBranch={user?.branch}
+                    solidName={customPartName || currentPreset.name}
+                    titleBlockMeta={titleBlockMeta}
+                    onUpdateTitleBlockMeta={setTitleBlockMeta}
                     onCanvasesReady={(canvases) => {
                       canvasesRef.current = canvases;
                     }}
@@ -542,6 +601,13 @@ export function App() {
         theme={theme}
         onAuthenticated={handleAuthenticated}
         contextMessage={authContext}
+      />
+
+      <ImageSolverModal
+        isOpen={isImageSolverOpen}
+        onClose={() => setIsImageSolverOpen(false)}
+        theme={theme}
+        onApplyImageSolution={handleApplyImageSolution}
       />
 
       <QuestionSolverModal
