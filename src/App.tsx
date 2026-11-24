@@ -9,6 +9,7 @@ import { TheoryModal } from './components/TheoryModal';
 import { QuizModal } from './components/QuizModal';
 import { QuestionSolverModal } from './components/QuestionSolverModal';
 import { ImageSolverModal } from './components/ImageSolverModal';
+import { ExportModal } from './components/ExportModal';
 import { LandingPage } from './components/LandingPage';
 import { Dashboard } from './components/Dashboard';
 import { AuthModal } from './components/AuthModal';
@@ -139,6 +140,7 @@ export function App() {
   const [isQuizOpen, setIsQuizOpen] = useState<boolean>(false);
   const [isSolverOpen, setIsSolverOpen] = useState<boolean>(false);
   const [isImageSolverOpen, setIsImageSolverOpen] = useState<boolean>(false);
+  const [isExportModalOpen, setIsExportModalOpen] = useState<boolean>(false);
   const [compositeSpec, setCompositeSpec] = useState<CompositePartSpec>(DEFAULT_SLOTTED_CYLINDER_SPEC);
   const [customPartName, setCustomPartName] = useState<string | null>(null);
   const [titleBlockMeta, setTitleBlockMeta] = useState<TitleBlockMeta>(() => ({
@@ -151,7 +153,6 @@ export function App() {
     grade: '',
     valuedBy: '',
   }));
-  const [isExporting, setIsExporting] = useState<boolean>(false);
 
   useEffect(() => {
     const root = document.documentElement;
@@ -324,12 +325,12 @@ export function App() {
     if (exportAfter && targetModule === 'orthographic') {
       setTimeout(() => {
         exportSheetAsPNG({
-          canvases: canvasesRef.current,
+          geometry: createSolidGeometry(solidType, nextDims, compositeSpec),
           solidName: preset.name,
           dimensions: nextDims,
-          theme,
-          showMiterLine: displayOptions.showMiterLine,
-          showProjectors: displayOptions.showProjectors,
+          rotation: nextRot,
+          sideViewMode: sideViewMode || displayOptions.sideViewMode,
+          titleBlockMeta,
         }).catch((err) => console.error('Export error:', err));
       }, 350);
     }
@@ -414,22 +415,8 @@ export function App() {
     setTheme((prev) => (prev === 'blueprint' ? 'paper' : 'blueprint'));
   };
 
-  const handleExportSheet = async () => {
-    setIsExporting(true);
-    try {
-      await exportSheetAsPNG({
-        canvases: canvasesRef.current,
-        solidName: currentPreset.name,
-        dimensions,
-        theme,
-        showMiterLine: displayOptions.showMiterLine,
-        showProjectors: displayOptions.showProjectors,
-      });
-    } catch (err) {
-      console.error('Export error:', err);
-    } finally {
-      setIsExporting(false);
-    }
+  const handleExportSheet = () => {
+    setIsExportModalOpen(true);
   };
 
   const handleOpenSolverGated = () => {
@@ -511,7 +498,7 @@ export function App() {
             onOpenSolver={handleOpenSolverGated}
             onOpenImageSolver={() => setIsImageSolverOpen(true)}
             onExportSheet={handleExportSheet}
-            isExporting={isExporting}
+            isExporting={false}
           />
 
           {phase2Banner && (
@@ -601,6 +588,18 @@ export function App() {
         theme={theme}
         onAuthenticated={handleAuthenticated}
         contextMessage={authContext}
+      />
+
+      <ExportModal
+        isOpen={isExportModalOpen}
+        onClose={() => setIsExportModalOpen(false)}
+        theme={theme}
+        geometry={geometry}
+        solidName={customPartName || currentPreset.name}
+        dimensions={dimensions}
+        rotation={rotation}
+        sideViewMode={displayOptions.sideViewMode}
+        titleBlockMeta={titleBlockMeta}
       />
 
       <ImageSolverModal

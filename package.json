@@ -1,7 +1,7 @@
 {
   "name": "orthoview-3d",
   "private": true,
-  "version": "3.1.1",
+  "version": "3.2.0",
   "homepage": "https://danish2030.github.io/orthoview-3d/",
   "type": "module",
   "scripts": {

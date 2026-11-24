@@ -220,7 +220,7 @@ export const Header: React.FC<HeaderProps> = ({
             }`}
           >
             <Download className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">{isExporting ? 'Exporting...' : 'Export PNG'}</span>
+            <span className="hidden sm:inline">{isExporting ? 'Exporting...' : 'Export / DWG'}</span>
           </button>
         )}
       </div>
