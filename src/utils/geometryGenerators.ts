@@ -373,6 +373,31 @@ export function createSolidGeometry(
       return geom;
     }
 
+    case 'slotted-cylinder-bracket': {
+      const ratioL = L / 140;
+      const ratioW = W / 50;
+      const ratioH = H / 50;
+      return buildCompositePartGeometry({
+        baseLength: L,
+        baseWidth: W,
+        baseThickness: Math.max(6, Math.round(10 * ratioH)),
+        hasEndSlots: true,
+        slotDepth: Math.max(10, Math.round(30 * ratioL)),
+        slotWidth: Math.max(8, Math.round(20 * ratioW)),
+        bossShape: 'cylinder',
+        bossDiameter: Math.max(20, Math.round(64 * Math.min(ratioL, ratioW))),
+        bossDepth: Math.max(20, Math.round(64 * Math.min(ratioL, ratioW))),
+        totalHeight: H,
+        hasHole: true,
+        holeDiameter: Math.max(12, Math.round(40 * Math.min(ratioL, ratioW))),
+        holeDepth: Math.max(8, Math.round(24 * ratioH)),
+      });
+    }
+
+    case 'custom-composite': {
+      return buildCompositePartGeometry(compositeSpec || DEFAULT_SLOTTED_CYLINDER_SPEC);
+    }
+
     default:
       return new THREE.BoxGeometry(L, H, W);
   }

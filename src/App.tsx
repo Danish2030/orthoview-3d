@@ -393,7 +393,7 @@ export function App() {
         id: `img-${Date.now()}`,
         title: partName.slice(0, 42),
         question: `Image-to-CAD: ${partName}`,
-        module: 'orthographic',
+        module: 'orthographic' as StudioModule,
         solidType,
         dimensions: nextDims,
         rotation: { x: 0, y: 0, z: 0 },
