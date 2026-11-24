@@ -677,7 +677,7 @@ function projectGeometryView(
 
       const dist = Math.abs((mx - v.x1) * (v.y2 - v.y1) - (my - v.y1) * (v.x2 - v.x1)) / vLen;
       if (dist < 0.3) {
-        const dot = ((mx - v.x1) * (v.y2 - v.y1) + (my - v.y1) * (v.y2 - v.y1)) / (vLen * vLen);
+        const dot = ((mx - v.x1) * (v.x2 - v.x1) + (my - v.y1) * (v.y2 - v.y1)) / (vLen * vLen);
         if (dot >= -0.05 && dot <= 1.05) {
           coveredByVisible = true;
           break;

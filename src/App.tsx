@@ -367,6 +367,7 @@ export function App() {
           rotation: nextRot,
           sideViewMode: sideViewMode || displayOptions.sideViewMode,
           titleBlockMeta,
+          titleBlockOptions,
         }).catch((err) => console.error('Export error:', err));
       }, 350);
     }
