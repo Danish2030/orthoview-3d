@@ -46,6 +46,7 @@ export const ImageSolverModal: React.FC<ImageSolverModalProps> = ({
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [quickDimsText, setQuickDimsText] = useState<string>('');
   const [extraction, setExtraction] = useState<ImageCadExtraction>(OFFLINE_IMAGE_PRESETS[0]);
+  const [hasSelectedShape, setHasSelectedShape] = useState<boolean>(true);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
 
   // Optional Advanced AI Vision (hidden by default so normal users never see API key friction)
@@ -83,8 +84,9 @@ export const ImageSolverModal: React.FC<ImageSolverModalProps> = ({
     reader.onload = () => {
       if (typeof reader.result === 'string') {
         setImagePreview(reader.result);
+        setHasSelectedShape(false);
         setStatusMessage(
-          'Photo loaded! Match the closest shape on the right, adjust any dimensions you see on your photo, and tap Generate.'
+          'Photo loaded as reference! Please select the matching shape below (or use Advanced AI Auto-Scan) before generating.'
         );
       }
     };
@@ -96,6 +98,7 @@ export const ImageSolverModal: React.FC<ImageSolverModalProps> = ({
     if (!quickDimsText.trim()) return;
     const updated = parseQuickPhotoDimensions(quickDimsText, extraction);
     setExtraction(updated);
+    setHasSelectedShape(true);
     setStatusMessage(updated.summary);
   };
 
@@ -113,6 +116,7 @@ export const ImageSolverModal: React.FC<ImageSolverModalProps> = ({
     try {
       const result = await analyzeIsometricImageWithGemini(apiKey, imagePreview, quickDimsText);
       setExtraction(result);
+      setHasSelectedShape(true);
       setStatusMessage('AI Vision extracted all dimensions! Verify below and click Generate.');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to analyze image.');
@@ -123,6 +127,7 @@ export const ImageSolverModal: React.FC<ImageSolverModalProps> = ({
 
   const updateSpecField = <K extends keyof CompositePartSpec>(key: K, val: CompositePartSpec[K]) => {
     const nextSpec = { ...extraction.compositeSpec, [key]: val };
+    setHasSelectedShape(true);
     setExtraction({
       ...extraction,
       solidType: 'custom-composite',
@@ -136,6 +141,10 @@ export const ImageSolverModal: React.FC<ImageSolverModalProps> = ({
   };
 
   const handleApply = () => {
+    if (imagePreview && !hasSelectedShape) {
+      setError('Photo loaded as reference — select the matching shape below (or use Advanced AI Auto-Scan) before generating.');
+      return;
+    }
     onApplyImageSolution({
       partName: extraction.partName,
       solidType: extraction.solidType,
@@ -230,9 +239,32 @@ export const ImageSolverModal: React.FC<ImageSolverModalProps> = ({
 
             {/* Right: 1-Tap Shape Templates + Plain-English Quick Dimensions */}
             <div className="lg:col-span-7 flex flex-col justify-between gap-3">
-              <div className="space-y-2">
-                <div className="text-[11px] font-semibold uppercase tracking-wider opacity-60">
-                  2. Pick Closest Shape (Works 100% Free &amp; Offline)
+              {imagePreview && !hasSelectedShape && (
+                <div className="p-3 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-600 dark:text-amber-300 text-xs flex items-start gap-2">
+                  <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                  <div>
+                    <span className="font-semibold block">Photo loaded as reference</span>
+                    <span>Select the matching shape below (or use Advanced AI Auto-Scan) before generating.</span>
+                  </div>
+                </div>
+              )}
+
+              <div
+                className={`space-y-2 transition-all rounded-2xl ${
+                  imagePreview && !hasSelectedShape
+                    ? 'p-2.5 border-2 border-amber-400/60 bg-amber-400/5 shadow-md shadow-amber-500/10'
+                    : ''
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="text-[11px] font-semibold uppercase tracking-wider opacity-60">
+                    2. Pick Closest Shape (Works 100% Free &amp; Offline)
+                  </div>
+                  {imagePreview && !hasSelectedShape && (
+                    <span className="text-[10px] font-bold text-amber-500 dark:text-amber-300 animate-pulse uppercase tracking-wider">
+                      Select Shape Below
+                    </span>
+                  )}
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   {OFFLINE_IMAGE_PRESETS.map((preset) => {
@@ -243,6 +275,7 @@ export const ImageSolverModal: React.FC<ImageSolverModalProps> = ({
                         type="button"
                         onClick={() => {
                           setExtraction(preset);
+                          setHasSelectedShape(true);
                           setStatusMessage(`Loaded "${preset.partName}" — tweak any dimensions below or click Generate.`);
                           setError(null);
                         }}
@@ -286,7 +319,14 @@ export const ImageSolverModal: React.FC<ImageSolverModalProps> = ({
             </div>
           </div>
 
-          {statusMessage && (
+          {error && (
+            <div className="px-3.5 py-2.5 rounded-2xl bg-rose-500/10 border border-rose-500/25 text-rose-500 dark:text-rose-300 text-xs flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 shrink-0" />
+              <span>{error}</span>
+            </div>
+          )}
+
+          {statusMessage && !error && (
             <div className="px-3.5 py-2.5 rounded-2xl glass-card text-xs flex items-center gap-2">
               <CheckCircle2 className="w-4 h-4 opacity-80 shrink-0" />
               <span className="opacity-85">{statusMessage}</span>

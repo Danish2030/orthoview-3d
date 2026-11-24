@@ -6,8 +6,9 @@ import type {
   ThemeMode,
   TitleBlockMeta,
   TitleBlockOptions,
+  LineColorPalette,
 } from '../types/index.ts';
-import { DEFAULT_TITLE_BLOCK_OPTIONS } from '../types/index.ts';
+import { DEFAULT_TITLE_BLOCK_OPTIONS, DEFAULT_LINE_COLORS } from '../types/index.ts';
 
 export type ExportFormat = 'png' | 'pdf' | 'dxf' | 'svg' | 'stl';
 
@@ -72,6 +73,51 @@ export function checkIsSlottedCylinder(solidName: string, dimensions: SolidDimen
     (nameLower.includes('cylinder') && nameLower.includes('bracket')) ||
     (dimensions.length === 140 && dimensions.width === 50 && dimensions.height === 50 && nameLower.includes('cylinder'))
   );
+}
+
+export function checkIsSteppedTBlock(solidName: string, dimensions: SolidDimensions): boolean {
+  const nameLower = solidName.toLowerCase();
+  return (
+    nameLower.includes('stepped-t-block') ||
+    nameLower.includes('stepped t-block') ||
+    (nameLower.includes('t-block') && (nameLower.includes('groove') || nameLower.includes('r10'))) ||
+    (Math.round(dimensions.length) === 40 && Math.round(dimensions.width) === 50 && Math.round(dimensions.height) === 30 && nameLower.includes('t-block'))
+  );
+}
+
+export function hexToAci(hex: string): number {
+  const clean = hex.replace('#', '').trim();
+  if (clean.length !== 6) return 7;
+  const r = parseInt(clean.substring(0, 2), 16);
+  const g = parseInt(clean.substring(2, 4), 16);
+  const b = parseInt(clean.substring(4, 6), 16);
+
+  // Standard AutoCAD Color Index (ACI) palette reference
+  const aciPalette: { aci: number; r: number; g: number; b: number }[] = [
+    { aci: 1, r: 255, g: 0, b: 0 },       // Red
+    { aci: 2, r: 255, g: 255, b: 0 },     // Yellow
+    { aci: 3, r: 0, g: 255, b: 0 },       // Green
+    { aci: 4, r: 0, g: 255, b: 255 },     // Cyan
+    { aci: 5, r: 0, g: 0, b: 255 },       // Blue
+    { aci: 6, r: 255, g: 0, b: 255 },     // Magenta / Purple
+    { aci: 7, r: 0, g: 0, b: 0 },         // Black / White
+    { aci: 8, r: 128, g: 128, b: 128 },   // Gray
+    { aci: 9, r: 192, g: 192, b: 192 },   // Light Gray
+  ];
+
+  let bestAci = 7;
+  let minDistance = Infinity;
+  for (const p of aciPalette) {
+    const dr = r - p.r;
+    const dg = g - p.g;
+    const db = b - p.b;
+    const dist = 0.3 * dr * dr + 0.59 * dg * dg + 0.11 * db * db;
+    if (dist < minDistance) {
+      minDistance = dist;
+      bestAci = p.aci;
+    }
+  }
+  return bestAci;
 }
 
 function pointInTriangle2D(
@@ -787,6 +833,7 @@ export function buildAutoCADSheetSVG(params: SheetExportParams): string {
   const { geometry, solidName, dimensions, rotation, sideViewMode, titleBlockMeta } = params;
   const tbOpts = params.titleBlockOptions || DEFAULT_TITLE_BLOCK_OPTIONS;
   const isTbEnabled = tbOpts.enabled;
+  const colors: LineColorPalette = { ...DEFAULT_LINE_COLORS, ...(tbOpts.lineColors || {}) };
 
   const W = 1400;
   const H = 990;
@@ -798,6 +845,7 @@ export function buildAutoCADSheetSVG(params: SheetExportParams): string {
   const sideTitle = sideViewMode === 'right' ? 'RIGHT SIDE VIEW' : 'LEFT SIDE VIEW';
 
   const isSlottedCylinder = checkIsSlottedCylinder(solidName, dimensions);
+  const isSteppedTBlock = checkIsSteppedTBlock(solidName, dimensions);
 
   // 1. Project all 4 views with true silhouettes & hidden line depth testing
   const fvProj = projectGeometryView(geometry, rotation, 'front', isSlottedCylinder);
@@ -842,11 +890,11 @@ export function buildAutoCADSheetSVG(params: SheetExportParams): string {
   const isoCenterY = isTbEnabled ? 633.5 : cyBottom;
   const iso = mapOrthographicView(isoProj, cxRight, isoCenterY, isoScale, true, undefined);
 
-  const drawLines = (segs: Seg2D[], strokeW = 1.6, dash?: string) =>
+  const drawLines = (segs: Seg2D[], strokeW = 1.6, dash?: string, strokeColor = colors.visible) =>
     segs
       .map(
         (s) =>
-          `<line x1="${s.x1.toFixed(1)}" y1="${s.y1.toFixed(1)}" x2="${s.x2.toFixed(1)}" y2="${s.y2.toFixed(1)}" stroke="#000000" stroke-width="${strokeW}" ${
+          `<line x1="${s.x1.toFixed(1)}" y1="${s.y1.toFixed(1)}" x2="${s.x2.toFixed(1)}" y2="${s.y2.toFixed(1)}" stroke="${strokeColor}" stroke-width="${strokeW}" ${
             dash ? `stroke-dasharray="${dash}"` : ''
           } stroke-linecap="round"/>`
       )
@@ -856,10 +904,10 @@ export function buildAutoCADSheetSVG(params: SheetExportParams): string {
     const y = yRef + offset;
     const extDir = offset >= 0 ? 1 : -1;
     return `
-      <line x1="${x1.toFixed(1)}" y1="${(yRef + 3 * extDir).toFixed(1)}" x2="${x1.toFixed(1)}" y2="${(y + 5 * extDir).toFixed(1)}" stroke="#000" stroke-width="0.85"/>
-      <line x1="${x2.toFixed(1)}" y1="${(yRef + 3 * extDir).toFixed(1)}" x2="${x2.toFixed(1)}" y2="${(y + 5 * extDir).toFixed(1)}" stroke="#000" stroke-width="0.85"/>
-      <line x1="${x1.toFixed(1)}" y1="${y.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y.toFixed(1)}" stroke="#000" stroke-width="0.95" marker-start="url(#arrowStart)" marker-end="url(#arrowEnd)"/>
-      <text x="${((x1 + x2) / 2).toFixed(1)}" y="${(y - 4).toFixed(1)}" text-anchor="middle" font-size="12.5" fill="#000">${escapeXml(label)}</text>
+      <line x1="${x1.toFixed(1)}" y1="${(yRef + 3 * extDir).toFixed(1)}" x2="${x1.toFixed(1)}" y2="${(y + 5 * extDir).toFixed(1)}" stroke="${colors.dimensions}" stroke-width="0.85"/>
+      <line x1="${x2.toFixed(1)}" y1="${(yRef + 3 * extDir).toFixed(1)}" x2="${x2.toFixed(1)}" y2="${(y + 5 * extDir).toFixed(1)}" stroke="${colors.dimensions}" stroke-width="0.85"/>
+      <line x1="${x1.toFixed(1)}" y1="${y.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y.toFixed(1)}" stroke="${colors.dimensions}" stroke-width="0.95" marker-start="url(#arrowStart)" marker-end="url(#arrowEnd)"/>
+      <text x="${((x1 + x2) / 2).toFixed(1)}" y="${(y - 4).toFixed(1)}" text-anchor="middle" font-size="12.5" fill="${colors.dimensions}">${escapeXml(label)}</text>
     `;
   };
 
@@ -868,10 +916,10 @@ export function buildAutoCADSheetSVG(params: SheetExportParams): string {
     const extDir = offset >= 0 ? 1 : -1;
     const cy = (y1 + y2) / 2;
     return `
-      <line x1="${(xRef + 3 * extDir).toFixed(1)}" y1="${y1.toFixed(1)}" x2="${(x + 5 * extDir).toFixed(1)}" y2="${y1.toFixed(1)}" stroke="#000" stroke-width="0.85"/>
-      <line x1="${(xRef + 3 * extDir).toFixed(1)}" y1="${y2.toFixed(1)}" x2="${(x + 5 * extDir).toFixed(1)}" y2="${y2.toFixed(1)}" stroke="#000" stroke-width="0.85"/>
-      <line x1="${x.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x.toFixed(1)}" y2="${y2.toFixed(1)}" stroke="#000" stroke-width="0.95" marker-start="url(#arrowStart)" marker-end="url(#arrowEnd)"/>
-      <text x="${(x - 5).toFixed(1)}" y="${cy.toFixed(1)}" text-anchor="middle" font-size="12.5" fill="#000" transform="rotate(-90 ${(x - 5).toFixed(1)} ${cy.toFixed(1)})">${escapeXml(label)}</text>
+      <line x1="${(xRef + 3 * extDir).toFixed(1)}" y1="${y1.toFixed(1)}" x2="${(x + 5 * extDir).toFixed(1)}" y2="${y1.toFixed(1)}" stroke="${colors.dimensions}" stroke-width="0.85"/>
+      <line x1="${(xRef + 3 * extDir).toFixed(1)}" y1="${y2.toFixed(1)}" x2="${(x + 5 * extDir).toFixed(1)}" y2="${y2.toFixed(1)}" stroke="${colors.dimensions}" stroke-width="0.85"/>
+      <line x1="${x.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x.toFixed(1)}" y2="${y2.toFixed(1)}" stroke="${colors.dimensions}" stroke-width="0.95" marker-start="url(#arrowStart)" marker-end="url(#arrowEnd)"/>
+      <text x="${(x - 5).toFixed(1)}" y="${cy.toFixed(1)}" text-anchor="middle" font-size="12.5" fill="${colors.dimensions}" transform="rotate(-90 ${(x - 5).toFixed(1)} ${cy.toFixed(1)})">${escapeXml(label)}</text>
     `;
   };
 
@@ -885,17 +933,17 @@ export function buildAutoCADSheetSVG(params: SheetExportParams): string {
   const renderTitleSvg = (title: string): string => {
     const clean = title.toUpperCase().trim();
     if (clean.length <= 26) {
-      return `<text x="196" y="37" font-size="13" font-weight="600" fill="#000">TITLE: ${escapeXml(clean)}</text>`;
+      return `<text x="196" y="37" font-size="13" font-weight="600" fill="${colors.border}">TITLE: ${escapeXml(clean)}</text>`;
     } else if (clean.length <= 38) {
-      return `<text x="196" y="37" font-size="11.5" font-weight="600" fill="#000">TITLE: ${escapeXml(clean)}</text>`;
+      return `<text x="196" y="37" font-size="11.5" font-weight="600" fill="${colors.border}">TITLE: ${escapeXml(clean)}</text>`;
     } else {
       const splitIdx = clean.lastIndexOf(' ', 32);
       const cut = splitIdx > 14 ? splitIdx : 30;
       const l1 = clean.slice(0, cut);
       const l2 = clean.slice(cut).trim();
       return `
-        <text x="196" y="27" font-size="11" font-weight="600" fill="#000">TITLE: ${escapeXml(l1)}</text>
-        <text x="196" y="46" font-size="10.5" font-weight="600" fill="#000">${escapeXml(l2)}</text>
+        <text x="196" y="27" font-size="11" font-weight="600" fill="${colors.border}">TITLE: ${escapeXml(l1)}</text>
+        <text x="196" y="46" font-size="10.5" font-weight="600" fill="${colors.border}">${escapeXml(l2)}</text>
       `;
     }
   };
@@ -937,8 +985,8 @@ export function buildAutoCADSheetSVG(params: SheetExportParams): string {
     const e64Y = t64Y - 18;
     const s64X = e64X + 32;
     const callout64Svg = `
-      <path d="M ${t64X.toFixed(1)} ${t64Y.toFixed(1)} L ${e64X.toFixed(1)} ${e64Y.toFixed(1)} L ${s64X.toFixed(1)} ${e64Y.toFixed(1)}" stroke="#000" stroke-width="0.95" fill="none" marker-start="url(#arrowStart)"/>
-      <text x="${(e64X + 4).toFixed(1)}" y="${(e64Y - 4).toFixed(1)}" text-anchor="start" font-size="12" font-weight="600" fill="#000">Ø64</text>
+      <path d="M ${t64X.toFixed(1)} ${t64Y.toFixed(1)} L ${e64X.toFixed(1)} ${e64Y.toFixed(1)} L ${s64X.toFixed(1)} ${e64Y.toFixed(1)}" stroke="${colors.dimensions}" stroke-width="0.95" fill="none" marker-start="url(#arrowStart)"/>
+      <text x="${(e64X + 4).toFixed(1)}" y="${(e64Y - 4).toFixed(1)}" text-anchor="start" font-size="12" font-weight="600" fill="${colors.dimensions}">Ø64</text>
     `;
 
     // 4. Circular callout Ø40 on Top View inner hole circle:
@@ -950,8 +998,8 @@ export function buildAutoCADSheetSVG(params: SheetExportParams): string {
     const e40Y = tvBaseTop - 18;
     const s40X = e40X - 32;
     const callout40Svg = `
-      <path d="M ${t40X.toFixed(1)} ${t40Y.toFixed(1)} L ${e40X.toFixed(1)} ${e40Y.toFixed(1)} L ${s40X.toFixed(1)} ${e40Y.toFixed(1)}" stroke="#000" stroke-width="0.95" fill="none" marker-start="url(#arrowStart)"/>
-      <text x="${(e40X - 4).toFixed(1)}" y="${(e40Y - 4).toFixed(1)}" text-anchor="end" font-size="12" font-weight="600" fill="#000">Ø40</text>
+      <path d="M ${t40X.toFixed(1)} ${t40Y.toFixed(1)} L ${e40X.toFixed(1)} ${e40Y.toFixed(1)} L ${s40X.toFixed(1)} ${e40Y.toFixed(1)}" stroke="${colors.dimensions}" stroke-width="0.95" fill="none" marker-start="url(#arrowStart)"/>
+      <text x="${(e40X - 4).toFixed(1)}" y="${(e40Y - 4).toFixed(1)}" text-anchor="end" font-size="12" font-weight="600" fill="${colors.dimensions}">Ø40</text>
     `;
 
     // 5. Slot depth 30 mm horizontal dimension below Top View
@@ -972,14 +1020,80 @@ export function buildAutoCADSheetSVG(params: SheetExportParams): string {
     `;
   }
 
+  // Views Feature Dimensions
+  let fvDimsSvg = '';
+  let svDimsSvg = '';
+  let tvDimsSvg = '';
+
+  if (isSteppedTBlock) {
+    const fvMidX = (fv.bounds.left + fv.bounds.right) / 2;
+    const tvMidX = (tv.bounds.left + tv.bounds.right) / 2;
+    const tongueHalfWPx = 10 * unitPx;
+    const tongueDPx = 20 * unitPx;
+    const wingWPx = 10 * unitPx;
+    const stepDPx = 10 * unitPx;
+    const grooveRPx = 10 * unitPx;
+
+    // FV: 20 (center tongue width) at bottom, 30 (total height) on right
+    fvDimsSvg = `
+      ${drawHorizDim(fvMidX - tongueHalfWPx, fvMidX + tongueHalfWPx, fv.bounds.bottom, 26, '20')}
+      ${drawVertDim(fv.bounds.top, fv.bounds.bottom, fv.bounds.right, 32, '30')}
+    `;
+
+    // SV: 30 (rear block depth) + 20 (front tongue depth) along bottom, 30 (total height) on left, 10 (tongue height) on right
+    const svStepX = sv.bounds.left + tongueDPx;
+    const tongueHPx = 10 * unitPx;
+    svDimsSvg = `
+      ${drawHorizDim(sv.bounds.left, svStepX, sv.bounds.bottom, 26, '20')}
+      ${drawHorizDim(svStepX, sv.bounds.right, sv.bounds.bottom, 26, '30')}
+      ${drawVertDim(sv.bounds.top, sv.bounds.bottom, sv.bounds.left, -28, '30')}
+      ${drawVertDim(sv.bounds.bottom - tongueHPx, sv.bounds.bottom, sv.bounds.right, 26, '10')}
+    `;
+
+    // TV: 40 (total width) at top, 10 (left wing steps), 20 (tongue width & depth), 10 (step depth), and radial leader R10
+    const arcCenterY = tv.bounds.top + 20 * unitPx;
+    const r10TargetX = tvMidX + grooveRPx * Math.cos(Math.PI / 4);
+    const r10TargetY = arcCenterY - grooveRPx * Math.sin(Math.PI / 4);
+    const r10ElbowX = tvMidX + 24;
+    const r10ElbowY = arcCenterY - 18;
+    const r10ShelfX = r10ElbowX + 28;
+
+    const r10LeaderSvg = `
+      <path d="M ${r10TargetX.toFixed(1)} ${r10TargetY.toFixed(1)} L ${r10ElbowX.toFixed(1)} ${r10ElbowY.toFixed(1)} L ${r10ShelfX.toFixed(1)} ${r10ElbowY.toFixed(1)}" stroke="${colors.dimensions}" stroke-width="0.95" fill="none" marker-start="url(#arrowStart)"/>
+      <text x="${(r10ElbowX + 4).toFixed(1)}" y="${(r10ElbowY - 4).toFixed(1)}" text-anchor="start" font-size="12" font-weight="600" fill="${colors.dimensions}">R10</text>
+    `;
+
+    tvDimsSvg = `
+      ${drawHorizDim(tv.bounds.left, tv.bounds.right, tv.bounds.top, -26, '40')}
+      ${drawHorizDim(tv.bounds.left, tv.bounds.left + wingWPx, tv.bounds.top, -12, '10')}
+      ${drawHorizDim(tvMidX - tongueHalfWPx, tvMidX + tongueHalfWPx, tv.bounds.bottom, 26, '20')}
+      ${drawVertDim(tv.bounds.bottom - tongueDPx, tv.bounds.bottom, tvMidX - tongueHalfWPx, -22, '20')}
+      ${drawVertDim(arcCenterY, arcCenterY + stepDPx, tv.bounds.left, -24, '10')}
+      ${r10LeaderSvg}
+    `;
+  } else {
+    fvDimsSvg = `
+      ${drawHorizDim(fv.bounds.left, fv.bounds.right, fv.bounds.bottom, 32, `${dimensions.length}`)}
+      ${drawVertDim(fv.bounds.top, fv.bounds.bottom, fv.bounds.right, 32, `${dimensions.height}`)}
+    `;
+    svDimsSvg = `
+      ${drawHorizDim(svBaseLeft, svBaseRight, sv.bounds.bottom, 32, `${dimensions.width}`)}
+      ${drawVertDim(sv.bounds.top, sv.bounds.bottom, sv.bounds.right, 32, `${dimensions.height}`)}
+    `;
+    tvDimsSvg = `
+      ${drawHorizDim(tv.bounds.left, tv.bounds.right, tv.bounds.top, -26, `${dimensions.length}`)}
+      ${drawVertDim(tvBaseTop, tvBaseBottom, tv.bounds.right, 32, `${dimensions.width}`)}
+    `;
+  }
+
   const fvTitleY = fv.bounds.top - 28;
   const tvTitleY = tv.bounds.top - 54; // Sits at least 28px above top dimension line (offset -26)
 
   // Units Note
   const unitsNoteSvg = tbOpts.showUnitsNote
     ? isTbEnabled
-      ? `<text x="${tbX + tbW - 145}" y="${tbY - 12}" text-anchor="middle" font-size="13" fill="#000">All dimensions are in mm</text>`
-      : `<text x="${W - m - 145}" y="${H - m - 14}" text-anchor="middle" font-size="13" fill="#000">All dimensions are in mm</text>`
+      ? `<text x="${tbX + tbW - 145}" y="${tbY - 12}" text-anchor="middle" font-size="13" fill="${colors.border}">All dimensions are in mm</text>`
+      : `<text x="${W - m - 145}" y="${H - m - 14}" text-anchor="middle" font-size="13" fill="${colors.border}">All dimensions are in mm</text>`
     : '';
 
   // College Lab Title Block (conditional on isTbEnabled and individual field toggles)
@@ -989,37 +1103,37 @@ export function buildAutoCADSheetSVG(params: SheetExportParams): string {
     titleBlockSvg = `
   <!-- COLLEGE LAB TITLE BLOCK -->
   <g transform="translate(${tbX}, ${tbY})">
-    <rect x="0" y="0" width="${tbW}" height="${tbH}" fill="#ffffff" stroke="#000000" stroke-width="1.4"/>
+    <rect x="0" y="0" width="${tbW}" height="${tbH}" fill="#ffffff" stroke="${colors.border}" stroke-width="1.4"/>
     <!-- Row 1: NAME | TITLE (height 64) -->
-    <line x1="0" y1="64" x2="${tbW}" y2="64" stroke="#000" stroke-width="1.2"/>
-    <line x1="185" y1="0" x2="185" y2="${tbH}" stroke="#000" stroke-width="1.2"/>
-    ${f.name ? `<text x="14" y="37" font-size="13" font-weight="500" fill="#000">NAME: ${escapeXml(titleBlockMeta.name || '')}</text>` : ''}
+    <line x1="0" y1="64" x2="${tbW}" y2="64" stroke="${colors.border}" stroke-width="1.2"/>
+    <line x1="185" y1="0" x2="185" y2="${tbH}" stroke="${colors.border}" stroke-width="1.2"/>
+    ${f.name ? `<text x="14" y="37" font-size="13" font-weight="500" fill="${colors.border}">NAME: ${escapeXml(titleBlockMeta.name || '')}</text>` : ''}
     ${f.title ? renderTitleSvg(solidName) : ''}
 
     <!-- Lower Rows: CLASS / ROLL NO / DATE | DWG NO / GRADE / VALUED BY | SCALE + Symbol -->
-    <line x1="365" y1="64" x2="365" y2="${tbH}" stroke="#000" stroke-width="1.2"/>
-    <line x1="0" y1="97" x2="${tbW}" y2="97" stroke="#000" stroke-width="1.1"/>
-    <line x1="0" y1="130" x2="365" y2="130" stroke="#000" stroke-width="1.1"/>
+    <line x1="365" y1="64" x2="365" y2="${tbH}" stroke="${colors.border}" stroke-width="1.2"/>
+    <line x1="0" y1="97" x2="${tbW}" y2="97" stroke="${colors.border}" stroke-width="1.1"/>
+    <line x1="0" y1="130" x2="365" y2="130" stroke="${colors.border}" stroke-width="1.1"/>
 
-    ${f.className ? `<text x="12" y="86" font-size="12" fill="#000">CLASS: ${escapeXml(titleBlockMeta.className || '')}</text>` : ''}
-    ${f.rollNo ? `<text x="12" y="119" font-size="12" fill="#000">ROLL NO.: ${escapeXml(titleBlockMeta.rollNo || '')}</text>` : ''}
-    ${f.date ? `<text x="12" y="151" font-size="12" fill="#000">DATE: ${escapeXml(titleBlockMeta.date || '')}</text>` : ''}
+    ${f.className ? `<text x="12" y="86" font-size="12" fill="${colors.border}">CLASS: ${escapeXml(titleBlockMeta.className || '')}</text>` : ''}
+    ${f.rollNo ? `<text x="12" y="119" font-size="12" fill="${colors.border}">ROLL NO.: ${escapeXml(titleBlockMeta.rollNo || '')}</text>` : ''}
+    ${f.date ? `<text x="12" y="151" font-size="12" fill="${colors.border}">DATE: ${escapeXml(titleBlockMeta.date || '')}</text>` : ''}
 
-    ${f.dwgNo ? `<text x="196" y="86" font-size="12" fill="#000">DWG. NO.: ${escapeXml(titleBlockMeta.dwgNo || '')}</text>` : ''}
-    ${f.grade ? `<text x="196" y="119" font-size="12" fill="#000">GRADE: ${escapeXml(titleBlockMeta.grade || '')}</text>` : ''}
-    ${f.valuedBy ? `<text x="196" y="151" font-size="12" fill="#000">VALUED BY: ${escapeXml(titleBlockMeta.valuedBy || '')}</text>` : ''}
+    ${f.dwgNo ? `<text x="196" y="86" font-size="12" fill="${colors.border}">DWG. NO.: ${escapeXml(titleBlockMeta.dwgNo || '')}</text>` : ''}
+    ${f.grade ? `<text x="196" y="119" font-size="12" fill="${colors.border}">GRADE: ${escapeXml(titleBlockMeta.grade || '')}</text>` : ''}
+    ${f.valuedBy ? `<text x="196" y="151" font-size="12" fill="${colors.border}">VALUED BY: ${escapeXml(titleBlockMeta.valuedBy || '')}</text>` : ''}
 
-    ${f.scale ? `<text x="378" y="86" font-size="12" fill="#000">SCALE: ${escapeXml(titleBlockMeta.scale || '1:1')}</text>` : ''}
+    ${f.scale ? `<text x="378" y="86" font-size="12" fill="${colors.border}">SCALE: ${escapeXml(titleBlockMeta.scale || '1:1')}</text>` : ''}
 
     ${
       f.projectionSymbol
         ? `<!-- First-Angle Projection Symbol -->
     <g transform="translate(382, 102)">
-      <line x1="2" y1="26" x2="144" y2="26" stroke="#16a34a" stroke-width="1" stroke-dasharray="8 3 2 3"/>
-      <line x1="112" y1="2" x2="112" y2="50" stroke="#16a34a" stroke-width="1" stroke-dasharray="8 3 2 3"/>
-      <polygon points="12,16 64,6 64,46 12,36" fill="none" stroke="#000000" stroke-width="1.4"/>
-      <circle cx="112" cy="26" r="20" fill="none" stroke="#000000" stroke-width="1.4"/>
-      <circle cx="112" cy="26" r="10" fill="none" stroke="#000000" stroke-width="1.4"/>
+      <line x1="2" y1="26" x2="144" y2="26" stroke="${colors.centerline}" stroke-width="1" stroke-dasharray="8 3 2 3"/>
+      <line x1="112" y1="2" x2="112" y2="50" stroke="${colors.centerline}" stroke-width="1" stroke-dasharray="8 3 2 3"/>
+      <polygon points="12,16 64,6 64,46 12,36" fill="none" stroke="${colors.border}" stroke-width="1.4"/>
+      <circle cx="112" cy="26" r="20" fill="none" stroke="${colors.border}" stroke-width="1.4"/>
+      <circle cx="112" cy="26" r="10" fill="none" stroke="${colors.border}" stroke-width="1.4"/>
     </g>`
         : ''
     }
@@ -1030,10 +1144,10 @@ export function buildAutoCADSheetSVG(params: SheetExportParams): string {
 <svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" style="font-family: Arial, Helvetica, sans-serif; background: #ffffff;">
   <defs>
     <marker id="arrowEnd" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="7" markerHeight="7" orient="auto">
-      <path d="M 0 2 L 10 5 L 0 8 z" fill="#000000"/>
+      <path d="M 0 2 L 10 5 L 0 8 z" fill="${colors.dimensions}"/>
     </marker>
     <marker id="arrowStart" viewBox="0 0 10 10" refX="0" refY="5" markerWidth="7" markerHeight="7" orient="auto">
-      <path d="M 10 2 L 0 5 L 10 8 z" fill="#000000"/>
+      <path d="M 10 2 L 0 5 L 10 8 z" fill="${colors.dimensions}"/>
     </marker>
   </defs>
 
@@ -1041,62 +1155,59 @@ export function buildAutoCADSheetSVG(params: SheetExportParams): string {
   <rect x="0" y="0" width="${W}" height="${H}" fill="#ffffff"/>
 
   <!-- Thin Crisp Outer Border -->
-  <rect x="${m}" y="${m}" width="${innerW}" height="${innerH}" fill="none" stroke="#000000" stroke-width="1.6"/>
+  <rect x="${m}" y="${m}" width="${innerW}" height="${innerH}" fill="none" stroke="${colors.border}" stroke-width="1.6"/>
 
   <!-- Quadrant Dividers -->
   ${
     (tbOpts.dividerStyle ?? 'dotted') === 'dotted'
-      ? `<line x1="${W / 2}" y1="${m}" x2="${W / 2}" y2="${H - m}" stroke="#333333" stroke-width="1.1" stroke-dasharray="2 6"/>
-  <line x1="${m}" y1="${H / 2}" x2="${W - m}" y2="${H / 2}" stroke="#333333" stroke-width="1.1" stroke-dasharray="2 6"/>`
+      ? `<line x1="${W / 2}" y1="${m}" x2="${W / 2}" y2="${H - m}" stroke="${colors.dividers}" stroke-width="1.1" stroke-dasharray="2 6"/>
+  <line x1="${m}" y1="${H / 2}" x2="${W - m}" y2="${H / 2}" stroke="${colors.dividers}" stroke-width="1.1" stroke-dasharray="2 6"/>`
       : (tbOpts.dividerStyle ?? 'dotted') === 'solid'
-        ? `<line x1="${W / 2}" y1="${m}" x2="${W / 2}" y2="${H - m}" stroke="#000000" stroke-width="1.1"/>
-  <line x1="${m}" y1="${H / 2}" x2="${W - m}" y2="${H / 2}" stroke="#000000" stroke-width="1.1"/>`
+        ? `<line x1="${W / 2}" y1="${m}" x2="${W / 2}" y2="${H - m}" stroke="${colors.dividers}" stroke-width="1.1"/>
+  <line x1="${m}" y1="${H / 2}" x2="${W - m}" y2="${H / 2}" stroke="${colors.dividers}" stroke-width="1.1"/>`
         : ''
   }
 
   <!-- QUADRANT 1: FRONT VIEW -->
   <text x="${(fv.bounds.left + fv.bounds.right) / 2}" y="${fvTitleY}" text-anchor="middle" font-size="15" font-weight="600" fill="#000">FRONT VIEW</text>
   <!-- Centerlines -->
-  ${drawLines(fv.centerlines, 0.75, '10 3 2 3')}
+  ${drawLines(fv.centerlines, 0.75, '10 3 2 3', colors.centerline)}
   <!-- Hidden Lines (ISO Dashed) -->
-  ${drawLines(fv.hiddenSegments, 0.95, '5 3')}
+  ${drawLines(fv.hiddenSegments, 0.95, '5 3', colors.hidden)}
   <!-- Visible Lines (Solid) -->
-  ${drawLines(fv.visibleSegments, 1.6)}
+  ${drawLines(fv.visibleSegments, 1.6, undefined, colors.visible)}
   <!-- Dimensions -->
-  ${drawHorizDim(fv.bounds.left, fv.bounds.right, fv.bounds.bottom, 32, `${dimensions.length}`)}
-  ${drawVertDim(fv.bounds.top, fv.bounds.bottom, fv.bounds.right, 32, `${dimensions.height}`)}
+  ${fvDimsSvg}
 
   <!-- QUADRANT 2: SIDE VIEW (Exact Y-alignment with Front View) -->
   <text x="${(sv.bounds.left + sv.bounds.right) / 2}" y="${sv.bounds.top - 28}" text-anchor="middle" font-size="15" font-weight="600" fill="#000">${sideTitle}</text>
   <!-- Centerlines -->
-  ${drawLines(sv.centerlines, 0.75, '10 3 2 3')}
+  ${drawLines(sv.centerlines, 0.75, '10 3 2 3', colors.centerline)}
   <!-- Hidden Lines (ISO Dashed) -->
-  ${drawLines(sv.hiddenSegments, 0.95, '5 3')}
+  ${drawLines(sv.hiddenSegments, 0.95, '5 3', colors.hidden)}
   <!-- Visible Lines (Solid) -->
-  ${drawLines(sv.visibleSegments, 1.6)}
-  <!-- Dimensions (snap to base plate walls) -->
-  ${drawHorizDim(svBaseLeft, svBaseRight, sv.bounds.bottom, 32, `${dimensions.width}`)}
-  ${drawVertDim(sv.bounds.top, sv.bounds.bottom, sv.bounds.right, 32, `${dimensions.height}`)}
+  ${drawLines(sv.visibleSegments, 1.6, undefined, colors.visible)}
+  <!-- Dimensions -->
+  ${svDimsSvg}
 
   <!-- QUADRANT 3: TOP VIEW (Exact X-alignment with Front View) -->
   <!-- Top View title placed cleanly above dimension line -->
   <text x="${(tv.bounds.left + tv.bounds.right) / 2}" y="${tvTitleY}" text-anchor="middle" font-size="15" font-weight="600" fill="#000">TOP VIEW</text>
   <!-- Centerlines -->
-  ${drawLines(tv.centerlines, 0.75, '10 3 2 3')}
+  ${drawLines(tv.centerlines, 0.75, '10 3 2 3', colors.centerline)}
   <!-- Hidden Lines (ISO Dashed) -->
-  ${drawLines(tv.hiddenSegments, 0.95, '5 3')}
+  ${drawLines(tv.hiddenSegments, 0.95, '5 3', colors.hidden)}
   <!-- Visible Lines (Solid) -->
-  ${drawLines(tv.visibleSegments, 1.6)}
-  <!-- Dimensions (snap to base plate walls) -->
-  ${drawHorizDim(tv.bounds.left, tv.bounds.right, tv.bounds.top, -26, `${dimensions.length}`)}
-  ${drawVertDim(tvBaseTop, tvBaseBottom, tv.bounds.right, 32, `${dimensions.width}`)}
+  ${drawLines(tv.visibleSegments, 1.6, undefined, colors.visible)}
+  <!-- Dimensions -->
+  ${tvDimsSvg}
 
   <!-- Special Machine Feature Callouts -->
   ${extraCalloutsSvg}
 
   <!-- QUADRANT 4: ISOMETRIC VIEW (Clean Pictorial Solid, No Hidden Lines) -->
   <text x="${iso.bounds.left}" y="${(iso.bounds.top - 16).toFixed(1)}" text-anchor="start" font-size="15" font-weight="600" fill="#000">ISOMETRIC VIEW</text>
-  ${drawLines(iso.visibleSegments, 1.5)}
+  ${drawLines(iso.visibleSegments, 1.5, undefined, colors.isometric)}
 
   <!-- Note above Title Block / bottom note -->
   ${unitsNoteSvg}
@@ -1113,6 +1224,7 @@ export function buildAutoCADDXF(params: SheetExportParams): string {
   const { geometry, solidName, dimensions, rotation, sideViewMode, titleBlockMeta } = params;
   const tbOpts = params.titleBlockOptions || DEFAULT_TITLE_BLOCK_OPTIONS;
   const isTbEnabled = tbOpts.enabled;
+  const colors: LineColorPalette = { ...DEFAULT_LINE_COLORS, ...(tbOpts.lineColors || {}) };
 
   const W = 420; // A3 width in mm
   const H = 297; // A3 height in mm
@@ -1253,7 +1365,7 @@ export function buildAutoCADDXF(params: SheetExportParams): string {
     '70',
     '64',
     '62',
-    '7',
+    String(hexToAci(colors.visible)),
     '6',
     'CONTINUOUS',
     '0',
@@ -1263,7 +1375,7 @@ export function buildAutoCADDXF(params: SheetExportParams): string {
     '70',
     '64',
     '62',
-    '8',
+    String(hexToAci(colors.hidden)),
     '6',
     'HIDDEN',
     '0',
@@ -1273,7 +1385,7 @@ export function buildAutoCADDXF(params: SheetExportParams): string {
     '70',
     '64',
     '62',
-    '3',
+    String(hexToAci(colors.centerline)),
     '6',
     'CENTER',
     '0',
@@ -1283,7 +1395,7 @@ export function buildAutoCADDXF(params: SheetExportParams): string {
     '70',
     '64',
     '62',
-    '7',
+    String(hexToAci(colors.isometric)),
     '6',
     'CONTINUOUS',
     '0',
@@ -1293,7 +1405,7 @@ export function buildAutoCADDXF(params: SheetExportParams): string {
     '70',
     '64',
     '62',
-    '7',
+    String(hexToAci(colors.border)),
     '6',
     'CONTINUOUS',
     '0',
@@ -1303,7 +1415,7 @@ export function buildAutoCADDXF(params: SheetExportParams): string {
     '70',
     '64',
     '62',
-    '7',
+    String(hexToAci(colors.border)),
     '6',
     'CONTINUOUS',
     '0',
@@ -1313,7 +1425,7 @@ export function buildAutoCADDXF(params: SheetExportParams): string {
     '70',
     '64',
     '62',
-    '7',
+    String(hexToAci(colors.dimensions)),
     '6',
     'CONTINUOUS',
     '0',

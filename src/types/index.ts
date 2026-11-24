@@ -15,6 +15,7 @@ export type SolidType =
   | 'machined-bracket'
   | 'ribbed-block'
   | 'slotted-cylinder-bracket'
+  | 'stepped-t-block'
   | 'custom-composite';
 
 export interface CompositePartSpec {
@@ -59,10 +60,77 @@ export interface TitleBlockFieldsConfig {
 
 export type QuadrantDividerStyle = 'dotted' | 'solid' | 'none';
 
+export interface LineColorPalette {
+  visible: string;     // Solid object outlines (default '#000000')
+  hidden: string;      // Dashed hidden lines (default '#000000')
+  centerline: string;  // Dash-dot symmetry axes (default '#000000')
+  dimensions: string;  // Dimension lines, arrows & text (default '#000000')
+  isometric: string;   // Quadrant 4 isometric outlines (default '#000000')
+  border: string;      // Outer border & Title Block lines (default '#000000')
+  dividers: string;    // Quadrant divider lines (default '#333333')
+}
+
+export const DEFAULT_LINE_COLORS: LineColorPalette = {
+  visible: '#000000',
+  hidden: '#000000',
+  centerline: '#000000',
+  dimensions: '#000000',
+  isometric: '#000000',
+  border: '#000000',
+  dividers: '#333333',
+};
+
+export const LINE_COLOR_PRESETS: {
+  id: 'bw' | 'autocad' | 'blueprint';
+  name: string;
+  colors: LineColorPalette;
+}[] = [
+  {
+    id: 'bw',
+    name: 'Classic B&W',
+    colors: {
+      visible: '#000000',
+      hidden: '#000000',
+      centerline: '#000000',
+      dimensions: '#000000',
+      isometric: '#000000',
+      border: '#000000',
+      dividers: '#333333',
+    },
+  },
+  {
+    id: 'autocad',
+    name: 'AutoCAD Standard',
+    colors: {
+      visible: '#000000',
+      hidden: '#2563eb',
+      centerline: '#dc2626',
+      dimensions: '#059669',
+      isometric: '#111827',
+      border: '#000000',
+      dividers: '#64748b',
+    },
+  },
+  {
+    id: 'blueprint',
+    name: 'Blueprint Ink',
+    colors: {
+      visible: '#0f172a',
+      hidden: '#0284c7',
+      centerline: '#e11d48',
+      dimensions: '#1d4ed8',
+      isometric: '#0f172a',
+      border: '#1e293b',
+      dividers: '#94a3b8',
+    },
+  },
+];
+
 export interface TitleBlockOptions {
   enabled: boolean;
   showUnitsNote: boolean;
   dividerStyle?: QuadrantDividerStyle;
+  lineColors?: LineColorPalette;
   fields: TitleBlockFieldsConfig;
 }
 
@@ -83,6 +151,7 @@ export const DEFAULT_TITLE_BLOCK_OPTIONS: TitleBlockOptions = {
   enabled: true,
   showUnitsNote: true,
   dividerStyle: 'dotted',
+  lineColors: DEFAULT_LINE_COLORS,
   fields: DEFAULT_TITLE_BLOCK_FIELDS,
 };
 

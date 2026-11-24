@@ -20,6 +20,8 @@ import { Q1_DEFAULT_LINE, Q2_DEFAULT_PLANOMETRIC } from './utils/examBank';
 import {
   AppView,
   CompositePartSpec,
+  DEFAULT_LINE_COLORS,
+  DEFAULT_TITLE_BLOCK_FIELDS,
   DEFAULT_TITLE_BLOCK_OPTIONS,
   DisplayOptions,
   LineProblemParams,
@@ -167,7 +169,22 @@ export function App() {
   const [titleBlockOptions, setTitleBlockOptions] = useState<TitleBlockOptions>(() => {
     try {
       const saved = localStorage.getItem('orthoview-titleblock-options');
-      if (saved) return JSON.parse(saved) as TitleBlockOptions;
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        return {
+          ...DEFAULT_TITLE_BLOCK_OPTIONS,
+          ...parsed,
+          dividerStyle: parsed.dividerStyle || 'dotted',
+          lineColors: {
+            ...DEFAULT_LINE_COLORS,
+            ...(parsed.lineColors || {}),
+          },
+          fields: {
+            ...DEFAULT_TITLE_BLOCK_FIELDS,
+            ...(parsed.fields || {}),
+          },
+        };
+      }
     } catch {
       // ignore
     }

@@ -128,7 +128,7 @@ ${userHint ? `User hint: ${userHint}` : ''}
 Return ONLY valid JSON (no markdown fences) with this exact schema:
 {
   "partName": "string",
-  "solidType": "slotted-cylinder-bracket" | "custom-composite" | "l-block" | "u-block" | "machined-bracket" | "ribbed-block" | "v-block" | "counterbore" | "cylinder-hole",
+  "solidType": "stepped-t-block" | "slotted-cylinder-bracket" | "custom-composite" | "l-block" | "u-block" | "machined-bracket" | "ribbed-block" | "v-block" | "counterbore" | "cylinder-hole",
   "sideViewMode": "left" | "right",
   "dimensions": { "length": number, "width": number, "height": number },
   "compositeSpec": {
@@ -227,6 +227,30 @@ export const OFFLINE_IMAGE_PRESETS: ImageCadExtraction[] = [
     compositeSpec: DEFAULT_SLOTTED_CYLINDER_SPEC,
     callouts: ['140×50 Base', 'T=10', 'Slots 30×20', 'Boss Ø64×50', 'Ø40 Hole 24 Deep'],
     summary: '140×50 mm forked base plate (10 mm thick) with 30 mm end slots and central Ø64×50 mm cylinder with Ø40×24 mm blind hole.',
+    source: 'offline-preset',
+  },
+  {
+    partName: 'Stepped T-Block (R10 Groove • 40×50×30)',
+    solidType: 'stepped-t-block',
+    dimensions: { length: 40, width: 50, height: 30 },
+    sideViewMode: 'left',
+    compositeSpec: {
+      baseLength: 40,
+      baseWidth: 50,
+      baseThickness: 10,
+      hasEndSlots: false,
+      slotDepth: 0,
+      slotWidth: 0,
+      bossShape: 'none',
+      bossDiameter: 20,
+      bossDepth: 20,
+      totalHeight: 30,
+      hasHole: false,
+      holeDiameter: 20,
+      holeDepth: 20,
+    },
+    callouts: ['40×50 Base', 'H=30', 'Tongue 20×20', 'R10 Groove'],
+    summary: '40×50×30 mm stepped T-block with 20 mm tongue and R10 semi-cylindrical vertical groove on rear wall.',
     source: 'offline-preset',
   },
   {

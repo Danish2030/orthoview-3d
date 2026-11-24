@@ -12,6 +12,9 @@ import {
   Info,
   SlidersHorizontal,
   Check,
+  Palette,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 import {
   SideViewMode,
@@ -22,6 +25,9 @@ import {
   TitleBlockFieldsConfig,
   TitleBlockMeta,
   TitleBlockOptions,
+  LineColorPalette,
+  DEFAULT_LINE_COLORS,
+  LINE_COLOR_PRESETS,
 } from '../types';
 import {
   buildAutoCADSheetSVG,
@@ -113,6 +119,41 @@ export const ExportModal: React.FC<ExportModalProps> = ({
   };
 
   const activeDividerStyle: QuadrantDividerStyle = titleBlockOptions.dividerStyle ?? 'dotted';
+
+  const [showColorPicker, setShowColorPicker] = useState<boolean>(true);
+
+  const activeColors: LineColorPalette = useMemo(() => {
+    return { ...DEFAULT_LINE_COLORS, ...(titleBlockOptions.lineColors || {}) };
+  }, [titleBlockOptions.lineColors]);
+
+  const handleApplyPresetColors = (presetColors: LineColorPalette) => {
+    onUpdateTitleBlockOptions({
+      ...titleBlockOptions,
+      lineColors: presetColors,
+    });
+  };
+
+  const handleColorChange = (key: keyof LineColorPalette, value: string) => {
+    onUpdateTitleBlockOptions({
+      ...titleBlockOptions,
+      lineColors: {
+        ...activeColors,
+        [key]: value,
+      },
+    });
+  };
+
+  const QUICK_PALETTE_DOTS = ['#000000', '#dc2626', '#2563eb', '#16a34a', '#7c3aed'];
+
+  const COLOR_CATEGORIES: { key: keyof LineColorPalette; label: string; desc: string }[] = [
+    { key: 'visible', label: 'Visible Outlines', desc: 'Solid feature outlines (FV, SV, TV)' },
+    { key: 'hidden', label: 'Hidden Lines', desc: 'Dashed interior & occluded edges' },
+    { key: 'centerline', label: 'Centerlines', desc: 'Dash-dot symmetry & hole axes' },
+    { key: 'dimensions', label: 'Dimensions & Text', desc: 'Dimension lines, arrows, callouts & numbers' },
+    { key: 'isometric', label: 'Isometric View', desc: 'Quadrant 4 3D pictorial outline' },
+    { key: 'border', label: 'Border & Title Block', desc: 'A3 sheet border rect & College Title Block' },
+    { key: 'dividers', label: 'Quadrant Dividers', desc: 'Central crosshair lines separating quadrants' },
+  ];
 
   const handleToggleField = (field: keyof TitleBlockFieldsConfig) => {
     onUpdateTitleBlockOptions({
@@ -282,6 +323,120 @@ export const ExportModal: React.FC<ExportModalProps> = ({
                   </button>
                 ))}
               </div>
+            </div>
+
+            {/* Line Colors & Palette Customizer */}
+            <div className="p-3.5 rounded-2xl glass-card border border-current/10 space-y-3">
+              <div
+                className="flex items-center justify-between cursor-pointer select-none"
+                onClick={() => setShowColorPicker(!showColorPicker)}
+              >
+                <div className="flex items-center gap-2">
+                  <Palette className="w-4 h-4 opacity-75" />
+                  <div>
+                    <span className="text-xs font-semibold block">Line Colors &amp; Palette</span>
+                    <span className="text-[10px] opacity-55">Customize per-line colors for AutoCAD SVG &amp; DXF layers</span>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  className="p-1 rounded-lg opacity-60 hover:opacity-100 transition-opacity"
+                >
+                  {showColorPicker ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                </button>
+              </div>
+
+              {showColorPicker && (
+                <div className="space-y-3 pt-1 border-t border-current/10">
+                  {/* 1-Click Color Presets */}
+                  <div className="space-y-1.5">
+                    <span className="text-[10px] font-semibold uppercase tracking-wider opacity-60 block">
+                      1-Click Presets
+                    </span>
+                    <div className="grid grid-cols-3 gap-1.5">
+                      {LINE_COLOR_PRESETS.map((preset) => {
+                        const isSelected =
+                          activeColors.visible === preset.colors.visible &&
+                          activeColors.hidden === preset.colors.hidden &&
+                          activeColors.centerline === preset.colors.centerline &&
+                          activeColors.dimensions === preset.colors.dimensions;
+                        return (
+                          <button
+                            key={preset.id}
+                            type="button"
+                            onClick={() => handleApplyPresetColors(preset.colors)}
+                            className={`px-2.5 py-1.5 rounded-xl text-left border transition-all cursor-pointer ${
+                              isSelected
+                                ? 'bg-current/15 border-current/30 font-semibold shadow-sm'
+                                : 'border-current/10 bg-current/5 opacity-75 hover:opacity-100'
+                            }`}
+                          >
+                            <span className="text-[11px] block truncate font-medium">{preset.name}</span>
+                            <div className="flex items-center gap-1 mt-1">
+                              <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: preset.colors.visible }} />
+                              <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: preset.colors.hidden }} />
+                              <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: preset.colors.centerline }} />
+                              <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: preset.colors.dimensions }} />
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Per-Line Custom Color Pickers */}
+                  <div className="space-y-2 pt-1">
+                    <span className="text-[10px] font-semibold uppercase tracking-wider opacity-60 block">
+                      Per-Line Color Palette
+                    </span>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {COLOR_CATEGORIES.map((cat) => (
+                        <div
+                          key={cat.key}
+                          className="p-2 rounded-xl bg-current/[0.03] border border-current/10 flex items-center justify-between gap-2"
+                        >
+                          <div className="min-w-0">
+                            <span className="text-[11px] font-medium block truncate">{cat.label}</span>
+                            <span className="text-[9px] opacity-50 block truncate font-mono">{activeColors[cat.key]}</span>
+                          </div>
+                          <div className="flex items-center gap-1 shrink-0">
+                            {/* Color picker input swatch */}
+                            <label className="relative cursor-pointer">
+                              <input
+                                type="color"
+                                value={activeColors[cat.key]}
+                                onChange={(e) => handleColorChange(cat.key, e.target.value)}
+                                className="w-5 h-5 rounded-full cursor-pointer p-0 bg-transparent opacity-0 absolute inset-0 z-10"
+                              />
+                              <div
+                                className="w-5 h-5 rounded-full border border-black/25 shadow-sm"
+                                style={{ backgroundColor: activeColors[cat.key] }}
+                              />
+                            </label>
+                            {/* 5 quick palette dots */}
+                            <div className="flex items-center gap-0.5 ml-1">
+                              {QUICK_PALETTE_DOTS.map((c) => (
+                                <button
+                                  key={c}
+                                  type="button"
+                                  onClick={() => handleColorChange(cat.key, c)}
+                                  style={{ backgroundColor: c }}
+                                  className={`w-3.5 h-3.5 rounded-full border transition-transform cursor-pointer ${
+                                    activeColors[cat.key].toLowerCase() === c.toLowerCase()
+                                      ? 'scale-125 border-current ring-1 ring-current'
+                                      : 'border-black/25 opacity-70 hover:opacity-100 hover:scale-110'
+                                  }`}
+                                  title={c}
+                                />
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Title Block Configuration Box */}

@@ -394,6 +394,61 @@ export function createSolidGeometry(
       });
     }
 
+    case 'stepped-t-block': {
+      const ratioL = L / 40;
+      const ratioW = W / 50;
+      const ratioH = H / 30;
+      const halfL = 20 * ratioL;
+      const halfW = 25 * ratioW;
+      const halfH = 15 * ratioH;
+      const tBase = 10 * ratioH;
+      const hWall = 20 * ratioH;
+      const tongueHalfW = 10 * ratioL;
+      const stepZ = -halfW + 30 * ratioW;
+      const wallFrontZ = -halfW + 20 * ratioW;
+      const grooveR = 10 * Math.min(ratioL, ratioW);
+
+      // 1. Lower T-shaped Base (Extruded vertically along Y)
+      const baseShape = new THREE.Shape();
+      baseShape.moveTo(-halfL, -halfW);
+      baseShape.lineTo(halfL, -halfW);
+      baseShape.lineTo(halfL, stepZ);
+      baseShape.lineTo(tongueHalfW, stepZ);
+      baseShape.lineTo(tongueHalfW, halfW);
+      baseShape.lineTo(-tongueHalfW, halfW);
+      baseShape.lineTo(-tongueHalfW, stepZ);
+      baseShape.lineTo(-halfL, stepZ);
+      baseShape.closePath();
+
+      const baseGeom = new THREE.ExtrudeGeometry(baseShape, {
+        steps: 1,
+        depth: tBase,
+        bevelEnabled: false,
+      });
+      baseGeom.rotateX(Math.PI / 2);
+      baseGeom.translate(0, -halfH + tBase, 0);
+
+      // 2. Upper Rear Wall with R10 Semi-Cylindrical Cutout
+      const wallShape = new THREE.Shape();
+      wallShape.moveTo(-halfL, -halfW);
+      wallShape.lineTo(halfL, -halfW);
+      wallShape.lineTo(halfL, wallFrontZ);
+      wallShape.lineTo(grooveR, wallFrontZ);
+      wallShape.absarc(0, wallFrontZ, grooveR, 0, Math.PI, true);
+      wallShape.lineTo(-halfL, wallFrontZ);
+      wallShape.closePath();
+
+      const wallGeom = new THREE.ExtrudeGeometry(wallShape, {
+        steps: 1,
+        depth: hWall,
+        bevelEnabled: false,
+      });
+      wallGeom.rotateX(Math.PI / 2);
+      wallGeom.translate(0, halfH, 0);
+
+      return mergeNonIndexedGeometries([baseGeom, wallGeom]);
+    }
+
     case 'custom-composite': {
       return buildCompositePartGeometry(compositeSpec || DEFAULT_SLOTTED_CYLINDER_SPEC);
     }
@@ -538,5 +593,13 @@ export const SOLID_PRESETS: {
     description: '140×50 mm forked base plate (10 mm thick, 30 mm slots) with central Ø64×50 mm cylinder boss and Ø40×24 mm blind hole.',
     defaultDimensions: { length: 140, width: 50, height: 50 },
     iconName: 'CircleDot',
+  },
+  {
+    id: 'stepped-t-block',
+    name: 'Stepped T-Block (R10 Groove • 40×50×30)',
+    category: 'Exam Machine Parts',
+    description: '40×50×30 mm T-shaped stepped block with 20 mm tongue and R10 semi-cylindrical vertical groove on the rear wall.',
+    defaultDimensions: { length: 40, width: 50, height: 30 },
+    iconName: 'Spline',
   },
 ];
