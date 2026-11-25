@@ -342,12 +342,17 @@ export async function analyzeWithServerlessProxy(
   base64DataUrl: string,
   userHint?: string
 ): Promise<ImageCadExtraction> {
+  const match = base64DataUrl.match(/^data:(image\/[a-zA-Z0-9.+-]+);base64,(.+)$/);
+  const mimeType = match ? match[1] : 'image/jpeg';
+  const imageBase64 = match ? match[2] : base64DataUrl;
+
   const response = await fetch(endpointUrl, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      image: base64DataUrl,
-      userHint,
+      imageBase64,
+      mimeType,
+      hint: userHint,
     }),
   });
 

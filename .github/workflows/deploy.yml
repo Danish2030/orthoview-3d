@@ -35,6 +35,8 @@ jobs:
         run: npm ci || npm install
 
       - name: Build project
+        env:
+          VITE_VISION_PROXY_URL: ${{ vars.VITE_VISION_PROXY_URL }}
         run: npm run build
 
       - name: Upload Pages artifact
