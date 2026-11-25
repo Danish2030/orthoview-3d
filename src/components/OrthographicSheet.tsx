@@ -2,7 +2,8 @@ import React, { useRef, useState } from 'react';
 import * as THREE from 'three';
 import { ViewCanvas2D } from './ViewCanvas2D';
 import { TitleBlock } from './TitleBlock';
-import { DisplayOptions, SolidDimensions, SolidRotation, ThemeMode, TitleBlockMeta } from '../types';
+import { DisplayOptions, HighlightTarget, SolidDimensions, SolidRotation, ThemeMode, TitleBlockMeta } from '../types';
+import { AccentId } from '../utils/accentTheme';
 
 interface OrthographicSheetProps {
   geometry: THREE.BufferGeometry;
@@ -13,6 +14,9 @@ interface OrthographicSheetProps {
   solidName: string;
   titleBlockMeta: TitleBlockMeta;
   onUpdateTitleBlockMeta: (next: TitleBlockMeta) => void;
+  accentId?: AccentId;
+  hoveredTarget?: HighlightTarget;
+  onHoverTarget?: (target: HighlightTarget) => void;
   onCanvasesReady?: (canvases: {
     front: HTMLCanvasElement | null;
     top: HTMLCanvasElement | null;
@@ -30,6 +34,8 @@ export const OrthographicSheet: React.FC<OrthographicSheetProps> = ({
   solidName,
   titleBlockMeta,
   onUpdateTitleBlockMeta,
+  hoveredTarget,
+  onHoverTarget,
   onCanvasesReady,
 }) => {
   const isDark = theme === 'blueprint';
@@ -73,19 +79,60 @@ export const OrthographicSheet: React.FC<OrthographicSheetProps> = ({
             : 'bg-[#fafafb] border-black/15'
         }`}
       >
-        {/* ISO Standard Zone Coordinate Bar (Top: 1 - 8) */}
+        {/* ISO Standard Zone Coordinate Bar (Top: 1 - 8) + Interactive Dimension Badges */}
         <div
-          className={`h-5 border-b grid grid-cols-8 text-[9px] font-bold items-center text-center ${
+          className={`h-6 border-b flex items-center justify-between px-2 text-[9px] font-bold ${
             isDark
               ? 'bg-white/[0.03] border-white/10 text-zinc-500'
               : 'bg-black/[0.03] border-black/10 text-zinc-500'
           }`}
         >
-          {['1', '2', '3', '4', '5', '6', '7', '8'].map((zone) => (
-            <div key={zone} className="border-r border-current/10 last:border-r-0">
-              {zone}
-            </div>
-          ))}
+          <div className="grid grid-cols-8 flex-1 max-w-[320px] text-center">
+            {['1', '2', '3', '4', '5', '6', '7', '8'].map((zone) => (
+              <div key={zone} className="border-r border-current/10 last:border-r-0">
+                {zone}
+              </div>
+            ))}
+          </div>
+
+          <div className="flex items-center gap-1.5 text-[10px]">
+            <button
+              type="button"
+              onMouseEnter={() => onHoverTarget?.('length')}
+              onMouseLeave={() => onHoverTarget?.(null)}
+              className={`px-2 py-0.5 rounded transition-all cursor-pointer ${
+                hoveredTarget === 'length'
+                  ? 'bg-[var(--accent-soft)] text-[var(--accent-hex)] ring-1 ring-[var(--accent-hex)] font-bold shadow-[0_0_8px_var(--accent-glow)]'
+                  : 'hover:text-current opacity-70 hover:opacity-100'
+              }`}
+            >
+              L: {dimensions.length}mm
+            </button>
+            <button
+              type="button"
+              onMouseEnter={() => onHoverTarget?.('width')}
+              onMouseLeave={() => onHoverTarget?.(null)}
+              className={`px-2 py-0.5 rounded transition-all cursor-pointer ${
+                hoveredTarget === 'width'
+                  ? 'bg-[var(--accent-soft)] text-[var(--accent-hex)] ring-1 ring-[var(--accent-hex)] font-bold shadow-[0_0_8px_var(--accent-glow)]'
+                  : 'hover:text-current opacity-70 hover:opacity-100'
+              }`}
+            >
+              W: {dimensions.width}mm
+            </button>
+            <button
+              type="button"
+              onMouseEnter={() => onHoverTarget?.('height')}
+              onMouseLeave={() => onHoverTarget?.(null)}
+              className={`px-2 py-0.5 rounded transition-all cursor-pointer ${
+                hoveredTarget === 'height'
+                  ? 'bg-[var(--accent-soft)] text-[var(--accent-hex)] ring-1 ring-[var(--accent-hex)] font-bold shadow-[0_0_8px_var(--accent-glow)]'
+                  : 'hover:text-current opacity-70 hover:opacity-100'
+              }`}
+            >
+              H: {dimensions.height}mm
+            </button>
+          </div>
         </div>
 
         {/* Inner Sheet Area with Left/Right Zone Coordinate Margins */}
@@ -106,7 +153,16 @@ export const OrthographicSheet: React.FC<OrthographicSheetProps> = ({
           {/* Main 2x2 Orthographic Quadrant Drawing Workspace */}
           <div className="relative flex-1 grid grid-cols-2 grid-rows-2">
             {/* Quadrant 1 (Top-Left): FRONT VIEW (Elevation on VP) */}
-            <div className="relative border-r border-b border-dashed border-current/15 overflow-hidden">
+            <div
+              onMouseEnter={() => onHoverTarget?.('fv')}
+              onMouseLeave={() => onHoverTarget?.(null)}
+              className={`relative border-r border-b border-dashed border-current/15 overflow-hidden transition-all duration-200 ${
+                hoveredTarget === 'fv'
+                  ? 'ring-2 ring-inset ring-[var(--accent-hex)] shadow-[0_0_20px_var(--accent-glow)]'
+                  : ''
+              }`}
+              style={hoveredTarget === 'fv' ? ({ borderColor: 'var(--accent-hex)' } as React.CSSProperties) : undefined}
+            >
               <ViewCanvas2D
                 viewType="front"
                 geometry={geometry}
@@ -126,7 +182,16 @@ export const OrthographicSheet: React.FC<OrthographicSheetProps> = ({
             </div>
 
             {/* Quadrant 2 (Top-Right): LEFT-HAND SIDE VIEW (on RPP) */}
-            <div className="relative border-b border-dashed border-current/15 overflow-hidden">
+            <div
+              onMouseEnter={() => onHoverTarget?.('sv')}
+              onMouseLeave={() => onHoverTarget?.(null)}
+              className={`relative border-b border-dashed border-current/15 overflow-hidden transition-all duration-200 ${
+                hoveredTarget === 'sv'
+                  ? 'ring-2 ring-inset ring-[var(--accent-hex)] shadow-[0_0_20px_var(--accent-glow)]'
+                  : ''
+              }`}
+              style={hoveredTarget === 'sv' ? ({ borderColor: 'var(--accent-hex)' } as React.CSSProperties) : undefined}
+            >
               <ViewCanvas2D
                 viewType={displayOptions.sideViewMode === 'right' ? 'rightSide' : 'leftSide'}
                 geometry={geometry}
@@ -146,7 +211,16 @@ export const OrthographicSheet: React.FC<OrthographicSheetProps> = ({
             </div>
 
             {/* Quadrant 3 (Bottom-Left): TOP VIEW (Plan on HP) */}
-            <div className="relative border-r border-dashed border-current/15 overflow-hidden">
+            <div
+              onMouseEnter={() => onHoverTarget?.('tv')}
+              onMouseLeave={() => onHoverTarget?.(null)}
+              className={`relative border-r border-dashed border-current/15 overflow-hidden transition-all duration-200 ${
+                hoveredTarget === 'tv'
+                  ? 'ring-2 ring-inset ring-[var(--accent-hex)] shadow-[0_0_20px_var(--accent-glow)]'
+                  : ''
+              }`}
+              style={hoveredTarget === 'tv' ? ({ borderColor: 'var(--accent-hex)' } as React.CSSProperties) : undefined}
+            >
               <ViewCanvas2D
                 viewType="top"
                 geometry={geometry}

@@ -31,6 +31,7 @@ import {
   SolidType,
   ThemeMode,
 } from '../types';
+import { AccentId } from '../utils/accentTheme';
 
 interface SidebarProps {
   currentSolid: SolidType;
@@ -46,6 +47,7 @@ interface SidebarProps {
   onUpdateDisplayOptions: (opts: DisplayOptions) => void;
   isCollapsed: boolean;
   onToggleCollapse: () => void;
+  accentId?: AccentId;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -273,23 +275,37 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     className={`p-3 rounded-lg border text-left transition-all flex items-start gap-3 ${
                       isSelected
                         ? isDark
-                          ? 'bg-sky-950/40 border-sky-400 shadow-[0_0_15px_rgba(56,189,248,0.25)]'
-                          : 'bg-blue-50 border-blue-500 shadow-sm'
+                          ? 'border-[var(--accent-hex)] shadow-[0_0_15px_var(--accent-glow)]'
+                          : 'border-[var(--accent-hex)] shadow-sm'
                         : isDark
                         ? 'bg-slate-900/60 border-black/10 dark:border-white/10 hover:border-slate-700 hover:bg-slate-800/50'
                         : 'bg-slate-50 border-slate-200 hover:border-slate-300 hover:bg-slate-100'
                     }`}
+                    style={
+                      isSelected
+                        ? {
+                            borderColor: 'var(--accent-hex)',
+                            backgroundColor: 'var(--accent-soft)',
+                          }
+                        : undefined
+                    }
                   >
                     <div
                       className={`p-2 rounded-md ${
                         isSelected
-                          ? isDark
-                            ? 'bg-sky-500/20 text-sky-300'
-                            : 'bg-blue-100 text-blue-700'
+                          ? ''
                           : isDark
                           ? 'bg-slate-800 text-slate-500 dark:text-[#9b99b8]'
                           : 'bg-slate-200 text-slate-600'
                       }`}
+                      style={
+                        isSelected
+                          ? {
+                              backgroundColor: 'var(--accent-soft)',
+                              color: 'var(--accent-hex)',
+                            }
+                          : undefined
+                      }
                     >
                       {getSolidIcon(preset.iconName)}
                     </div>
@@ -299,13 +315,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
                         <span
                           className={`text-xs font-bold truncate ${
                             isSelected
-                              ? isDark
-                                ? 'text-sky-300'
-                                : 'text-blue-700'
+                              ? ''
                               : isDark
                               ? 'text-slate-900 dark:text-[#f3f2fa]'
                               : 'text-slate-800'
                           }`}
+                          style={isSelected ? { color: 'var(--accent-hex)' } : undefined}
                         >
                           {preset.name}
                         </span>

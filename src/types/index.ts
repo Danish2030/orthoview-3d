@@ -272,3 +272,5 @@ export interface SolidPreset {
   defaultDimensions: SolidDimensions;
   iconName: string;
 }
+
+export type HighlightTarget = 'fv' | 'tv' | 'sv' | 'length' | 'width' | 'height' | null;

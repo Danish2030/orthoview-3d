@@ -1,4 +1,5 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
+import { Columns, Box, FileText } from 'lucide-react';
 import { Header } from './components/Header';
 import { Sidebar } from './components/Sidebar';
 import { Viewport3D } from './components/Viewport3D';
@@ -16,6 +17,7 @@ import { createSolidGeometry, DEFAULT_SLOTTED_CYLINDER_SPEC, SOLID_PRESETS } fro
 import { exportSheetAsPNG } from './utils/exportDrawingSheet';
 import { parseEngineeringQuestion } from './utils/questionParser';
 import { Q1_DEFAULT_LINE, Q2_DEFAULT_PLANOMETRIC } from './utils/examBank';
+import { AccentId, getSavedAccent, saveAccent, getAccentConfig } from './utils/accentTheme';
 import {
   AppView,
   CompositePartSpec,
@@ -23,6 +25,7 @@ import {
   DEFAULT_TITLE_BLOCK_FIELDS,
   DEFAULT_TITLE_BLOCK_OPTIONS,
   DisplayOptions,
+  HighlightTarget,
   LineProblemParams,
   PlanometricParams,
   SavedQuestionRecord,
@@ -144,6 +147,54 @@ export function App() {
   const [isQuizOpen, setIsQuizOpen] = useState<boolean>(false);
   const [isSolverOpen, setIsSolverOpen] = useState<boolean>(false);
   const [isExportModalOpen, setIsExportModalOpen] = useState<boolean>(false);
+
+  // v3.6.0 Liquid-Glass Accent State
+  const [accentId, setAccentId] = useState<AccentId>(getSavedAccent);
+  const activeAccent = useMemo(() => getAccentConfig(accentId), [accentId]);
+
+  const handleSelectAccent = (id: AccentId) => {
+    setAccentId(id);
+    saveAccent(id);
+  };
+
+  // v3.6.0 Synchronized Hover Highlighting (3D <-> 2D)
+  const [hoveredTarget, setHoveredTarget] = useState<HighlightTarget>(null);
+
+  // v3.6.0 Resizable Split-Pane & Studio Layout Mode
+  const [studioLayout, setStudioLayout] = useState<'split' | '3d' | '2d'>('split');
+  const [splitPct, setSplitPct] = useState<number>(44);
+  const isDraggingSplitRef = useRef<boolean>(false);
+
+  const handleSplitMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault();
+    isDraggingSplitRef.current = true;
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+
+    const onMouseMove = (ev: MouseEvent) => {
+      if (!isDraggingSplitRef.current) return;
+      const mainEl = document.getElementById('cad-studio-main');
+      if (!mainEl) return;
+      const rect = mainEl.getBoundingClientRect();
+      const clientX = ev.clientX - rect.left;
+      const pct = (clientX / rect.width) * 100;
+      const clamped = Math.min(72, Math.max(28, pct));
+      setSplitPct(clamped);
+      window.dispatchEvent(new Event('resize'));
+    };
+
+    const onMouseUp = () => {
+      isDraggingSplitRef.current = false;
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('mouseup', onMouseUp);
+      window.dispatchEvent(new Event('resize'));
+    };
+
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mouseup', onMouseUp);
+  };
   const [compositeSpec, setCompositeSpec] = useState<CompositePartSpec>(DEFAULT_SLOTTED_CYLINDER_SPEC);
   const [universalBlueprint, setUniversalBlueprint] = useState<UniversalPartBlueprint | undefined>(undefined);
   const [customPartName, setCustomPartName] = useState<string | null>(null);
@@ -452,62 +503,79 @@ export function App() {
   const isDark = theme === 'blueprint';
 
   return (
-    <>
+    <div
+      style={
+        {
+          '--accent-hex': activeAccent.hex,
+          '--accent-glow': activeAccent.glow,
+          '--accent-soft': activeAccent.soft,
+        } as React.CSSProperties
+      }
+      className="min-h-screen w-full relative"
+    >
       {view === 'landing' && (
-        <LandingPage
-          theme={theme}
-          onToggleTheme={handleToggleTheme}
-          user={user}
-          onOpenAuth={(msg) => openAuthGate('dashboard', msg)}
-          onEnterDashboard={() => setView('dashboard')}
-          onOpenStudio={() => {
-            setActiveModule('orthographic');
-            setView('studio');
-          }}
-          onOpenTheory={() => setIsTheoryOpen(true)}
-          onSelectSolidAndOpen={(type) => {
-            handleSelectSolid(type);
-            setActiveModule('orthographic');
-            setPhase2Banner(null);
-            setView('studio');
-          }}
-        />
+        <div className="animate-view-enter">
+          <LandingPage
+            theme={theme}
+            onToggleTheme={handleToggleTheme}
+            user={user}
+            onOpenAuth={(msg) => openAuthGate('dashboard', msg)}
+            onEnterDashboard={() => setView('dashboard')}
+            onOpenStudio={() => {
+              setActiveModule('orthographic');
+              setView('studio');
+            }}
+            onOpenTheory={() => setIsTheoryOpen(true)}
+            onSelectSolidAndOpen={(type) => {
+              handleSelectSolid(type);
+              setActiveModule('orthographic');
+              setPhase2Banner(null);
+              setView('studio');
+            }}
+            accentId={accentId}
+            onSelectAccent={handleSelectAccent}
+          />
+        </div>
       )}
 
       {view === 'dashboard' && user && (
-        <Dashboard
-          user={user}
-          theme={theme}
-          onToggleTheme={handleToggleTheme}
-          currentSolid={currentSolid}
-          dimensions={dimensions}
-          savedQuestions={savedQuestions}
-          onSignOut={handleSignOut}
-          onGoHome={() => setView('landing')}
-          onOpenStudio={(mod) => {
-            setActiveModule(mod || 'orthographic');
-            setPhase2Banner(null);
-            setView('studio');
-          }}
-          onOpenSolverModal={() => setIsSolverOpen(true)}
-          onOpenTheory={() => setIsTheoryOpen(true)}
-          onOpenQuiz={() => setIsQuizOpen(true)}
-          onLoadRecord={handleLoadRecord}
-          onDeleteRecord={(id) => setSavedQuestions((prev) => prev.filter((r) => r.id !== id))}
-          onQuickSolveQuestion={handleQuickSolveFromDashboard}
-          onSelectSolidAndOpen={(type) => {
-            handleSelectSolid(type);
-            setActiveModule('orthographic');
-            setPhase2Banner(null);
-            setView('studio');
-          }}
-          onOpenExport={handleExportSheet}
-        />
+        <div className="animate-view-enter">
+          <Dashboard
+            user={user}
+            theme={theme}
+            onToggleTheme={handleToggleTheme}
+            currentSolid={currentSolid}
+            dimensions={dimensions}
+            savedQuestions={savedQuestions}
+            onSignOut={handleSignOut}
+            onGoHome={() => setView('landing')}
+            onOpenStudio={(mod) => {
+              setActiveModule(mod || 'orthographic');
+              setPhase2Banner(null);
+              setView('studio');
+            }}
+            onOpenSolverModal={() => setIsSolverOpen(true)}
+            onOpenTheory={() => setIsTheoryOpen(true)}
+            onOpenQuiz={() => setIsQuizOpen(true)}
+            onLoadRecord={handleLoadRecord}
+            onDeleteRecord={(id) => setSavedQuestions((prev) => prev.filter((r) => r.id !== id))}
+            onQuickSolveQuestion={handleQuickSolveFromDashboard}
+            onSelectSolidAndOpen={(type) => {
+              handleSelectSolid(type);
+              setActiveModule('orthographic');
+              setPhase2Banner(null);
+              setView('studio');
+            }}
+            onOpenExport={handleExportSheet}
+            accentId={accentId}
+            onSelectAccent={handleSelectAccent}
+          />
+        </div>
       )}
 
       {view === 'studio' && (
         <div
-          className={`w-screen h-screen flex flex-col overflow-hidden font-sans select-none transition-colors duration-300 ${
+          className={`w-screen h-screen flex flex-col overflow-hidden font-sans select-none transition-colors duration-300 animate-view-enter ${
             isDark ? 'dark mono-canvas-dark text-[#f4f4f6]' : 'mono-canvas-light text-[#0d0d10]'
           }`}
         >
@@ -531,8 +599,10 @@ export function App() {
             onOpenTheory={() => setIsTheoryOpen(true)}
             onOpenQuiz={() => setIsQuizOpen(true)}
             onOpenSolver={handleOpenSolverGated}
-              onExportSheet={handleExportSheet}
+            onExportSheet={handleExportSheet}
             isExporting={false}
+            accentId={accentId}
+            onSelectAccent={handleSelectAccent}
           />
 
           {phase2Banner && (
@@ -580,36 +650,119 @@ export function App() {
                 onUpdateDisplayOptions={setDisplayOptions}
                 isCollapsed={isSidebarCollapsed}
                 onToggleCollapse={() => setIsSidebarCollapsed((prev) => !prev)}
+                accentId={accentId}
               />
 
-              <main className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-3 p-3 overflow-hidden h-full">
-                <section className="lg:col-span-5 h-full relative overflow-hidden flex flex-col">
-                  <Viewport3D
-                    geometry={geometry}
-                    dimensions={dimensions}
-                    rotation={rotation}
-                    theme={theme}
-                    displayOptions={displayOptions}
-                    onResetRotation={handleResetRotation}
-                    onUpdateDisplayOptions={setDisplayOptions}
-                  />
-                </section>
-
-                <section className="lg:col-span-7 h-full relative overflow-hidden flex flex-col">
-                  <OrthographicSheet
-                    geometry={geometry}
-                    dimensions={dimensions}
-                    rotation={rotation}
-                    theme={theme}
-                    displayOptions={displayOptions}
-                    solidName={customPartName || currentPreset.name}
-                    titleBlockMeta={titleBlockMeta}
-                    onUpdateTitleBlockMeta={setTitleBlockMeta}
-                    onCanvasesReady={(canvases) => {
-                      canvasesRef.current = canvases;
+              <main
+                id="cad-studio-main"
+                className="flex-1 relative flex flex-col lg:flex-row gap-0 p-3 overflow-hidden h-full"
+              >
+                {/* Floating Layout Mode Toggle Pill (3D / Split / 2D) */}
+                <div className="absolute top-5 right-6 z-30 flex items-center gap-1 p-1 rounded-full glass-pill shadow-xl">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setStudioLayout('3d');
+                      setTimeout(() => window.dispatchEvent(new Event('resize')), 50);
                     }}
-                  />
-                </section>
+                    className={`px-3 py-1 rounded-full text-[11px] font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
+                      studioLayout === '3d' ? 'glass-pill-active' : 'opacity-70 hover:opacity-100'
+                    }`}
+                  >
+                    <Box className="w-3.5 h-3.5" />
+                    <span className="hidden sm:inline">Full 3D</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setStudioLayout('split');
+                      setTimeout(() => window.dispatchEvent(new Event('resize')), 50);
+                    }}
+                    className={`px-3 py-1 rounded-full text-[11px] font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
+                      studioLayout === 'split' ? 'glass-pill-active' : 'opacity-70 hover:opacity-100'
+                    }`}
+                  >
+                    <Columns className="w-3.5 h-3.5" />
+                    <span>Split</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setStudioLayout('2d');
+                      setTimeout(() => window.dispatchEvent(new Event('resize')), 50);
+                    }}
+                    className={`px-3 py-1 rounded-full text-[11px] font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
+                      studioLayout === '2d' ? 'glass-pill-active' : 'opacity-70 hover:opacity-100'
+                    }`}
+                  >
+                    <FileText className="w-3.5 h-3.5" />
+                    <span className="hidden sm:inline">Full 2D Sheet</span>
+                  </button>
+                </div>
+
+                {/* 3D Viewport Pane */}
+                {(studioLayout === 'split' || studioLayout === '3d') && (
+                  <section
+                    style={
+                      studioLayout === 'split'
+                        ? { width: `${splitPct}%` }
+                        : { width: '100%' }
+                    }
+                    className="h-full relative overflow-hidden flex flex-col transition-[width] duration-75"
+                  >
+                    <Viewport3D
+                      geometry={geometry}
+                      dimensions={dimensions}
+                      rotation={rotation}
+                      theme={theme}
+                      displayOptions={displayOptions}
+                      onResetRotation={handleResetRotation}
+                      onUpdateDisplayOptions={setDisplayOptions}
+                      accentId={accentId}
+                      hoveredTarget={hoveredTarget}
+                      onHoverTarget={setHoveredTarget}
+                    />
+                  </section>
+                )}
+
+                {/* Draggable Split Handle (Visible on desktop split mode) */}
+                {studioLayout === 'split' && (
+                  <div
+                    onMouseDown={handleSplitMouseDown}
+                    className="hidden lg:flex w-3 hover:w-4 items-center justify-center cursor-col-resize group shrink-0 relative z-20 select-none -mx-1"
+                  >
+                    <div className="w-[3px] h-12 rounded-full bg-current/25 group-hover:bg-[var(--accent-hex)] group-hover:scale-y-125 transition-all shadow-sm" />
+                  </div>
+                )}
+
+                {/* 2D Orthographic Sheet Pane */}
+                {(studioLayout === 'split' || studioLayout === '2d') && (
+                  <section
+                    style={
+                      studioLayout === 'split'
+                        ? { width: `${100 - splitPct}%` }
+                        : { width: '100%' }
+                    }
+                    className="h-full relative overflow-hidden flex flex-col transition-[width] duration-75"
+                  >
+                    <OrthographicSheet
+                      geometry={geometry}
+                      dimensions={dimensions}
+                      rotation={rotation}
+                      theme={theme}
+                      displayOptions={displayOptions}
+                      solidName={customPartName || currentPreset.name}
+                      titleBlockMeta={titleBlockMeta}
+                      onUpdateTitleBlockMeta={setTitleBlockMeta}
+                      accentId={accentId}
+                      hoveredTarget={hoveredTarget}
+                      onHoverTarget={setHoveredTarget}
+                      onCanvasesReady={(canvases) => {
+                        canvasesRef.current = canvases;
+                      }}
+                    />
+                  </section>
+                )}
               </main>
             </div>
           )}
@@ -658,7 +811,7 @@ export function App() {
         onClose={() => setIsQuizOpen(false)}
         theme={theme}
       />
-    </>
+    </div>
   );
 }
 

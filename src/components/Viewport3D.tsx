@@ -8,9 +8,13 @@ import {
   Play,
   Pause,
   Sparkles,
+  Scissors,
+  Eye,
+  X,
 } from 'lucide-react';
 import { ViewCube } from './ViewCube';
-import { DisplayOptions, SolidDimensions, SolidRotation, ThemeMode } from '../types';
+import { AccentId } from '../utils/accentTheme';
+import { DisplayOptions, HighlightTarget, SolidDimensions, SolidRotation, ThemeMode } from '../types';
 
 interface Viewport3DProps {
   geometry: THREE.BufferGeometry;
@@ -20,6 +24,9 @@ interface Viewport3DProps {
   displayOptions: DisplayOptions;
   onResetRotation: () => void;
   onUpdateDisplayOptions: (opts: DisplayOptions) => void;
+  accentId?: AccentId;
+  hoveredTarget?: HighlightTarget;
+  onHoverTarget?: (target: HighlightTarget) => void;
 }
 
 export const Viewport3D: React.FC<Viewport3DProps> = ({
@@ -30,6 +37,7 @@ export const Viewport3D: React.FC<Viewport3DProps> = ({
   displayOptions,
   onResetRotation,
   onUpdateDisplayOptions,
+  hoveredTarget,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -44,6 +52,16 @@ export const Viewport3D: React.FC<Viewport3DProps> = ({
     0, 0, 1, 0,
     0, 0, 0, 1,
   ]);
+
+  // v3.6.0 Studio Toolbar & Section Cut state
+  const [isWireframe, setIsWireframe] = useState<boolean>(false);
+  const [isXRay, setIsXRay] = useState<boolean>(false);
+  const [isAutoSpin, setIsAutoSpin] = useState<boolean>(false);
+  const [isExploded, setIsExploded] = useState<boolean>(false);
+  const [sectionCutOpen, setSectionCutOpen] = useState<boolean>(false);
+  const [sectionAxis, setSectionAxis] = useState<'off' | 'x' | 'y' | 'z'>('off');
+  const [sectionFlip, setSectionFlip] = useState<boolean>(false);
+  const [sectionOffsetPct, setSectionOffsetPct] = useState<number>(0);
 
   const isDark = theme === 'blueprint';
 
@@ -77,6 +95,7 @@ export const Viewport3D: React.FC<Viewport3DProps> = ({
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = isDark ? 1.15 : 1.05;
+    renderer.localClippingEnabled = true;
 
     // Scene
     const scene = new THREE.Scene();
@@ -380,6 +399,92 @@ export const Viewport3D: React.FC<Viewport3DProps> = ({
       });
     }
 
+    // Studio Toolbar Wireframe & X-Ray Overrides
+    if (isWireframe) {
+      (solidMaterial as THREE.MeshStandardMaterial).wireframe = true;
+    }
+    if (isXRay) {
+      solidMaterial.transparent = true;
+      solidMaterial.opacity = 0.35;
+      solidMaterial.depthWrite = false;
+    }
+
+    // Disposable Section Cut Plane & Hatching Geometries
+    let cutPlaneGeom: THREE.PlaneGeometry | null = null;
+    let cutPlaneMat: THREE.MeshBasicMaterial | null = null;
+    let hatchGeom: THREE.BufferGeometry | null = null;
+    let hatchMat: THREE.LineBasicMaterial | null = null;
+
+    if (sectionAxis !== 'off') {
+      geometry.computeBoundingBox();
+      const bbox = geometry.boundingBox || new THREE.Box3(
+        new THREE.Vector3(-dimensions.length / 2, 0, -dimensions.width / 2),
+        new THREE.Vector3(dimensions.length / 2, dimensions.height, dimensions.width / 2)
+      );
+      const minVal = sectionAxis === 'x' ? bbox.min.x : sectionAxis === 'y' ? bbox.min.y : bbox.min.z;
+      const maxVal = sectionAxis === 'x' ? bbox.max.x : sectionAxis === 'y' ? bbox.max.y : bbox.max.z;
+      const centerVal = (minVal + maxVal) / 2;
+      const halfSpan = (maxVal - minVal) / 2 || 30;
+      const offsetVal = centerVal + (sectionOffsetPct / 100) * halfSpan;
+
+      let normal = new THREE.Vector3(0, 0, 1);
+      let planeCenter = new THREE.Vector3(0, 0, 0);
+
+      if (sectionAxis === 'x') {
+        normal = new THREE.Vector3(sectionFlip ? 1 : -1, 0, 0);
+        planeCenter = new THREE.Vector3(offsetVal, (bbox.min.y + bbox.max.y) / 2, (bbox.min.z + bbox.max.z) / 2);
+      } else if (sectionAxis === 'y') {
+        normal = new THREE.Vector3(0, sectionFlip ? 1 : -1, 0);
+        planeCenter = new THREE.Vector3((bbox.min.x + bbox.max.x) / 2, offsetVal, (bbox.min.z + bbox.max.z) / 2);
+      } else if (sectionAxis === 'z') {
+        normal = new THREE.Vector3(0, 0, sectionFlip ? 1 : -1);
+        planeCenter = new THREE.Vector3((bbox.min.x + bbox.max.x) / 2, (bbox.min.y + bbox.max.y) / 2, offsetVal);
+      }
+
+      const clipPlane = new THREE.Plane();
+      clipPlane.setFromNormalAndCoplanarPoint(normal, planeCenter);
+      solidMaterial.clippingPlanes = [clipPlane];
+      solidMaterial.clipShadows = true;
+      solidMaterial.side = THREE.DoubleSide;
+
+      // Glowing Translucent Cutting Plane Visualizer
+      const cutPlaneSize = Math.max(dimensions.length, dimensions.width, dimensions.height) * 1.5;
+      cutPlaneGeom = new THREE.PlaneGeometry(cutPlaneSize, cutPlaneSize);
+      cutPlaneMat = new THREE.MeshBasicMaterial({
+        color: isDark ? 0x38bdf8 : 0x0284c7,
+        transparent: true,
+        opacity: 0.16,
+        side: THREE.DoubleSide,
+        depthWrite: false,
+      });
+      const cutPlaneMesh = new THREE.Mesh(cutPlaneGeom, cutPlaneMat);
+      cutPlaneMesh.position.copy(planeCenter);
+      if (sectionAxis === 'x') {
+        cutPlaneMesh.rotation.y = Math.PI / 2;
+      } else if (sectionAxis === 'y') {
+        cutPlaneMesh.rotation.x = Math.PI / 2;
+      }
+      solidGroup.add(cutPlaneMesh);
+
+      // 45-degree CAD Section Hatch Lines on Cutting Plane
+      const hatchPoints: THREE.Vector3[] = [];
+      const step = cutPlaneSize / 12;
+      for (let i = -cutPlaneSize / 2; i <= cutPlaneSize / 2; i += step) {
+        hatchPoints.push(new THREE.Vector3(i, -cutPlaneSize / 2, 0));
+        hatchPoints.push(new THREE.Vector3(i + cutPlaneSize / 2, cutPlaneSize / 2, 0));
+      }
+      hatchGeom = new THREE.BufferGeometry().setFromPoints(hatchPoints);
+      hatchMat = new THREE.LineBasicMaterial({
+        color: isDark ? 0x38bdf8 : 0x0284c7,
+        transparent: true,
+        opacity: 0.45,
+      });
+      const hatchLines = new THREE.LineSegments(hatchGeom, hatchMat);
+      hatchLines.position.copy(planeCenter);
+      hatchLines.rotation.copy(cutPlaneMesh.rotation);
+      solidGroup.add(hatchLines);
+    }
+
     const solidMesh = new THREE.Mesh(geometry, solidMaterial);
     solidMesh.castShadow = true;
     solidMesh.receiveShadow = true;
@@ -409,12 +514,98 @@ export const Viewport3D: React.FC<Viewport3DProps> = ({
       solidGroup.add(hiddenLines);
     }
 
-    // Animation Loop
+    // Synchronized 2D <-> 3D Hover Highlighting Group
+    const highlightGroup = new THREE.Group();
+    scene.add(highlightGroup);
+
+    let barGeom: THREE.BufferGeometry | null = null;
+    let barMat: THREE.LineBasicMaterial | null = null;
+
+    if (hoveredTarget === 'fv') {
+      const fvArrow = new THREE.ArrowHelper(
+        new THREE.Vector3(0, 0, -1),
+        new THREE.Vector3(0, dimensions.height / 2, maxDim + 50),
+        42,
+        0x38bdf8,
+        14,
+        8
+      );
+      highlightGroup.add(fvArrow);
+    } else if (hoveredTarget === 'tv') {
+      const tvArrow = new THREE.ArrowHelper(
+        new THREE.Vector3(0, -1, 0),
+        new THREE.Vector3(0, maxDim + 50, 0),
+        42,
+        0x10b981,
+        14,
+        8
+      );
+      highlightGroup.add(tvArrow);
+    } else if (hoveredTarget === 'sv') {
+      const svDir = displayOptions.sideViewMode === 'right' ? new THREE.Vector3(-1, 0, 0) : new THREE.Vector3(1, 0, 0);
+      const svOrigin = displayOptions.sideViewMode === 'right'
+        ? new THREE.Vector3(maxDim + 50, dimensions.height / 2, 0)
+        : new THREE.Vector3(-maxDim - 50, dimensions.height / 2, 0);
+      const svArrow = new THREE.ArrowHelper(
+        svDir,
+        svOrigin,
+        42,
+        0xf59e0b,
+        14,
+        8
+      );
+      highlightGroup.add(svArrow);
+    } else if (hoveredTarget === 'length' || hoveredTarget === 'width' || hoveredTarget === 'height') {
+      geometry.computeBoundingBox();
+      const bbox = geometry.boundingBox || new THREE.Box3(
+        new THREE.Vector3(-dimensions.length / 2, 0, -dimensions.width / 2),
+        new THREE.Vector3(dimensions.length / 2, dimensions.height, dimensions.width / 2)
+      );
+      const p1 = new THREE.Vector3();
+      const p2 = new THREE.Vector3();
+      if (hoveredTarget === 'length') {
+        p1.set(bbox.min.x, bbox.min.y - 4, bbox.max.z + 4);
+        p2.set(bbox.max.x, bbox.min.y - 4, bbox.max.z + 4);
+      } else if (hoveredTarget === 'height') {
+        p1.set(bbox.max.x + 4, bbox.min.y, bbox.max.z + 4);
+        p2.set(bbox.max.x + 4, bbox.max.y, bbox.max.z + 4);
+      } else if (hoveredTarget === 'width') {
+        p1.set(bbox.max.x + 4, bbox.min.y - 4, bbox.min.z);
+        p2.set(bbox.max.x + 4, bbox.min.y - 4, bbox.max.z);
+      }
+      barGeom = new THREE.BufferGeometry().setFromPoints([p1, p2]);
+      barMat = new THREE.LineBasicMaterial({
+        color: 0x38bdf8,
+        linewidth: 3,
+      });
+      const barLine = new THREE.Line(barGeom, barMat);
+      highlightGroup.add(barLine);
+    }
+
+    if (isExploded) {
+      glassBoxGroup.scale.set(1.22, 1.22, 1.22);
+      sightGroup.scale.set(1.22, 1.22, 1.22);
+    }
+
+    // Animation Loop with Solid Switch Spring Transition & Auto-Spin
+    const solidAnimStartTime = performance.now();
     let animId: number;
     let lastMatrixUpdate = 0;
 
     const animate = (time: number) => {
       animId = requestAnimationFrame(animate);
+
+      // Smooth Solid-Switch Transition Scale (0.92 -> 1.0)
+      const elapsed = performance.now() - solidAnimStartTime;
+      const progress = Math.min(1, Math.max(0, elapsed / 260));
+      const smoothScale = 0.92 + 0.08 * (1 - Math.pow(1 - progress, 3));
+      solidGroup.scale.set(smoothScale, smoothScale, smoothScale);
+
+      // Auto-Spin 3D Solid when idle
+      if (isAutoSpin && controlsRef.current && (controlsRef.current as any).state === -1) {
+        solidGroup.rotation.y += 0.008;
+      }
+
       controls.update();
       renderer.render(scene, camera);
 
@@ -455,8 +646,29 @@ export const Viewport3D: React.FC<Viewport3DProps> = ({
       contactShadowGeom.dispose();
       shadowTexture.dispose();
       controls.dispose();
+      cutPlaneGeom?.dispose();
+      cutPlaneMat?.dispose();
+      hatchGeom?.dispose();
+      hatchMat?.dispose();
+      barGeom?.dispose();
+      barMat?.dispose();
     };
-  }, [geometry, dimensions, rotation, theme, displayOptions, isDark]);
+  }, [
+    geometry,
+    dimensions,
+    rotation,
+    theme,
+    displayOptions,
+    isDark,
+    isWireframe,
+    isXRay,
+    isAutoSpin,
+    isExploded,
+    sectionAxis,
+    sectionFlip,
+    sectionOffsetPct,
+    hoveredTarget,
+  ]);
 
   const setCameraPreset = (preset: 'isometric' | 'front' | 'top' | 'side' | 'back' | 'right' | 'left' | 'bottom' | 'reset') => {
     const controls = controlsRef.current;
@@ -612,11 +824,11 @@ export const Viewport3D: React.FC<Viewport3DProps> = ({
       </div>
 
       {/* Glass Box Folding Controller Bar */}
-      <div className="absolute bottom-14 left-4 right-4 z-10 px-4 py-3 rounded-[20px] glass-card flex items-center justify-between gap-4 shadow-lg">
+      <div className="absolute bottom-16 left-4 right-4 z-10 px-4 py-2.5 rounded-[20px] glass-card flex items-center justify-between gap-4 shadow-lg">
         <div className="flex items-center gap-3">
           <button
             onClick={() => setIsUnfoldPlaying(!isUnfoldPlaying)}
-            className="px-3.5 py-2 rounded-full glass-pill-active text-[11px] font-semibold flex items-center gap-1.5 transition-all cursor-pointer shrink-0"
+            className="px-3.5 py-1.5 rounded-full glass-pill-active text-[11px] font-semibold flex items-center gap-1.5 transition-all cursor-pointer shrink-0"
           >
             {isUnfoldPlaying ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
             <span>{isUnfoldPlaying ? 'Pause' : 'Unfold Planes'}</span>
@@ -658,6 +870,73 @@ export const Viewport3D: React.FC<Viewport3DProps> = ({
         </div>
       </div>
 
+      {/* Floating Section Cut Control Popover */}
+      {sectionCutOpen && (
+        <div className="absolute bottom-16 left-1/2 -translate-x-1/2 z-30 w-[300px] p-3.5 rounded-2xl glass-card shadow-2xl border border-current/15 animate-panel-pop space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold tracking-tight flex items-center gap-1.5">
+              <Scissors className="w-3.5 h-3.5" />
+              Section Cut Plane
+            </span>
+            <button
+              type="button"
+              onClick={() => setSectionCutOpen(false)}
+              className="p-1 rounded-full opacity-60 hover:opacity-100 cursor-pointer"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+
+          {/* Axis Selector */}
+          <div className="flex items-center gap-1.5 p-1 rounded-xl glass-pill text-[11px] font-semibold">
+            {(['off', 'x', 'y', 'z'] as const).map((axis) => (
+              <button
+                key={axis}
+                type="button"
+                onClick={() => setSectionAxis(axis)}
+                className={`flex-1 py-1 rounded-lg uppercase transition-all cursor-pointer ${
+                  sectionAxis === axis ? 'glass-pill-active' : 'opacity-60 hover:opacity-100'
+                }`}
+              >
+                {axis}
+              </button>
+            ))}
+          </div>
+
+          {sectionAxis !== 'off' && (
+            <>
+              {/* Flip Direction */}
+              <div className="flex items-center justify-between text-xs">
+                <span className="opacity-75">Flip Normal</span>
+                <button
+                  type="button"
+                  onClick={() => setSectionFlip((prev) => !prev)}
+                  className="px-2.5 py-1 rounded-lg glass-pill text-[10px] font-semibold cursor-pointer"
+                >
+                  {sectionFlip ? 'Inverted (-)' : 'Normal (+)'}
+                </button>
+              </div>
+
+              {/* Offset Slider */}
+              <div className="space-y-1">
+                <div className="flex items-center justify-between text-[11px]">
+                  <span className="opacity-75">Slice Coordinate</span>
+                  <span className="font-semibold tabular-nums">{sectionOffsetPct}%</span>
+                </div>
+                <input
+                  type="range"
+                  min="-100"
+                  max="100"
+                  value={sectionOffsetPct}
+                  onChange={(e) => setSectionOffsetPct(Number(e.target.value))}
+                  className="w-full h-1.5 rounded-full appearance-none cursor-pointer bg-current/15"
+                />
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
       {/* Axis Triad Legend (Bottom Left) */}
       <div className="absolute bottom-3 left-4 z-10 px-3 py-1.5 rounded-full glass-pill text-[11px] flex items-center gap-3">
         <div className="flex items-center gap-1.5">
@@ -672,6 +951,81 @@ export const Viewport3D: React.FC<Viewport3DProps> = ({
           <span className="w-2 h-2 rounded-full bg-sky-500 inline-block" />
           <span className="font-medium">Z</span>
         </div>
+      </div>
+
+      {/* Floating Bottom CAD Studio Toolbar (Centered) */}
+      <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1.5 p-1 rounded-full glass-pill shadow-xl">
+        <button
+          type="button"
+          onClick={() => setIsWireframe((prev) => !prev)}
+          title="Toggle Wireframe"
+          className={`px-3 py-1.5 text-[11px] font-medium rounded-full flex items-center gap-1.5 transition-all cursor-pointer ${
+            isWireframe ? 'glass-pill-active font-semibold' : 'opacity-70 hover:opacity-100'
+          }`}
+        >
+          <Box className="w-3.5 h-3.5" />
+          <span className="hidden sm:inline">Wireframe</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setIsXRay((prev) => !prev)}
+          title="Toggle X-Ray Glass"
+          className={`px-3 py-1.5 text-[11px] font-medium rounded-full flex items-center gap-1.5 transition-all cursor-pointer ${
+            isXRay ? 'glass-pill-active font-semibold' : 'opacity-70 hover:opacity-100'
+          }`}
+        >
+          <Eye className="w-3.5 h-3.5" />
+          <span className="hidden sm:inline">X-Ray</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setIsAutoSpin((prev) => !prev)}
+          title="Auto-Spin 3D Solid"
+          className={`px-3 py-1.5 text-[11px] font-medium rounded-full flex items-center gap-1.5 transition-all cursor-pointer ${
+            isAutoSpin ? 'glass-pill-active font-semibold' : 'opacity-70 hover:opacity-100'
+          }`}
+        >
+          <RotateCcw className={`w-3.5 h-3.5 ${isAutoSpin ? 'animate-spin' : ''}`} />
+          <span className="hidden sm:inline">Auto-Spin</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setIsExploded((prev) => !prev)}
+          title="Explode Projection Planes"
+          className={`px-3 py-1.5 text-[11px] font-medium rounded-full flex items-center gap-1.5 transition-all cursor-pointer ${
+            isExploded ? 'glass-pill-active font-semibold' : 'opacity-70 hover:opacity-100'
+          }`}
+        >
+          <Sparkles className="w-3.5 h-3.5" />
+          <span className="hidden sm:inline">Explode</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setSectionCutOpen((prev) => !prev)}
+          title="Section Cut Plane"
+          className={`px-3 py-1.5 text-[11px] font-medium rounded-full flex items-center gap-1.5 transition-all cursor-pointer ${
+            sectionAxis !== 'off' || sectionCutOpen ? 'glass-pill-active font-semibold' : 'opacity-70 hover:opacity-100'
+          }`}
+        >
+          <Scissors className="w-3.5 h-3.5" />
+          <span className="hidden sm:inline">Section Cut</span>
+        </button>
+
+        <div className="w-[1px] h-4 bg-current opacity-15 mx-0.5" />
+
+        <button
+          type="button"
+          onClick={() => setCameraPreset('reset')}
+          title="Reset Camera & Isometric View"
+          className="px-2.5 py-1.5 text-[11px] font-medium rounded-full opacity-70 hover:opacity-100 flex items-center gap-1 transition-all cursor-pointer"
+        >
+          <RotateCcw className="w-3.5 h-3.5" />
+          <span className="hidden sm:inline">Reset ISO</span>
+        </button>
       </div>
 
       {/* Real-time Orientation Readout */}

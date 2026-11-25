@@ -16,6 +16,7 @@ import {
   Layers,
 } from 'lucide-react';
 import { SolidDimensions, StudioModule, ThemeMode, UserProfile } from '../types';
+import { AccentId, ACCENT_THEMES } from '../utils/accentTheme';
 
 interface HeaderProps {
   activeModule: StudioModule;
@@ -24,6 +25,8 @@ interface HeaderProps {
   dimensions: SolidDimensions;
   theme: ThemeMode;
   user: UserProfile | null;
+  accentId: AccentId;
+  onSelectAccent: (id: AccentId) => void;
   onBackToDashboard: () => void;
   onGoHome: () => void;
   onToggleTheme: () => void;
@@ -41,6 +44,8 @@ export const Header: React.FC<HeaderProps> = ({
   dimensions,
   theme,
   user,
+  accentId,
+  onSelectAccent,
   onBackToDashboard,
   onGoHome,
   onToggleTheme,
@@ -170,6 +175,24 @@ export const Header: React.FC<HeaderProps> = ({
           <Sparkles className="w-3.5 h-3.5 opacity-80" />
           <span>Quiz</span>
         </button>
+
+        {/* Liquid-Glass Accent Switcher */}
+        <div
+          className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-full glass-pill"
+          title="Liquid-Glass Accent Theme"
+        >
+          {ACCENT_THEMES.map((acc) => (
+            <button
+              key={acc.id}
+              type="button"
+              onClick={() => onSelectAccent(acc.id)}
+              title={`Accent: ${acc.label}`}
+              className={`w-3 h-3 rounded-full transition-all cursor-pointer ${acc.dotClass} ${
+                accentId === acc.id ? 'ring-2 ring-offset-2 ring-current scale-110' : 'opacity-40 hover:opacity-100'
+              }`}
+            />
+          ))}
+        </div>
 
         <button
           onClick={onToggleTheme}

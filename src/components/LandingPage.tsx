@@ -1,23 +1,7 @@
 import React, { useMemo, useRef, useState } from 'react';
 import { ArrowUpRight, Lock, Sun, Moon, Box, Compass } from 'lucide-react';
 import { SolidType, ThemeMode, UserProfile } from '../types';
-
-type AccentId = 'mono' | 'cyan' | 'emerald' | 'amber';
-
-interface AccentConfig {
-  id: AccentId;
-  label: string;
-  hex: string;
-  glow: string;
-  dotClass: string;
-}
-
-const ACCENT_THEMES: AccentConfig[] = [
-  { id: 'mono', label: 'Pure Mono', hex: '#e4e4e7', glow: 'rgba(255, 255, 255, 0.16)', dotClass: 'bg-zinc-400' },
-  { id: 'cyan', label: 'Blueprint Cyan', hex: '#38bdf8', glow: 'rgba(56, 189, 248, 0.22)', dotClass: 'bg-sky-400' },
-  { id: 'emerald', label: 'AutoCAD Emerald', hex: '#34d399', glow: 'rgba(52, 211, 153, 0.22)', dotClass: 'bg-emerald-400' },
-  { id: 'amber', label: 'Amber Technical', hex: '#fbbf24', glow: 'rgba(251, 191, 36, 0.20)', dotClass: 'bg-amber-400' },
-];
+import { AccentId, ACCENT_THEMES, getSavedAccent, saveAccent } from '../utils/accentTheme';
 
 interface LandingPageProps {
   theme: ThemeMode;
@@ -28,6 +12,8 @@ interface LandingPageProps {
   onOpenStudio: () => void;
   onOpenTheory: () => void;
   onSelectSolidAndOpen?: (type: SolidType) => void;
+  accentId?: AccentId;
+  onSelectAccent?: (id: AccentId) => void;
 }
 
 export const LandingPage: React.FC<LandingPageProps> = ({
@@ -38,20 +24,15 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   onEnterDashboard,
   onOpenStudio,
   onOpenTheory,
+  accentId: propAccentId,
+  onSelectAccent: propOnSelectAccent,
 }) => {
   const isDark = theme === 'blueprint';
   const heroRef = useRef<HTMLDivElement | null>(null);
   const coordRef = useRef<HTMLSpanElement | null>(null);
 
-  const [accentId, setAccentId] = useState<AccentId>(() => {
-    try {
-      const saved = localStorage.getItem('orthoview-accent') as AccentId | null;
-      if (saved && ACCENT_THEMES.some((a) => a.id === saved)) return saved;
-    } catch {
-      // ignore
-    }
-    return 'mono';
-  });
+  const [internalAccentId, setInternalAccentId] = useState<AccentId>(getSavedAccent);
+  const accentId = propAccentId ?? internalAccentId;
 
   const activeAccent = useMemo(
     () => ACCENT_THEMES.find((a) => a.id === accentId) || ACCENT_THEMES[0],
@@ -59,11 +40,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   );
 
   const handleSelectAccent = (id: AccentId) => {
-    setAccentId(id);
-    try {
-      localStorage.setItem('orthoview-accent', id);
-    } catch {
-      // ignore
+    saveAccent(id);
+    if (propOnSelectAccent) {
+      propOnSelectAccent(id);
+    } else {
+      setInternalAccentId(id);
     }
   };
 
