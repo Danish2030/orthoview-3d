@@ -27,7 +27,6 @@ const renderRoomFurniture = (name: string, x: number, y: number, w: number, d: n
   const stroke = isDark ? 'rgba(228,228,231,0.35)' : 'rgba(15,23,42,0.35)';
   const fill = isDark ? 'rgba(255,255,255,0.05)' : 'rgba(15,23,42,0.05)';
   const cx = x + w / 2;
-  const cy = y + d / 2;
 
   if (lower.includes('bed')) {
     const bw = Math.min(1800, w * 0.48);
