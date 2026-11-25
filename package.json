@@ -1,7 +1,7 @@
 {
   "name": "vectordesk",
   "private": true,
-  "version": "4.0.0",
+  "version": "4.0.1",
   "homepage": "https://danish2030.github.io/orthoview-3d/",
   "type": "module",
   "scripts": {
