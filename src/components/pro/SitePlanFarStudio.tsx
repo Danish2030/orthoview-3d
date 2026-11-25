@@ -1,9 +1,12 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   MapPin,
   CheckCircle2,
   AlertTriangle,
   Sliders,
+  ZoomIn,
+  ZoomOut,
+  Maximize2,
 } from 'lucide-react';
 import { CadLayerId, ProProjectState, SitePlotParams } from '../../types/pro';
 import { ThemeMode } from '../../types';
