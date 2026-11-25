@@ -17,7 +17,6 @@ import {
   Sliders,
   Ruler,
   Layers,
-  Image as ImageIcon,
   Download,
   Trash2,
   Command,
@@ -136,7 +135,6 @@ interface DashboardProps {
   onGoHome: () => void;
   onOpenStudio: (mod?: StudioModule) => void;
   onOpenSolverModal: () => void;
-  onOpenImageSolver: () => void;
   onOpenTheory: () => void;
   onOpenQuiz: () => void;
   onLoadRecord: (record: SavedQuestionRecord) => void;
@@ -198,7 +196,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
   onGoHome,
   onOpenStudio,
   onOpenSolverModal,
-  onOpenImageSolver,
   onOpenTheory,
   onOpenQuiz,
   onLoadRecord,
@@ -305,13 +302,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
         run: () => onOpenStudio('orthographic'),
       },
       {
-        id: 'act-image',
-        group: 'Quick Actions',
-        title: 'Image → CAD Auto-Scanner',
-        subtitle: 'Upload any textbook isometric drawing photo',
-        run: onOpenImageSolver,
-      },
-      {
         id: 'act-lines',
         group: 'Quick Actions',
         title: 'Line Projection Solver',
@@ -367,7 +357,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
         item.subtitle.toLowerCase().includes(q) ||
         item.group.toLowerCase().includes(q)
     );
-  }, [paletteQuery, isDark, onOpenStudio, onOpenImageSolver, onOpenExport, onToggleTheme, onSelectSolidAndOpen]);
+  }, [paletteQuery, isDark, onOpenStudio, onOpenExport, onToggleTheme, onSelectSolidAndOpen]);
 
   const activePreset = SOLID_PRESETS.find((p) => p.id === currentSolid) || SOLID_PRESETS[0];
 
@@ -500,15 +490,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
               >
                 <Layers className="w-4 h-4 shrink-0" />
                 <span className="truncate">Planometric</span>
-              </button>
-              <button
-                onClick={onOpenImageSolver}
-                className={`px-3.5 py-2.5 rounded-full flex items-center gap-2.5 transition-colors cursor-pointer ${
-                  isDark ? 'text-zinc-400 hover:bg-white/10 hover:text-white' : 'text-zinc-600 hover:bg-black/5 hover:text-black'
-                }`}
-              >
-                <ImageIcon className="w-4 h-4 shrink-0" />
-                <span className="truncate">Image → CAD</span>
               </button>
               <button
                 onClick={onOpenSolverModal}
@@ -713,7 +694,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 isDark={isDark}
                 accentHex={effectiveAccentHex}
                 onOpenStudio={() => onOpenStudio('orthographic')}
-                onOpenImageSolver={onOpenImageSolver}
                 onSelectSolidAndOpen={onSelectSolidAndOpen || (() => onOpenStudio('orthographic'))}
               />
             </div>
@@ -823,7 +803,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 accentHex={effectiveAccentHex}
                 isDark={isDark}
                 onOpenStudio={onOpenStudio}
-                onOpenImageSolver={onOpenImageSolver}
                 onOpenQuiz={onOpenQuiz}
               />
             </section>
@@ -955,7 +934,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                     Ask an Engineering Graphics Question
                   </div>
                   <div className="text-[11px] text-white/55 mt-0.5">
-                    Type your problem statement or upload a photo to generate the exact 3D model &amp; 2D sheet
+                    Type your problem statement below to generate the exact 3D model &amp; First-Angle 2D sheet
                   </div>
                 </div>
 
@@ -968,14 +947,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
                     <div className="text-[10px] text-white/50">Solved</div>
                     <div className="font-semibold tabular-nums">{savedQuestions.length}</div>
                   </div>
-                  <button
-                    type="button"
-                    onClick={onOpenImageSolver}
-                    className="px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/20 text-[11px] font-medium flex items-center gap-1.5 transition-colors cursor-pointer"
-                  >
-                    <ImageIcon className="w-3.5 h-3.5" style={{ color: activeAccent.hex }} />
-                    <span>Image → CAD</span>
-                  </button>
                 </div>
               </div>
 
@@ -1062,14 +1033,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
         >
           <Box className="w-4 h-4" />
           <span>3D Studio</span>
-        </button>
-        <button
-          type="button"
-          onClick={onOpenImageSolver}
-          className="flex flex-col items-center gap-0.5 px-3 py-1 rounded-xl text-[10px] opacity-75 hover:opacity-100 cursor-pointer"
-        >
-          <ImageIcon className="w-4 h-4" />
-          <span>Scan CAD</span>
         </button>
         {onOpenExport && (
           <button

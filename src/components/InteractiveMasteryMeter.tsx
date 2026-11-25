@@ -8,12 +8,11 @@ interface InteractiveMasteryMeterProps {
   accentHex: string;
   isDark: boolean;
   onOpenStudio: (mod?: StudioModule) => void;
-  onOpenImageSolver: () => void;
   onOpenQuiz: () => void;
 }
 
 interface ModuleSegment {
-  id: 'orthographic' | 'lines' | 'planes' | 'exam' | 'image';
+  id: 'orthographic' | 'lines' | 'planes' | 'exam';
   label: string;
   shortLabel: string;
   pct: number;
@@ -36,7 +35,6 @@ export const InteractiveMasteryMeter: React.FC<InteractiveMasteryMeterProps> = (
   accentHex,
   isDark,
   onOpenStudio,
-  onOpenImageSolver,
   onOpenQuiz,
 }) => {
   const [selectedSegId, setSelectedSegId] = useState<ModuleSegment['id']>('orthographic');
@@ -76,7 +74,6 @@ export const InteractiveMasteryMeter: React.FC<InteractiveMasteryMeterProps> = (
       q.solidType === 'machined-bracket' ||
       q.solidType === 'ribbed-block'
     ).length;
-    const imageCount = savedQuestions.filter((q) => q.solidType === 'universal-cad' || q.title.toLowerCase().includes('photo')).length;
 
     return [
       {
@@ -119,18 +116,8 @@ export const InteractiveMasteryMeter: React.FC<InteractiveMasteryMeterProps> = (
         actionLabel: 'Take Practice Quiz',
         onAction: onOpenQuiz,
       },
-      {
-        id: 'image',
-        label: 'Image → CAD Vision',
-        shortLabel: 'Vision',
-        pct: Math.min(100, 38 + imageCount * 20),
-        solved: imageCount,
-        color: '#fbbf24',
-        actionLabel: 'Scan Drawing Photo',
-        onAction: onOpenImageSolver,
-      },
     ];
-  }, [savedQuestions, challengeBonusPct, accentHex, onOpenStudio, onOpenImageSolver, onOpenQuiz]);
+  }, [savedQuestions, challengeBonusPct, accentHex, onOpenStudio, onOpenQuiz]);
 
   const activeSeg = segments.find((s) => s.id === selectedSegId) || segments[0];
 

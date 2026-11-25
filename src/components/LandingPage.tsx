@@ -27,7 +27,6 @@ interface LandingPageProps {
   onEnterDashboard: () => void;
   onOpenStudio: () => void;
   onOpenTheory: () => void;
-  onOpenImageSolver?: () => void;
   onSelectSolidAndOpen?: (type: SolidType) => void;
 }
 

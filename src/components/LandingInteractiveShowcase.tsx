@@ -19,7 +19,6 @@ interface LandingInteractiveShowcaseProps {
   accentHex: string;
   onPlayClick?: () => void;
   onOpenStudio: () => void;
-  onOpenImageSolver: () => void;
   onSelectSolidAndOpen: (type: SolidType) => void;
 }
 
@@ -78,7 +77,6 @@ export const LandingInteractiveShowcase: React.FC<LandingInteractiveShowcaseProp
   accentHex,
   onPlayClick,
   onOpenStudio,
-  onOpenImageSolver,
   onSelectSolidAndOpen,
 }) => {
   // 1. Before / After Photo-to-CAD Drag Slider
@@ -131,10 +129,10 @@ export const LandingInteractiveShowcase: React.FC<LandingInteractiveShowcaseProp
         {[
           {
             step: '01',
-            title: 'Scan Any Textbook Photo',
-            desc: 'Drop an exam isometric drawing—our Cloud Vision + offline OCR pipeline extracts exact millimeter dimensions.',
+            title: 'Parametric Problem Solver',
+            desc: 'Enter exact millimeter dimensions or problem statements to auto-configure solids, inclinations, and layouts.',
             icon: <Scan className="w-4 h-4" style={{ color: accentHex }} />,
-            badge: '1-Step Vision',
+            badge: 'Instant Parser',
             visual: (
               <div className="relative h-20 rounded-2xl bg-black/5 dark:bg-white/[0.04] border border-current/10 overflow-hidden flex items-center justify-center">
                 <svg viewBox="0 0 120 54" className="w-28 h-14">
@@ -216,18 +214,18 @@ export const LandingInteractiveShowcase: React.FC<LandingInteractiveShowcaseProp
                 Interactive Before / After
               </div>
               <h3 className="text-base font-semibold tracking-[-0.02em]">
-                Textbook Photo → 4-View AutoCAD Sheet
+                3D Isometric Solid → 4-View AutoCAD Sheet
               </h3>
             </div>
             <button
               type="button"
               onClick={() => {
                 onPlayClick?.();
-                onOpenImageSolver();
+                onOpenStudio();
               }}
               className="px-3 py-1.5 rounded-full text-[11px] font-semibold border border-current/15 hover:bg-current/10 flex items-center gap-1 cursor-pointer"
             >
-              <span>Try Photo-to-CAD</span>
+              <span>Open 3D Studio</span>
               <ArrowUpRight className="w-3.5 h-3.5" />
             </button>
           </div>
@@ -273,7 +271,7 @@ export const LandingInteractiveShowcase: React.FC<LandingInteractiveShowcaseProp
               style={{ clipPath: `inset(0 ${100 - splitPct}% 0 0)` }}
             >
               <div className="flex items-center justify-between text-[9px] font-mono text-zinc-600">
-                <span>RAW TEXTBOOK PHOTO INPUT</span>
+                <span>3D ISOMETRIC MODEL INPUT</span>
                 <span>FIG. 14.8</span>
               </div>
               <svg viewBox="0 0 360 155" className="w-full h-40">
@@ -312,7 +310,7 @@ export const LandingInteractiveShowcase: React.FC<LandingInteractiveShowcaseProp
               max={92}
               value={splitPct}
               onChange={(e) => setSplitPct(Number(e.target.value))}
-              aria-label="Drag to compare textbook photo and AutoCAD output"
+              aria-label="Drag to compare 3D isometric model and AutoCAD output"
               className="absolute inset-0 w-full h-full opacity-0 cursor-ew-resize z-20"
             />
           </div>

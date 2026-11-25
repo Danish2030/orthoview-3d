@@ -8,7 +8,6 @@ import { PlanometricStudio } from './components/PlanometricStudio';
 import { TheoryModal } from './components/TheoryModal';
 import { QuizModal } from './components/QuizModal';
 import { QuestionSolverModal } from './components/QuestionSolverModal';
-import { ImageSolverModal } from './components/ImageSolverModal';
 import { ExportModal } from './components/ExportModal';
 import { LandingPage } from './components/LandingPage';
 import { Dashboard } from './components/Dashboard';
@@ -144,7 +143,6 @@ export function App() {
   const [isTheoryOpen, setIsTheoryOpen] = useState<boolean>(false);
   const [isQuizOpen, setIsQuizOpen] = useState<boolean>(false);
   const [isSolverOpen, setIsSolverOpen] = useState<boolean>(false);
-  const [isImageSolverOpen, setIsImageSolverOpen] = useState<boolean>(false);
   const [isExportModalOpen, setIsExportModalOpen] = useState<boolean>(false);
   const [compositeSpec, setCompositeSpec] = useState<CompositePartSpec>(DEFAULT_SLOTTED_CYLINDER_SPEC);
   const [universalBlueprint, setUniversalBlueprint] = useState<UniversalPartBlueprint | undefined>(undefined);
@@ -430,47 +428,6 @@ export function App() {
     setView('studio');
   };
 
-  const handleApplyImageSolution = ({
-    partName,
-    solidType,
-    dimensions: nextDims,
-    sideViewMode,
-    compositeSpec: nextSpec,
-    universalBlueprint: nextBp,
-  }: {
-    partName: string;
-    solidType: SolidType;
-    dimensions: SolidDimensions;
-    sideViewMode: SideViewMode;
-    compositeSpec?: CompositePartSpec;
-    universalBlueprint?: UniversalPartBlueprint;
-  }) => {
-    setActiveModule('orthographic');
-    if (nextSpec) setCompositeSpec(nextSpec);
-    setUniversalBlueprint(nextBp);
-    setCustomPartName(partName);
-    setCurrentSolid(solidType);
-    setDimensions(nextDims);
-    setRotation({ x: 0, y: 0, z: 0 });
-    setDisplayOptions((prev) => ({ ...prev, sideViewMode }));
-    setSavedQuestions((prev) => [
-      {
-        id: `img-${Date.now()}`,
-        title: partName.slice(0, 42),
-        question: `Image-to-CAD: ${partName}`,
-        module: 'orthographic' as StudioModule,
-        solidType,
-        dimensions: nextDims,
-        rotation: { x: 0, y: 0, z: 0 },
-        sideViewMode,
-        compositeSpec: nextSpec,
-        universalBlueprint: nextBp,
-        createdAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      },
-      ...prev,
-    ].slice(0, 12));
-    setView('studio');
-  };
 
   const handleResetRotation = () => {
     setRotation({ x: 0, y: 0, z: 0 });
@@ -508,7 +465,6 @@ export function App() {
             setView('studio');
           }}
           onOpenTheory={() => setIsTheoryOpen(true)}
-          onOpenImageSolver={() => setIsImageSolverOpen(true)}
           onSelectSolidAndOpen={(type) => {
             handleSelectSolid(type);
             setActiveModule('orthographic');
@@ -534,7 +490,6 @@ export function App() {
             setView('studio');
           }}
           onOpenSolverModal={() => setIsSolverOpen(true)}
-          onOpenImageSolver={() => setIsImageSolverOpen(true)}
           onOpenTheory={() => setIsTheoryOpen(true)}
           onOpenQuiz={() => setIsQuizOpen(true)}
           onLoadRecord={handleLoadRecord}
@@ -576,8 +531,7 @@ export function App() {
             onOpenTheory={() => setIsTheoryOpen(true)}
             onOpenQuiz={() => setIsQuizOpen(true)}
             onOpenSolver={handleOpenSolverGated}
-            onOpenImageSolver={() => setIsImageSolverOpen(true)}
-            onExportSheet={handleExportSheet}
+              onExportSheet={handleExportSheet}
             isExporting={false}
           />
 
@@ -685,12 +639,6 @@ export function App() {
         onUpdateTitleBlockOptions={setTitleBlockOptions}
       />
 
-      <ImageSolverModal
-        isOpen={isImageSolverOpen}
-        onClose={() => setIsImageSolverOpen(false)}
-        theme={theme}
-        onApplyImageSolution={handleApplyImageSolution}
-      />
 
       <QuestionSolverModal
         isOpen={isSolverOpen}

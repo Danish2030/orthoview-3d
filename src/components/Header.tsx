@@ -14,7 +14,6 @@ import {
   Lock,
   Ruler,
   Layers,
-  Image as ImageIcon,
 } from 'lucide-react';
 import { SolidDimensions, StudioModule, ThemeMode, UserProfile } from '../types';
 
@@ -31,7 +30,6 @@ interface HeaderProps {
   onOpenTheory: () => void;
   onOpenQuiz: () => void;
   onOpenSolver: () => void;
-  onOpenImageSolver: () => void;
   onExportSheet: () => void;
   isExporting: boolean;
 }
@@ -49,7 +47,6 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenTheory,
   onOpenQuiz,
   onOpenSolver,
-  onOpenImageSolver,
   onExportSheet,
   isExporting,
 }) => {
@@ -150,15 +147,6 @@ export const Header: React.FC<HeaderProps> = ({
       </div>
 
       <div className="flex items-center gap-2">
-        <button
-          onClick={onOpenImageSolver}
-          className="px-3 py-2 text-xs font-medium rounded-full glass-pill flex items-center gap-1.5 transition-all cursor-pointer"
-          title="Upload Isometric Question Photo"
-        >
-          <ImageIcon className="w-3.5 h-3.5" />
-          <span className="hidden md:inline">Image → CAD</span>
-        </button>
-
         <button
           onClick={onOpenSolver}
           className="px-3.5 py-2 text-xs font-semibold rounded-full glass-pill-active flex items-center gap-1.5 transition-all cursor-pointer"
