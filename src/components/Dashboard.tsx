@@ -37,6 +37,8 @@ import {
 import { SOLID_PRESETS } from '../utils/geometryGenerators';
 import { InteractiveOrb } from './InteractiveOrb';
 import { InteractiveMasteryMeter } from './InteractiveMasteryMeter';
+import { HeroProjectionStage } from './HeroProjectionStage';
+import { LandingInteractiveShowcase } from './LandingInteractiveShowcase';
 
 type AccentId = 'mono' | 'cyan' | 'emerald' | 'amber';
 
@@ -206,6 +208,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
   onOpenExport,
 }) => {
   const isDark = theme === 'blueprint';
+  const [activeTab, setActiveTab] = useState<'overview' | 'lab'>('overview');
   const [searchQuery, setSearchQuery] = useState('');
   const [quickQuestion, setQuickQuestion] = useState('');
 
@@ -423,7 +426,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 </div>
                 <div>
                   <div className="text-sm font-semibold tracking-[-0.02em]">OrthoView3D</div>
-                  <div className="text-[10px] opacity-55">CAD Studio v3.4</div>
+                  <div className="text-[10px] opacity-55">CAD Studio v3.6</div>
                 </div>
               </button>
 
@@ -445,9 +448,31 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
             {/* Navigation Items */}
             <nav className="hidden sm:grid sm:grid-cols-4 lg:grid-cols-1 gap-1.5 text-xs font-medium">
-              <button className="px-3.5 py-2.5 rounded-full glass-pill-active flex items-center gap-2.5 cursor-pointer">
+              <button
+                onClick={() => setActiveTab('overview')}
+                className={`px-3.5 py-2.5 rounded-full flex items-center gap-2.5 transition-colors cursor-pointer ${
+                  activeTab === 'overview'
+                    ? 'glass-pill-active'
+                    : isDark
+                      ? 'text-zinc-400 hover:bg-white/10 hover:text-white'
+                      : 'text-zinc-600 hover:bg-black/5 hover:text-black'
+                }`}
+              >
                 <Home className="w-4 h-4 shrink-0" />
                 <span className="truncate">Overview</span>
+              </button>
+              <button
+                onClick={() => setActiveTab('lab')}
+                className={`px-3.5 py-2.5 rounded-full flex items-center gap-2.5 transition-colors cursor-pointer ${
+                  activeTab === 'lab'
+                    ? 'glass-pill-active'
+                    : isDark
+                      ? 'text-zinc-400 hover:bg-white/10 hover:text-white'
+                      : 'text-zinc-600 hover:bg-black/5 hover:text-black'
+                }`}
+              >
+                <Zap className="w-4 h-4 shrink-0" />
+                <span className="truncate">Interactive Lab</span>
               </button>
               <button
                 onClick={() => onOpenStudio('orthographic')}
@@ -639,6 +664,61 @@ export const Dashboard: React.FC<DashboardProps> = ({
             </div>
           </div>
 
+          {/* Workspace Sub-Tab Switcher (Overview vs Interactive CAD Lab) */}
+          <div className="flex items-center gap-2">
+            <div className="inline-flex items-center gap-1 p-1 rounded-full glass-pill">
+              <button
+                type="button"
+                onClick={() => setActiveTab('overview')}
+                className={`px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all cursor-pointer ${
+                  activeTab === 'overview' ? 'glass-pill-active' : 'opacity-65 hover:opacity-100'
+                }`}
+              >
+                Workspace Overview
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab('lab')}
+                className={`px-3.5 py-1.5 rounded-full text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
+                  activeTab === 'lab' ? 'glass-pill-active' : 'opacity-65 hover:opacity-100'
+                }`}
+              >
+                <Zap className="w-3.5 h-3.5" style={{ color: activeTab === 'lab' ? undefined : effectiveAccentHex }} />
+                <span>Interactive CAD Lab</span>
+              </button>
+            </div>
+          </div>
+
+          {activeTab === 'lab' ? (
+            <div className="space-y-6">
+              <div className="rounded-[26px] bg-[#0a0a0d] text-white p-5 sm:p-6 border border-white/10">
+                <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <div className="text-[10px] font-mono uppercase tracking-wider text-white/55">
+                      Live 3D-to-2D Projection Unfold &amp; X-Ray Loupe
+                    </div>
+                    <h2 className="text-lg font-semibold tracking-[-0.02em]">
+                      Interactive Projection Plane Simulator
+                    </h2>
+                  </div>
+                </div>
+                <HeroProjectionStage
+                  accentHex={activeAccent.hex}
+                  accentGlow={activeAccent.glow}
+                  onLaunchSolid={onSelectSolidAndOpen}
+                />
+              </div>
+
+              <LandingInteractiveShowcase
+                isDark={isDark}
+                accentHex={effectiveAccentHex}
+                onOpenStudio={() => onOpenStudio('orthographic')}
+                onOpenImageSolver={onOpenImageSolver}
+                onSelectSolidAndOpen={onSelectSolidAndOpen || (() => onOpenStudio('orthographic'))}
+              />
+            </div>
+          ) : (
+            <>
           {/* TOP BENTO ROW (3 Columns) */}
           <div className="grid grid-cols-1 xl:grid-cols-12 gap-4">
             {/* 1. Recent Drawings Timeline Card with Live Wireframe Thumbnails */}
@@ -946,6 +1026,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
               </div>
             </section>
           </div>
+            </>
+          )}
         </main>
       </div>
 
@@ -957,11 +1039,21 @@ export const Dashboard: React.FC<DashboardProps> = ({
       >
         <button
           type="button"
+          onClick={() => setActiveTab('overview')}
           className="flex flex-col items-center gap-0.5 px-3 py-1 rounded-xl text-[10px] font-semibold cursor-pointer"
-          style={{ color: effectiveAccentHex }}
+          style={{ color: activeTab === 'overview' ? effectiveAccentHex : undefined }}
         >
           <Home className="w-4 h-4" />
           <span>Home</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab('lab')}
+          className="flex flex-col items-center gap-0.5 px-3 py-1 rounded-xl text-[10px] font-semibold cursor-pointer"
+          style={{ color: activeTab === 'lab' ? effectiveAccentHex : undefined }}
+        >
+          <Zap className="w-4 h-4" />
+          <span>CAD Lab</span>
         </button>
         <button
           type="button"

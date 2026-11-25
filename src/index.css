@@ -186,3 +186,20 @@ input[type="range"] {
 .animate-scan-beam {
   animation: scanBeam 2.8s ease-in-out infinite;
 }
+
+/* High-refresh-rate GPU compositing optimizations */
+@media (max-width: 1024px) {
+  .glass-panel,
+  .glass-modal,
+  .glass-card,
+  .glass-pill {
+    backdrop-filter: blur(10px) saturate(125%);
+    -webkit-backdrop-filter: blur(10px) saturate(125%);
+  }
+}
+
+.gpu-layer {
+  transform: translateZ(0);
+  will-change: transform;
+  contain: layout paint;
+}

@@ -116,7 +116,7 @@ export const HeroProjectionStage: React.FC<HeroProjectionStageProps> = ({
   const [unfold, setUnfold] = useState<number>(38);
   const [xrayActive, setXrayActive] = useState<boolean>(false);
   const [isDragging, setIsDragging] = useState<boolean>(false);
-  const [angleHud, setAngleHud] = useState({ pitch: 35, yaw: 45 });
+  const hudRef = useRef<HTMLSpanElement | null>(null);
 
   const stateRef = useRef({
     yaw: (45 * Math.PI) / 180,
@@ -135,6 +135,9 @@ export const HeroProjectionStage: React.FC<HeroProjectionStageProps> = ({
     accentHex,
     accentGlow,
     mountTime: performance.now(),
+    width: 320,
+    height: 260,
+    visible: true,
   });
 
   useEffect(() => {
@@ -170,8 +173,30 @@ export const HeroProjectionStage: React.FC<HeroProjectionStageProps> = ({
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
+    const s0 = stateRef.current;
+    const dpr = Math.min(window.devicePixelRatio || 1, window.innerWidth < 768 ? 1.5 : 2);
+    const syncSize = () => {
+      const rect = canvas.getBoundingClientRect();
+      s0.width = Math.max(240, Math.floor(rect.width));
+      s0.height = Math.max(240, Math.floor(rect.height));
+      const bw = Math.floor(s0.width * dpr);
+      const bh = Math.floor(s0.height * dpr);
+      if (canvas.width !== bw || canvas.height !== bh) {
+        canvas.width = bw;
+        canvas.height = bh;
+      }
+    };
+    syncSize();
+    const ro = new ResizeObserver(syncSize);
+    ro.observe(canvas);
+    const io = new IntersectionObserver((entries) => {
+      s0.visible = entries[0]?.isIntersecting ?? true;
+    }, { threshold: 0.05 });
+    io.observe(canvas);
+
     let rafId = 0;
-    let lastHud = 0;
+    let lastTime = performance.now();
+    let lastHudText = '';
 
     const proj = (v: Vec3, yaw: number, pitch: number, cx: number, cy: number, scale: number) => {
       const cyw = Math.cos(yaw), syw = Math.sin(yaw);
@@ -185,26 +210,28 @@ export const HeroProjectionStage: React.FC<HeroProjectionStageProps> = ({
     };
 
     const draw = (now: number) => {
-      const dpr = Math.min(window.devicePixelRatio || 1, 2);
-      const rect = canvas.getBoundingClientRect();
-      const w = Math.max(240, Math.floor(rect.width));
-      const h = Math.max(240, Math.floor(rect.height));
-      if (canvas.width !== Math.floor(w * dpr) || canvas.height !== Math.floor(h * dpr)) {
-        canvas.width = Math.floor(w * dpr);
-        canvas.height = Math.floor(h * dpr);
+      rafId = requestAnimationFrame(draw);
+      const s = stateRef.current;
+      if (!s.visible || document.hidden) {
+        lastTime = now;
+        return;
       }
+      const dt = Math.min(32, now - lastTime) / 16.6667;
+      lastTime = now;
 
+      const w = s.width;
+      const h = s.height;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.clearRect(0, 0, w, h);
 
-      const s = stateRef.current;
       if (!s.dragging) {
-        s.yaw += s.vyaw;
-        s.pitch += s.vpitch;
-        s.vyaw *= 0.93;
-        s.vpitch *= 0.93;
+        s.yaw += s.vyaw * dt;
+        s.pitch += s.vpitch * dt;
+        const damp = Math.pow(0.93, dt);
+        s.vyaw *= damp;
+        s.vpitch *= damp;
         if (Math.abs(s.vyaw) < 0.0005 && now - s.lastInteract > 2400) {
-          s.yaw += 0.004;
+          s.yaw += 0.004 * dt;
         }
       }
       const maxP = (78 * Math.PI) / 180;
@@ -382,18 +409,23 @@ export const HeroProjectionStage: React.FC<HeroProjectionStageProps> = ({
         ctx.restore();
       }
 
-      if (now - lastHud > 75) {
-        lastHud = now;
+      if (hudRef.current) {
         const pDeg = Math.round((s.pitch * 180) / Math.PI);
         const yDeg = (((Math.round((s.yaw * 180) / Math.PI) % 360) + 360) % 360);
-        setAngleHud((prev) => (prev.pitch === pDeg && prev.yaw === yDeg ? prev : { pitch: pDeg, yaw: yDeg }));
+        const txt = `α ${pDeg}° • β ${yDeg}°`;
+        if (txt !== lastHudText) {
+          lastHudText = txt;
+          hudRef.current.textContent = txt;
+        }
       }
-
-      rafId = requestAnimationFrame(draw);
     };
 
     rafId = requestAnimationFrame(draw);
-    return () => cancelAnimationFrame(rafId);
+    return () => {
+      cancelAnimationFrame(rafId);
+      ro.disconnect();
+      io.disconnect();
+    };
   }, []);
 
   const activeSolidMeta = SOLID_OPTIONS.find((s) => s.key === solidKey) || SOLID_OPTIONS[0];
@@ -496,8 +528,11 @@ export const HeroProjectionStage: React.FC<HeroProjectionStageProps> = ({
 
         {/* Corner HUD Badges */}
         <div className="absolute top-2.5 left-3 flex items-center gap-1.5 pointer-events-none">
-          <span className="px-2 py-0.5 rounded-full bg-black/60 border border-white/15 text-[9px] font-mono text-white/80 tabular-nums">
-            α {angleHud.pitch}° • β {angleHud.yaw}°
+          <span
+            ref={hudRef}
+            className="px-2 py-0.5 rounded-full bg-black/60 border border-white/15 text-[9px] font-mono text-white/80 tabular-nums"
+          >
+            α 35° • β 45°
           </span>
         </div>
 
