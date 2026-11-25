@@ -14,7 +14,7 @@ interface HeroProjectionStageProps {
 const SOLID_OPTIONS: { key: HeroSolidKey; label: string; solidType: SolidType; dims: string }[] = [
   { key: 'stepped-t-block', label: 'Stepped T-Block', solidType: 'stepped-t-block', dims: '40 × 50 × 30 mm • R10 Groove' },
   { key: 'slotted-cylinder-bracket', label: 'Slotted Cylinder', solidType: 'slotted-cylinder-bracket', dims: '140 × 50 × 50 mm • Ø40×24' },
-  { key: 'hex-prism', label: 'Hex Prism', solidType: 'hexagonal-prism', dims: '40 × 40 × 70 mm • 6 Faces' },
+  { key: 'hex-prism', label: 'Hex Prism', solidType: 'hex-prism', dims: '40 × 40 × 70 mm • 6 Faces' },
 ];
 
 type Vec3 = [number, number, number];
