@@ -508,6 +508,13 @@ export function App() {
             setView('studio');
           }}
           onOpenTheory={() => setIsTheoryOpen(true)}
+          onOpenImageSolver={() => setIsImageSolverOpen(true)}
+          onSelectSolidAndOpen={(type) => {
+            handleSelectSolid(type);
+            setActiveModule('orthographic');
+            setPhase2Banner(null);
+            setView('studio');
+          }}
         />
       )}
 
