@@ -13,6 +13,8 @@ import { ExportModal } from './components/ExportModal';
 import { LandingPage } from './components/LandingPage';
 import { Dashboard } from './components/Dashboard';
 import { AuthModal } from './components/AuthModal';
+import { ProDashboard } from './components/pro/ProDashboard';
+import { ProWorkspace } from './components/pro/ProWorkspace';
 import { createSolidGeometry, DEFAULT_SLOTTED_CYLINDER_SPEC, SOLID_PRESETS } from './utils/geometryGenerators';
 import { exportSheetAsPNG } from './utils/exportDrawingSheet';
 import { parseEngineeringQuestion } from './utils/questionParser';
@@ -22,12 +24,15 @@ import {
   AppView,
   CompositePartSpec,
   DEFAULT_LINE_COLORS,
+  DEFAULT_PRO_PROJECT,
   DEFAULT_TITLE_BLOCK_FIELDS,
   DEFAULT_TITLE_BLOCK_OPTIONS,
   DisplayOptions,
   HighlightTarget,
   LineProblemParams,
   PlanometricParams,
+  ProModuleId,
+  ProProjectState,
   SavedQuestionRecord,
   SideViewMode,
   SolidDimensions,
@@ -257,6 +262,36 @@ export function App() {
       // ignore
     }
   }, [titleBlockOptions]);
+
+  // Professional Builders CAD Stream (v4.0.0)
+  const [proProject, setProProject] = useState<ProProjectState>(() => {
+    try {
+      const saved = localStorage.getItem('vectordesk-pro-project');
+      if (saved) return JSON.parse(saved);
+    } catch {
+      // ignore
+    }
+    return DEFAULT_PRO_PROJECT;
+  });
+
+  const [activeProModule, setActiveProModule] = useState<ProModuleId>('floor-plan');
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('vectordesk-pro-project', JSON.stringify(proProject));
+    } catch {
+      // ignore
+    }
+  }, [proProject]);
+
+  const handleOpenProDashboard = () => {
+    setView('pro-dashboard');
+  };
+
+  const handleOpenProModule = (mod: ProModuleId) => {
+    setActiveProModule(mod);
+    setView('pro-studio');
+  };
 
   useEffect(() => {
     const root = document.documentElement;
@@ -534,6 +569,7 @@ export function App() {
             }}
             accentId={accentId}
             onSelectAccent={handleSelectAccent}
+            onOpenProDashboard={handleOpenProDashboard}
           />
         </div>
       )}
@@ -569,6 +605,8 @@ export function App() {
             onOpenExport={handleExportSheet}
             accentId={accentId}
             onSelectAccent={handleSelectAccent}
+            onOpenProDashboard={handleOpenProDashboard}
+            onOpenProModule={handleOpenProModule}
           />
         </div>
       )}
@@ -766,6 +804,36 @@ export function App() {
               </main>
             </div>
           )}
+        </div>
+      )}
+
+      {view === 'pro-dashboard' && (
+        <div className="animate-view-enter">
+          <ProDashboard
+            project={proProject}
+            onUpdateProject={setProProject}
+            theme={theme}
+            onToggleTheme={handleToggleTheme}
+            accentId={accentId}
+            onSelectAccent={handleSelectAccent}
+            onBackToHome={() => setView('landing')}
+            onOpenModule={handleOpenProModule}
+          />
+        </div>
+      )}
+
+      {view === 'pro-studio' && (
+        <div className="animate-view-enter">
+          <ProWorkspace
+            project={proProject}
+            onUpdateProject={setProProject}
+            initialModule={activeProModule}
+            theme={theme}
+            onToggleTheme={handleToggleTheme}
+            accentId={accentId}
+            onSelectAccent={handleSelectAccent}
+            onBackToProDashboard={() => setView('pro-dashboard')}
+          />
         </div>
       )}
 

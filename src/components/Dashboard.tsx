@@ -24,8 +24,10 @@ import {
   CheckCircle2,
   Zap,
   ChevronRight,
+  Building2,
 } from 'lucide-react';
 import {
+  ProModuleId,
   SavedQuestionRecord,
   SolidDimensions,
   SolidType,
@@ -104,6 +106,8 @@ interface DashboardProps {
   onOpenExport?: () => void;
   accentId?: AccentId;
   onSelectAccent?: (id: AccentId) => void;
+  onOpenProDashboard?: () => void;
+  onOpenProModule?: (mod: ProModuleId) => void;
 }
 
 const MiniWireframeBadge: React.FC<{ solidType: SolidType; module?: StudioModule; accentHex: string }> = ({
@@ -167,6 +171,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
   onOpenExport,
   accentId: propAccentId,
   onSelectAccent: propOnSelectAccent,
+  onOpenProDashboard,
+  onOpenProModule: _onOpenProModule,
 }) => {
   const isDark = theme === 'blueprint';
   const [activeTab, setActiveTab] = useState<'overview' | 'lab'>('overview');
@@ -283,6 +289,17 @@ export const Dashboard: React.FC<DashboardProps> = ({
             },
           ]
         : []),
+      ...(onOpenProDashboard
+        ? [
+            {
+              id: 'act-pro-hub',
+              group: 'Professional Stream',
+              title: 'Launch Professional Builders CAD Hub',
+              subtitle: 'Floor plans, column grids, staircases, MEP & BOQ',
+              run: onOpenProDashboard,
+            },
+          ]
+        : []),
       {
         id: 'act-theme',
         group: 'Quick Actions',
@@ -314,7 +331,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
         item.subtitle.toLowerCase().includes(q) ||
         item.group.toLowerCase().includes(q)
     );
-  }, [paletteQuery, isDark, onOpenStudio, onOpenExport, onToggleTheme, onSelectSolidAndOpen]);
+  }, [paletteQuery, isDark, onOpenStudio, onOpenExport, onOpenProDashboard, onToggleTheme, onSelectSolidAndOpen]);
 
   const activePreset = SOLID_PRESETS.find((p) => p.id === currentSolid) || SOLID_PRESETS[0];
 
@@ -372,8 +389,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
                   <Box className="w-4 h-4" />
                 </div>
                 <div>
-                  <div className="text-sm font-semibold tracking-[-0.02em]">OrthoView3D</div>
-                  <div className="text-[10px] opacity-55">CAD Studio v3.6</div>
+                  <div className="text-sm font-semibold tracking-[-0.02em]">VectorDesk</div>
+                  <div className="text-[10px] opacity-55">CAD Studio v4.0</div>
                 </div>
               </button>
 
@@ -408,6 +425,27 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 <Home className="w-4 h-4 shrink-0" />
                 <span className="truncate">Overview</span>
               </button>
+
+              {onOpenProDashboard && (
+                <button
+                  onClick={onOpenProDashboard}
+                  className={`px-3.5 py-2.5 rounded-full flex items-center justify-between gap-2.5 transition-colors cursor-pointer border ${
+                    isDark
+                      ? 'border-sky-500/30 bg-sky-500/10 text-sky-400 hover:bg-sky-500/20'
+                      : 'border-sky-600/30 bg-sky-50 text-sky-700 hover:bg-sky-100'
+                  }`}
+                  title="Professional Stream: Builders, Civil & Architectural CAD"
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <Building2 className="w-4 h-4 shrink-0" />
+                    <span className="truncate font-semibold">Builders CAD</span>
+                  </div>
+                  <span className="text-[9px] font-mono uppercase px-1.5 py-0.5 rounded-full bg-sky-500 text-white dark:bg-sky-400 dark:text-black font-bold shrink-0">
+                    PRO
+                  </span>
+                </button>
+              )}
+
               <button
                 onClick={() => setActiveTab('lab')}
                 className={`px-3.5 py-2.5 rounded-full flex items-center gap-2.5 transition-colors cursor-pointer ${
@@ -656,6 +694,48 @@ export const Dashboard: React.FC<DashboardProps> = ({
             </div>
           ) : (
             <>
+          {/* Professional CAD Stream Promo / Launch Banner */}
+          {onOpenProDashboard && (
+            <div
+              className={`rounded-[24px] p-5 border flex flex-col md:flex-row items-start md:items-center justify-between gap-4 transition-all ${
+                isDark
+                  ? 'border-sky-500/25 bg-gradient-to-r from-sky-950/40 via-black/50 to-emerald-950/20'
+                  : 'border-sky-500/30 bg-gradient-to-r from-sky-50 via-white to-emerald-50/50'
+              }`}
+            >
+              <div className="flex items-start sm:items-center gap-3.5 min-w-0">
+                <div className="w-12 h-12 rounded-2xl bg-sky-500/15 border border-sky-500/30 flex items-center justify-center shrink-0 text-sky-500">
+                  <Building2 className="w-6 h-6" />
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-mono font-bold uppercase tracking-wider text-sky-500">
+                      NEW IN v4.0.0
+                    </span>
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-sky-500/15 text-sky-500 font-semibold">
+                      7 Pro Builder Modules
+                    </span>
+                  </div>
+                  <h3 className="text-base sm:text-lg font-semibold tracking-tight mt-0.5">
+                    Professional Stream — Builders, Civil &amp; Architectural CAD
+                  </h3>
+                  <p className="text-xs opacity-70 mt-0.5 line-clamp-1">
+                    Interactive 2D/3D Floor Plans, RCC Column Grid, Dog-Legged Stairs, Elevation/Section, MEP Overlay, FAR, &amp; BOQ.
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={onOpenProDashboard}
+                className="px-5 py-2.5 rounded-full bg-sky-500 hover:bg-sky-400 text-white dark:text-black font-semibold text-xs flex items-center gap-2 transition-all cursor-pointer shrink-0 shadow-lg shadow-sky-500/20"
+              >
+                <span>Open Pro Dashboard</span>
+                <ArrowUpRight className="w-4 h-4" />
+              </button>
+            </div>
+          )}
+
           {/* TOP BENTO ROW (3 Columns) */}
           <div className="grid grid-cols-1 xl:grid-cols-12 gap-4">
             {/* 1. Recent Drawings Timeline Card with Live Wireframe Thumbnails */}

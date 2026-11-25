@@ -12,7 +12,7 @@ interface AuthModalProps {
 
 function makeInitials(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean);
-  if (parts.length === 0) return 'OV';
+  if (parts.length === 0) return 'VD';
   if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
@@ -67,8 +67,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const handleDemoSignIn = () => {
     const profile: UserProfile = {
       name: 'Danish Jubily',
-      email: 'danish@orthoview3d.studio',
-      branch: 'B.Tech Engineering',
+      email: 'danish@vectordesk.cad',
+      branch: 'B.Tech Engineering & Architecture',
       initials: 'DJ',
     };
     onAuthenticated(profile);
@@ -89,7 +89,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             <div>
               <div className="inline-flex items-center gap-1.5 text-[11px] font-medium px-2.5 py-1 rounded-full border border-current/15 opacity-75 mb-3">
                 <Lock className="w-3 h-3" />
-                <span>OrthoView3D Account</span>
+                <span>VectorDesk Account</span>
               </div>
               <h2 className="text-xl font-semibold tracking-[-0.025em]">
                 {mode === 'signin' ? 'Sign in to your workspace' : 'Create your studio profile'}

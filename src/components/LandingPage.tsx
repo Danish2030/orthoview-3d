@@ -1,5 +1,5 @@
 import React, { useMemo, useRef, useState } from 'react';
-import { ArrowUpRight, Lock, Sun, Moon, Box, Compass } from 'lucide-react';
+import { ArrowUpRight, Lock, Sun, Moon, Box, Compass, Building2 } from 'lucide-react';
 import { SolidType, ThemeMode, UserProfile } from '../types';
 import { AccentId, ACCENT_THEMES, getSavedAccent, saveAccent } from '../utils/accentTheme';
 
@@ -14,6 +14,7 @@ interface LandingPageProps {
   onSelectSolidAndOpen?: (type: SolidType) => void;
   accentId?: AccentId;
   onSelectAccent?: (id: AccentId) => void;
+  onOpenProDashboard?: () => void;
 }
 
 export const LandingPage: React.FC<LandingPageProps> = ({
@@ -26,6 +27,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   onOpenTheory,
   accentId: propAccentId,
   onSelectAccent: propOnSelectAccent,
+  onOpenProDashboard,
 }) => {
   const isDark = theme === 'blueprint';
   const heroRef = useRef<HTMLDivElement | null>(null);
@@ -133,13 +135,25 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               <div className="w-8 h-8 rounded-full bg-white/10 border border-white/20 flex items-center justify-center">
                 <Box className="w-4 h-4" style={{ color: activeAccent.hex }} />
               </div>
-              <span className="text-sm font-semibold tracking-[-0.02em]">OrthoView3D</span>
+              <span className="text-sm font-semibold tracking-[-0.02em]">VectorDesk</span>
             </div>
 
             <nav className="hidden md:flex items-center gap-7 text-xs text-white/65 font-medium">
               <button onClick={onOpenStudio} className="hover:text-white transition-colors cursor-pointer">
                 3D Studio
               </button>
+              {onOpenProDashboard && (
+                <button
+                  onClick={onOpenProDashboard}
+                  className="hover:text-sky-300 text-sky-400 font-semibold transition-colors cursor-pointer flex items-center gap-1.5"
+                >
+                  <Building2 className="w-3.5 h-3.5" />
+                  <span>Builders CAD</span>
+                  <span className="text-[9px] font-mono uppercase px-1.5 py-0.2 rounded-full bg-sky-500/20 text-sky-300 font-bold">
+                    PRO
+                  </span>
+                </button>
+              )}
               <button onClick={onOpenTheory} className="hover:text-white transition-colors cursor-pointer">
                 ISO 128
               </button>
@@ -190,35 +204,88 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             </div>
           </header>
 
-          {/* Centerpiece Minimalist Editorial Copy */}
-          <div className="relative z-10 px-6 sm:px-10 py-16 sm:py-20 text-center max-w-2xl mx-auto space-y-5">
+          {/* Centerpiece Minimalist Editorial Copy & Dual Stream Cards */}
+          <div className="relative z-10 px-6 sm:px-10 py-12 sm:py-16 text-center max-w-4xl mx-auto space-y-6">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/[0.07] border border-white/15 text-[10px] font-mono uppercase tracking-[0.2em] text-white/75">
               <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: activeAccent.hex }} />
-              ISO 128 First-Angle CAD Studio
+              Dual-Stream Engineering &amp; Civil CAD Studio
             </div>
 
             <h1 className="text-4xl sm:text-6xl font-semibold tracking-[-0.04em] leading-[1.04] text-white">
-              Precision 3D to Orthographic.
+              Precision 3D, Orthographic &amp; Civil CAD.
             </h1>
 
-            <p className="text-sm sm:text-base text-white/65 max-w-lg mx-auto leading-relaxed">
-              Sign in to access your interactive 3D CAD Lab, Photo-to-CAD scanner, Boolean CSG builder, and AutoCAD sheet exporter.
+            <p className="text-sm sm:text-base text-white/65 max-w-xl mx-auto leading-relaxed">
+              VectorDesk unites academic B.Tech Engineering Graphics (ISO 128) with a dedicated professional CAD suite for builders, architects, and civil engineers.
             </p>
 
-            <div className="pt-3 flex flex-wrap items-center justify-center gap-3">
-              <button
-                onClick={handleEnterClick}
-                className="px-6 py-3 rounded-full bg-white text-black hover:bg-zinc-200 text-xs sm:text-sm font-semibold flex items-center gap-2 transition-all cursor-pointer shadow-[0_8px_30px_rgba(255,255,255,0.16)]"
-              >
-                <span>{user ? 'Enter Workspace' : 'Sign In to Enter Workspace'}</span>
-                <ArrowUpRight className="w-4 h-4" />
-              </button>
-              <button
-                onClick={onOpenStudio}
-                className="px-6 py-3 rounded-full bg-white/[0.08] hover:bg-white/[0.16] border border-white/20 text-white text-xs sm:text-sm font-medium transition-all cursor-pointer"
-              >
-                Quick 3D Preview
-              </button>
+            {/* Dual Stream Selection Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-left pt-2 max-w-2xl mx-auto">
+              {/* Card 1: Academic Stream */}
+              <div className="p-4 sm:p-5 rounded-2xl bg-white/[0.05] hover:bg-white/[0.08] border border-white/10 transition-all flex flex-col justify-between space-y-3 group">
+                <div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-mono uppercase tracking-wider text-sky-400 font-semibold">
+                      Academic Stream
+                    </span>
+                    <span className="text-[10px] opacity-50 font-mono">24EST1004-C</span>
+                  </div>
+                  <h3 className="text-base font-semibold text-white mt-1 group-hover:text-sky-300 transition-colors">
+                    B.Tech Graphics Lab
+                  </h3>
+                  <p className="text-xs text-white/60 mt-1 leading-relaxed">
+                    ISO 128 First-Angle projections, Line Solvers, Planometric Solids, CSG Booleans, and Title Block sheet exports.
+                  </p>
+                </div>
+                <div className="flex items-center gap-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={handleEnterClick}
+                    className="px-3.5 py-1.5 rounded-full bg-white text-black hover:bg-zinc-200 text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer shadow-sm"
+                  >
+                    <span>Enter Lab</span>
+                    <ArrowUpRight className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={onOpenStudio}
+                    className="px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/20 text-white text-xs font-medium transition-all cursor-pointer"
+                  >
+                    3D View
+                  </button>
+                </div>
+              </div>
+
+              {/* Card 2: Professional Stream */}
+              <div className="p-4 sm:p-5 rounded-2xl bg-sky-500/[0.08] hover:bg-sky-500/[0.12] border border-sky-500/25 transition-all flex flex-col justify-between space-y-3 group">
+                <div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-mono uppercase tracking-wider text-emerald-400 font-semibold">
+                      Professional Stream
+                    </span>
+                    <span className="text-[10px] font-mono px-1.5 py-0.2 rounded-full bg-sky-500/20 text-sky-300 font-bold">
+                      NEW v4.0
+                    </span>
+                  </div>
+                  <h3 className="text-base font-semibold text-white mt-1 group-hover:text-emerald-300 transition-colors">
+                    Builders &amp; Civil CAD Hub
+                  </h3>
+                  <p className="text-xs text-white/60 mt-1 leading-relaxed">
+                    2D/3D Floor Plans, RCC Column Grids, Dog-Legged Stairs, Elevation/Section, MEP Overlays, FAR &amp; BOQ Schedules.
+                  </p>
+                </div>
+                <div className="flex items-center gap-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={onOpenProDashboard || handleEnterClick}
+                    className="px-3.5 py-1.5 rounded-full bg-sky-500 hover:bg-sky-400 text-white dark:text-black text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer shadow-lg shadow-sky-500/20"
+                  >
+                    <Building2 className="w-3.5 h-3.5" />
+                    <span>Launch Pro Hub</span>
+                    <ArrowUpRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -226,7 +293,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           <div className="relative z-10 px-6 sm:px-10 py-4 border-t border-white/10 flex flex-wrap items-center justify-between gap-3 text-[10px] font-mono text-white/50">
             <span className="flex items-center gap-1.5">
               <Compass className="w-3.5 h-3.5" />
-              ORTHOVIEW3D v3.6
+              VECTORDESK v4.0.0
             </span>
             <span ref={coordRef} className="tabular-nums">
               X 210 • Y 148 MM

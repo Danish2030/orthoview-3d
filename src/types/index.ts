@@ -196,8 +196,10 @@ export type ThemeMode = 'blueprint' | 'paper';
 export type RenderStyle = 'aluminum' | 'steel' | 'polymer' | 'glass' | 'anodized';
 export type TransferMethod = 'miter' | 'compass';
 export type SideViewMode = 'left' | 'right';
-export type AppView = 'landing' | 'dashboard' | 'studio';
+export type AppView = 'landing' | 'dashboard' | 'studio' | 'pro-dashboard' | 'pro-studio';
 export type StudioModule = 'orthographic' | 'lines' | 'planometric';
+
+export * from './pro';
 
 export interface LineProblemParams {
   trueLength: number;

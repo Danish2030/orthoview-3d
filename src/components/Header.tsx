@@ -102,7 +102,10 @@ export const Header: React.FC<HeaderProps> = ({
           >
             <Box className="w-4 h-4" />
           </div>
-          <span className="font-semibold text-sm tracking-[-0.02em]">OrthoView3D</span>
+          <div className="flex flex-col text-left">
+            <span className="font-semibold text-sm tracking-[-0.02em] leading-tight">VectorDesk</span>
+            <span className="text-[9px] opacity-50 font-mono">v4.0.0</span>
+          </div>
         </button>
 
         {/* Module Switcher */}
