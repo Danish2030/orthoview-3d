@@ -28,6 +28,7 @@ import {
   ImageCadExtraction,
   OFFLINE_IMAGE_PRESETS,
   parseQuickPhotoDimensions,
+  testVisionProxy,
 } from '../utils/imageToCad';
 
 interface ImageSolverModalProps {
@@ -77,7 +78,26 @@ export const ImageSolverModal: React.FC<ImageSolverModalProps> = ({
     }
   });
 
+  // Diagnostics & Proxy Health-Check State
+  const [isTestingProxy, setIsTestingProxy] = useState<boolean>(false);
+  const [proxyTestResult, setProxyTestResult] = useState<{
+    ok: boolean;
+    status: number;
+    message: string;
+    keyConfigured?: boolean;
+    keyPrefix?: string | null;
+  } | null>(null);
+
   if (!isOpen) return null;
+
+  const resolvedProxyUrl = customProxyUrl.trim()
+    ? customProxyUrl.trim()
+    : typeof window !== 'undefined' &&
+      (window.location.hostname.includes('vercel.app') || window.location.hostname === 'localhost')
+    ? '/api/analyze'
+    : (typeof import.meta !== 'undefined' &&
+        (import.meta as unknown as { env?: Record<string, string> }).env?.VITE_VISION_PROXY_URL) ||
+      '';
 
   const handleSaveKey = (val: string) => {
     setApiKey(val);
@@ -94,6 +114,7 @@ export const ImageSolverModal: React.FC<ImageSolverModalProps> = ({
 
   const handleSaveProxy = (val: string) => {
     setCustomProxyUrl(val);
+    setProxyTestResult(null);
     try {
       if (val.trim()) {
         localStorage.setItem('orthoview-proxy-url', val.trim());
@@ -102,6 +123,18 @@ export const ImageSolverModal: React.FC<ImageSolverModalProps> = ({
       }
     } catch {
       // ignore
+    }
+  };
+
+  const handleTestProxy = async () => {
+    const target = resolvedProxyUrl || '/api/analyze';
+    setIsTestingProxy(true);
+    setProxyTestResult(null);
+    try {
+      const res = await testVisionProxy(target);
+      setProxyTestResult(res);
+    } finally {
+      setIsTestingProxy(false);
     }
   };
 
@@ -370,6 +403,29 @@ export const ImageSolverModal: React.FC<ImageSolverModalProps> = ({
             </div>
           </div>
 
+          {/* Diagnostic Pill: Visible Fallback Notice */}
+          {extraction.proxyError &&
+            (extraction.source === 'ocr-inference' || extraction.source === 'offline-preset') && (
+              <div className="px-3.5 py-2.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-800 dark:text-amber-200 text-xs flex items-start gap-2.5">
+                <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" />
+                <div className="flex-1 space-y-1">
+                  <div className="font-semibold flex items-center justify-between">
+                    <span>Cloud Vision Fallback ({extraction.endpointUsed || '/api/analyze'})</span>
+                  </div>
+                  <p className="text-[11px] opacity-90 leading-relaxed font-mono break-all">
+                    {extraction.proxyError}
+                  </p>
+                  <p className="text-[10px] opacity-75">
+                    Switched automatically to{' '}
+                    {extraction.source === 'ocr-inference'
+                      ? 'on-device OCR (tesseract.js)'
+                      : 'standard CAD preset'}
+                    . You can still generate the AutoCAD sheet or adjust parameters below.
+                  </p>
+                </div>
+              </div>
+            )}
+
           {error && (
             <div className="px-3.5 py-2.5 rounded-2xl bg-rose-500/10 border border-rose-500/25 text-rose-500 dark:text-rose-300 text-xs flex items-center gap-2">
               <AlertCircle className="w-4 h-4 shrink-0" />
@@ -482,7 +538,7 @@ export const ImageSolverModal: React.FC<ImageSolverModalProps> = ({
             </div>
           </div>
 
-          {/* Collapsible Advanced Settings (Self-Host Endpoint / Custom API Key) */}
+          {/* Collapsible Advanced Settings (Self-Host Endpoint / Custom API Key + Live Health Check) */}
           <div className="rounded-2xl border border-current/10 overflow-hidden">
             <button
               type="button"
@@ -501,7 +557,57 @@ export const ImageSolverModal: React.FC<ImageSolverModalProps> = ({
             </button>
 
             {showAdvanced && (
-              <div className="px-4 pb-4 pt-2 space-y-3 border-t border-current/10 text-xs">
+              <div className="px-4 pb-4 pt-2 space-y-3.5 border-t border-current/10 text-xs">
+                {/* Active Endpoint & Live Test Box */}
+                <div className="p-3 rounded-xl bg-current/5 border border-current/10 space-y-2">
+                  <div className="flex flex-wrap items-center justify-between gap-1.5 text-[11px]">
+                    <span className="opacity-70 font-medium">Active Vision Endpoint:</span>
+                    <span className="font-mono text-[10px] opacity-90 truncate max-w-[260px] sm:max-w-[340px]">
+                      {resolvedProxyUrl || 'None (Using Direct Key or In-Browser OCR)'}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-2 pt-0.5">
+                    <button
+                      type="button"
+                      onClick={handleTestProxy}
+                      disabled={isTestingProxy || !resolvedProxyUrl}
+                      className="px-3 py-1 text-[11px] font-semibold rounded-lg glass-pill hover:glass-pill-active flex items-center gap-1.5 cursor-pointer disabled:opacity-40"
+                    >
+                      {isTestingProxy ? (
+                        <>
+                          <Loader2 className="w-3 h-3 animate-spin" />
+                          <span>Testing Endpoint...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Server className="w-3 h-3" />
+                          <span>Test Proxy Health</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+
+                  {proxyTestResult && (
+                    <div
+                      className={`p-2.5 rounded-lg text-[11px] flex items-start gap-2 ${
+                        proxyTestResult.ok && proxyTestResult.keyConfigured
+                          ? 'bg-emerald-500/10 border border-emerald-500/25 text-emerald-700 dark:text-emerald-300'
+                          : proxyTestResult.ok && !proxyTestResult.keyConfigured
+                          ? 'bg-amber-500/10 border border-amber-500/25 text-amber-700 dark:text-amber-300'
+                          : 'bg-rose-500/10 border border-rose-500/25 text-rose-600 dark:text-rose-300'
+                      }`}
+                    >
+                      {proxyTestResult.ok && proxyTestResult.keyConfigured ? (
+                        <CheckCircle2 className="w-3.5 h-3.5 shrink-0 mt-0.5 text-emerald-500" />
+                      ) : (
+                        <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                      )}
+                      <span className="leading-snug">{proxyTestResult.message}</span>
+                    </div>
+                  )}
+                </div>
+
                 <div className="space-y-1">
                   <label className="text-[10px] opacity-60 block">
                     Custom Cloudflare Worker / Serverless Proxy URL:

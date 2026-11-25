@@ -18,6 +18,8 @@ export interface ImageCadExtraction {
   callouts: string[];
   summary: string;
   source: 'gemini-vision' | 'offline-preset' | 'quick-fill' | 'ocr-inference' | 'serverless-proxy';
+  proxyError?: string;
+  endpointUsed?: string;
 }
 
 const GEMINI_URL =
@@ -103,6 +105,79 @@ Return ONLY valid JSON (no markdown fences, no explanatory text) matching this s
   "callouts": ["string"],
   "summary": "one-sentence summary of detected features and dimensions"
 }`;
+
+/**
+ * Normalizes proxy URLs: trims whitespace, avoids duplicate slashes, and ensures relative or absolute validity.
+ */
+export function normalizeProxyUrl(rawUrl: string): string {
+  const trimmed = rawUrl.trim();
+  if (!trimmed) return '';
+  if (trimmed.startsWith('/')) {
+    return trimmed.replace(/\/+$/, '') || '/';
+  }
+  return trimmed.replace(/([^:]\/)\/+/g, '$1').replace(/\/+$/, '');
+}
+
+/**
+ * Health check for the Vision Proxy endpoint:
+ * Sends a GET request and verifies service status, model readiness, and whether GEMINI_API_KEY is configured.
+ */
+export async function testVisionProxy(
+  endpointUrl: string
+): Promise<{ ok: boolean; status: number; message: string; keyConfigured?: boolean; keyPrefix?: string | null }> {
+  const url = normalizeProxyUrl(endpointUrl);
+  if (!url) {
+    return { ok: false, status: 0, message: 'No proxy URL provided.' };
+  }
+
+  try {
+    const res = await fetch(url, {
+      method: 'GET',
+      headers: { Accept: 'application/json' },
+    });
+
+    let data: any = null;
+    try {
+      data = await res.json();
+    } catch {
+      // ignore JSON parse error
+    }
+
+    if (res.ok) {
+      const keyConfigured = Boolean(data?.keyConfigured);
+      const keyPrefix = data?.keyPrefix || null;
+      if (!keyConfigured) {
+        return {
+          ok: true,
+          status: res.status,
+          keyConfigured: false,
+          keyPrefix,
+          message: 'Proxy reachable, but GEMINI_API_KEY is missing on the server.',
+        };
+      }
+      return {
+        ok: true,
+        status: res.status,
+        keyConfigured: true,
+        keyPrefix,
+        message: `Proxy online (Gemini 2.5 Flash ready, key prefix: ${keyPrefix || '***'})`,
+      };
+    }
+
+    const errMsg = data?.error || (await res.text().catch(() => `HTTP ${res.status}`));
+    return {
+      ok: false,
+      status: res.status,
+      message: `HTTP ${res.status}: ${errMsg.slice(0, 160)}`,
+    };
+  } catch (err: any) {
+    return {
+      ok: false,
+      status: 0,
+      message: err?.message || 'Network error — proxy unreachable or CORS blocked.',
+    };
+  }
+}
 
 /**
  * Pure client-side parser (ZERO API key required) so any normal user can just
@@ -214,7 +289,8 @@ export function parseQuickPhotoDimensions(
 
 function normalizeExtractionPayload(
   parsed: any,
-  source: ImageCadExtraction['source']
+  source: ImageCadExtraction['source'],
+  endpointUsed?: string
 ): ImageCadExtraction {
   const spec: CompositePartSpec = {
     baseLength:
@@ -288,6 +364,7 @@ function normalizeExtractionPayload(
     callouts: Array.isArray(parsed?.callouts) ? parsed.callouts.map(String) : [],
     summary: String(parsed?.summary || 'Extracted dimensions from uploaded isometric drawing.'),
     source,
+    endpointUsed,
   };
 }
 
@@ -305,9 +382,12 @@ export async function analyzeIsometricImageWithGemini(
 
   const prompt = `${CAD_VISION_PROMPT}\n${userHint ? `User hint: ${userHint}` : ''}`;
 
-  const response = await fetch(`${GEMINI_URL}?key=${encodeURIComponent(apiKey.trim())}`, {
+  const response = await fetch(GEMINI_URL, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      'x-goog-api-key': apiKey.trim(),
+    },
     body: JSON.stringify({
       contents: [
         {
@@ -326,15 +406,27 @@ export async function analyzeIsometricImageWithGemini(
 
   if (!response.ok) {
     const errText = await response.text();
-    throw new Error(`Vision API error (${response.status}): ${errText.slice(0, 160)}`);
+    let parsedErr: any = null;
+    try {
+      parsedErr = JSON.parse(errText);
+    } catch {
+      // ignore
+    }
+    const upstreamMsg = parsedErr?.error?.message || errText.slice(0, 200) || `HTTP ${response.status}`;
+    throw new Error(`Vision API error (${response.status}): ${upstreamMsg}`);
   }
 
   const payload = await response.json();
   const rawText: string = payload?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-  const cleaned = rawText.replace(/```json|```/g, '').trim();
-  const parsed = JSON.parse(cleaned);
+  const cleaned = rawText.replace(/```json/gi, '').replace(/```/g, '').trim();
+  const firstBrace = cleaned.indexOf('{');
+  const lastBrace = cleaned.lastIndexOf('}');
+  if (firstBrace === -1 || lastBrace === -1 || lastBrace <= firstBrace) {
+    throw new Error('Empty or invalid JSON returned from Gemini Vision.');
+  }
 
-  return normalizeExtractionPayload(parsed, 'gemini-vision');
+  const parsed = JSON.parse(cleaned.slice(firstBrace, lastBrace + 1));
+  return normalizeExtractionPayload(parsed, 'gemini-vision', 'Direct Gemini API');
 }
 
 export async function analyzeWithServerlessProxy(
@@ -342,27 +434,37 @@ export async function analyzeWithServerlessProxy(
   base64DataUrl: string,
   userHint?: string
 ): Promise<ImageCadExtraction> {
+  const url = normalizeProxyUrl(endpointUrl);
   const match = base64DataUrl.match(/^data:(image\/[a-zA-Z0-9.+-]+);base64,(.+)$/);
   const mimeType = match ? match[1] : 'image/jpeg';
   const imageBase64 = match ? match[2] : base64DataUrl;
 
-  const response = await fetch(endpointUrl, {
+  const response = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       imageBase64,
+      image: base64DataUrl,
       mimeType,
       hint: userHint,
+      userHint,
     }),
   });
 
   if (!response.ok) {
-    const errText = await response.text();
-    throw new Error(`Proxy error (${response.status}): ${errText.slice(0, 160)}`);
+    let errJson: any = null;
+    try {
+      errJson = await response.json();
+    } catch {
+      // ignore
+    }
+    const errMsg = errJson?.error || (await response.text().catch(() => `HTTP ${response.status}`));
+    const hintMsg = errJson?.hint ? ` [Hint: ${errJson.hint}]` : '';
+    throw new Error(`Proxy error (${response.status}): ${errMsg}${hintMsg}`);
   }
 
   const parsed = await response.json();
-  return normalizeExtractionPayload(parsed, 'serverless-proxy');
+  return normalizeExtractionPayload(parsed, 'serverless-proxy', url);
 }
 
 /**
@@ -491,11 +593,12 @@ export async function analyzeWithTesseractOcr(
 }
 
 /**
- * Universal photo-to-CAD analyzer with smart endpoint discovery:
+ * Universal photo-to-CAD analyzer with smart endpoint discovery and visible error capture:
  * Priority 1: VITE_VISION_PROXY_URL / custom proxyUrl
  * Priority 2: Same-origin Vercel serverless /api/analyze
  * Priority 3: Gemini API key (from parameter or localStorage)
  * Priority 4: Offline tesseract.js OCR inference
+ * Priority 5: Default CAD preset
  */
 export async function analyzeIsometricImage(
   base64DataUrl: string,
@@ -509,38 +612,61 @@ export async function analyzeIsometricImage(
     options?.proxyUrl ||
     (typeof import.meta !== 'undefined' &&
       (import.meta as unknown as { env?: Record<string, string> }).env?.VITE_VISION_PROXY_URL);
-  
+
+  let lastProxyError: string | undefined = undefined;
+  let lastEndpointUsed: string | undefined = undefined;
+
   // 1. Dedicated Cloudflare Worker / Custom Proxy URL
-  if (customProxy) {
+  if (customProxy && customProxy.trim()) {
+    const norm = normalizeProxyUrl(customProxy);
+    lastEndpointUsed = norm;
     try {
-      return await analyzeWithServerlessProxy(customProxy, base64DataUrl, options?.userHint);
-    } catch (e) {
+      return await analyzeWithServerlessProxy(norm, base64DataUrl, options?.userHint);
+    } catch (e: any) {
+      lastProxyError = e?.message || 'Custom proxy failed';
       console.warn('Configured Vision Proxy failed, falling back to next endpoint:', e);
     }
   }
 
   // 2. Same-origin Vercel Serverless Function (/api/analyze)
-  if (typeof window !== 'undefined' && (window.location.hostname.includes('vercel.app') || window.location.hostname === 'localhost')) {
+  if (
+    typeof window !== 'undefined' &&
+    (window.location.hostname.includes('vercel.app') || window.location.hostname === 'localhost')
+  ) {
+    const vercelEndpoint = '/api/analyze';
+    lastEndpointUsed = vercelEndpoint;
     try {
-      return await analyzeWithServerlessProxy('/api/analyze', base64DataUrl, options?.userHint);
-    } catch (e) {
+      return await analyzeWithServerlessProxy(vercelEndpoint, base64DataUrl, options?.userHint);
+    } catch (e: any) {
+      const msg = e?.message || 'Serverless /api/analyze failed';
+      lastProxyError = lastProxyError ? `${lastProxyError} | ${msg}` : msg;
       console.warn('Same-origin /api/analyze failed, falling back:', e);
     }
   }
 
   // 3. User Gemini API Key (if provided in options or stored in localStorage)
-  const savedKey = options?.apiKey || (typeof localStorage !== 'undefined' ? localStorage.getItem('orthoview-gemini-key') : null);
+  const savedKey =
+    options?.apiKey ||
+    (typeof localStorage !== 'undefined' ? localStorage.getItem('orthoview-gemini-key') : null);
   if (savedKey && savedKey.trim().length > 10) {
+    lastEndpointUsed = 'Direct Gemini API';
     try {
       return await analyzeIsometricImageWithGemini(savedKey, base64DataUrl, options?.userHint);
-    } catch (e) {
+    } catch (e: any) {
+      const msg = e?.message || 'Gemini direct call failed';
+      lastProxyError = lastProxyError ? `${lastProxyError} | ${msg}` : msg;
       console.warn('Gemini direct API call failed, falling back:', e);
     }
   }
 
   // 4. In-browser Tesseract.js OCR & Geometric Inference (100% Offline)
   try {
-    return await analyzeWithTesseractOcr(base64DataUrl);
+    const ocrResult = await analyzeWithTesseractOcr(base64DataUrl);
+    return {
+      ...ocrResult,
+      proxyError: lastProxyError,
+      endpointUsed: lastEndpointUsed,
+    };
   } catch (e) {
     console.warn('OCR inference failed, falling back to offline preset:', e);
   }
@@ -549,6 +675,8 @@ export async function analyzeIsometricImage(
   return {
     ...OFFLINE_IMAGE_PRESETS[0],
     source: 'offline-preset',
+    proxyError: lastProxyError,
+    endpointUsed: lastEndpointUsed,
   };
 }
 

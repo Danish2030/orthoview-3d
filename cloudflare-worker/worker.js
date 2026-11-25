@@ -1,4 +1,4 @@
-// Cloudflare Worker Proxy: POST /analyze
+// Cloudflare Worker Proxy: GET /analyze (health check) | POST /analyze (vision proxy)
 // Proxies Gemini 2.5-flash Vision API requests reading env.GEMINI_API_KEY from Worker secrets
 
 const SYSTEM_PROMPT = `You are an expert Mechanical Engineering CAD & Computer-Aided Drafting AI.
@@ -86,7 +86,7 @@ export default {
   async fetch(request, env) {
     const corsHeaders = {
       'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'POST, OPTIONS',
+      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     };
 
@@ -94,45 +94,85 @@ export default {
       return new Response(null, { headers: corsHeaders });
     }
 
+    const apiKey = env.GEMINI_API_KEY;
     const url = new URL(request.url);
-    if (request.method !== 'POST' || (url.pathname !== '/analyze' && url.pathname !== '/')) {
+
+    // GET Health-Check Endpoint
+    if (request.method === 'GET') {
+      return new Response(
+        JSON.stringify({
+          ok: true,
+          service: 'orthoview-vision-proxy',
+          model: 'gemini-2.5-flash',
+          keyConfigured: Boolean(apiKey && apiKey.trim().length > 0),
+          keyPrefix: apiKey && apiKey.trim().length > 3 ? apiKey.trim().slice(0, 3) : null,
+        }),
+        {
+          status: 200,
+          headers: { 'Content-Type': 'application/json', ...corsHeaders },
+        }
+      );
+    }
+
+    if (request.method !== 'POST') {
       return new Response(JSON.stringify({ error: 'Endpoint not found or method not allowed' }), {
-        status: 404,
+        status: 405,
         headers: { 'Content-Type': 'application/json', ...corsHeaders },
       });
     }
 
     try {
-      const apiKey = env.GEMINI_API_KEY;
-      if (!apiKey) {
+      if (!apiKey || !apiKey.trim()) {
         return new Response(
-          JSON.stringify({ error: 'GEMINI_API_KEY is not configured on Cloudflare Worker secrets.' }),
+          JSON.stringify({
+            error: 'GEMINI_API_KEY is not configured on Cloudflare Worker secrets.',
+            hint: 'Set GEMINI_API_KEY in Cloudflare Worker secrets via wrangler secret put GEMINI_API_KEY.',
+          }),
           { status: 500, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
         );
       }
 
-      const body = await request.json();
-      const { imageBase64, mimeType, hint } = body || {};
-      if (!imageBase64) {
-        return new Response(JSON.stringify({ error: 'Missing imageBase64 payload.' }), {
+      const body = await request.json().catch(() => ({}));
+      // Accept imageBase64 / hint AND fall back to image / userHint
+      const rawImage = body.imageBase64 || body.image;
+      const rawHint = body.hint || body.userHint;
+      let mimeType = body.mimeType;
+
+      if (!rawImage || typeof rawImage !== 'string') {
+        return new Response(JSON.stringify({ error: 'Missing imageBase64 or image payload.' }), {
           status: 400,
           headers: { 'Content-Type': 'application/json', ...corsHeaders },
         });
       }
 
-      if (imageBase64.length > 8 * 1024 * 1024) {
+      if (rawImage.length > 8 * 1024 * 1024) {
         return new Response(JSON.stringify({ error: 'Payload too large (limit 6MB).' }), {
           status: 413,
           headers: { 'Content-Type': 'application/json', ...corsHeaders },
         });
       }
 
-      const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey.trim()}`;
-      const promptText = hint ? `${SYSTEM_PROMPT}\nUser hint / note: ${hint}` : SYSTEM_PROMPT;
+      // Infer mimeType from data URL if omitted
+      const match = rawImage.match(/^data:([^;]+);base64,/);
+      if (match && !mimeType) {
+        mimeType = match[1];
+      }
+      if (!mimeType) {
+        mimeType = 'image/jpeg';
+      }
+
+      const cleanBase64 = rawImage.replace(/^data:[^;]+;base64,/, '').trim();
+
+      // Call Gemini generateContent WITHOUT ?key= in the URL, passing x-goog-api-key header
+      const geminiUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
+      const promptText = rawHint ? `${SYSTEM_PROMPT}\nUser hint / note: ${rawHint}` : SYSTEM_PROMPT;
 
       const res = await fetch(geminiUrl, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'x-goog-api-key': apiKey.trim(),
+        },
         body: JSON.stringify({
           contents: [
             {
@@ -140,8 +180,8 @@ export default {
                 { text: promptText },
                 {
                   inlineData: {
-                    mimeType: mimeType || 'image/jpeg',
-                    data: imageBase64.replace(/^data:[^;]+;base64,/, ''),
+                    mimeType,
+                    data: cleanBase64,
                   },
                 },
               ],
@@ -156,8 +196,26 @@ export default {
 
       if (!res.ok) {
         const errText = await res.text();
+        let parsedErr = null;
+        try {
+          parsedErr = JSON.parse(errText);
+        } catch {
+          // ignore
+        }
+        const upstreamMsg =
+          parsedErr?.error?.message || errText.slice(0, 300) || `HTTP ${res.status}`;
+        const isAuthError = res.status === 401 || res.status === 403;
+
         return new Response(
-          JSON.stringify({ error: `Gemini API error (${res.status}): ${errText.slice(0, 200)}` }),
+          JSON.stringify({
+            error: `Gemini API error (${res.status}): ${upstreamMsg}`,
+            upstreamStatus: res.status,
+            ...(isAuthError
+              ? {
+                  hint: 'Authentication failed. If using an API key from Google Cloud Console, ensure the Generative Language API is enabled and API key restrictions allow it.',
+                }
+              : {}),
+          }),
           { status: res.status, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
         );
       }
@@ -171,8 +229,25 @@ export default {
         });
       }
 
-      const cleaned = rawContent.replace(/```json|```/g, '').trim();
-      const parsed = JSON.parse(cleaned);
+      // Safely extract JSON: strip markdown fences and find outermost { ... }
+      const stripped = rawContent.replace(/```json/gi, '').replace(/```/g, '').trim();
+      const firstBrace = stripped.indexOf('{');
+      const lastBrace = stripped.lastIndexOf('}');
+
+      if (firstBrace === -1 || lastBrace === -1 || lastBrace <= firstBrace) {
+        return new Response(
+          JSON.stringify({
+            error: `Unable to locate JSON object in Gemini response: ${stripped.slice(0, 160)}`,
+          }),
+          {
+            status: 502,
+            headers: { 'Content-Type': 'application/json', ...corsHeaders },
+          }
+        );
+      }
+
+      const jsonString = stripped.slice(firstBrace, lastBrace + 1);
+      const parsed = JSON.parse(jsonString);
 
       return new Response(JSON.stringify(parsed), {
         status: 200,

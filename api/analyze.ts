@@ -1,4 +1,4 @@
-// Vercel Serverless Function: POST /api/analyze
+// Vercel Serverless Function: GET /api/analyze (health check) | POST /api/analyze (vision proxy)
 // Proxies Gemini 2.5-flash Vision API requests securely without exposing GEMINI_API_KEY to the client
 
 export const config = {
@@ -89,11 +89,24 @@ Return ONLY valid JSON (no markdown fences, no explanatory text) matching this s
 export default async function handler(req: any, res: any) {
   // CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
+  }
+
+  const apiKey = process.env.GEMINI_API_KEY;
+
+  // GET Health-Check Endpoint
+  if (req.method === 'GET') {
+    return res.status(200).json({
+      ok: true,
+      service: 'orthoview-vision-proxy',
+      model: 'gemini-2.5-flash',
+      keyConfigured: Boolean(apiKey && apiKey.trim().length > 0),
+      keyPrefix: apiKey && apiKey.trim().length > 3 ? apiKey.trim().slice(0, 3) : null,
+    });
   }
 
   if (req.method !== 'POST') {
@@ -101,26 +114,48 @@ export default async function handler(req: any, res: any) {
   }
 
   try {
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) {
-      return res.status(500).json({ error: 'GEMINI_API_KEY is not configured on the Vercel server.' });
+    if (!apiKey || !apiKey.trim()) {
+      return res.status(500).json({
+        error: 'GEMINI_API_KEY is not configured on the Vercel server environment.',
+        hint: 'Add GEMINI_API_KEY in Vercel Project Settings -> Environment Variables.',
+      });
     }
 
-    const { imageBase64, mimeType, hint } = req.body || {};
-    if (!imageBase64) {
-      return res.status(400).json({ error: 'Missing imageBase64 payload.' });
+    const body = req.body || {};
+    // Accept imageBase64 / hint AND fall back to image / userHint
+    const rawImage = body.imageBase64 || body.image;
+    const rawHint = body.hint || body.userHint;
+    let mimeType = body.mimeType;
+
+    if (!rawImage || typeof rawImage !== 'string') {
+      return res.status(400).json({ error: 'Missing imageBase64 or image payload.' });
     }
 
-    if (imageBase64.length > 8 * 1024 * 1024) {
+    if (rawImage.length > 8 * 1024 * 1024) {
       return res.status(413).json({ error: 'Payload too large (limit 6MB).' });
     }
 
-    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey.trim()}`;
-    const promptText = hint ? `${SYSTEM_PROMPT}\nUser hint / note: ${hint}` : SYSTEM_PROMPT;
+    // Infer mimeType from data URL if omitted
+    const match = rawImage.match(/^data:([^;]+);base64,/);
+    if (match && !mimeType) {
+      mimeType = match[1];
+    }
+    if (!mimeType) {
+      mimeType = 'image/jpeg';
+    }
+
+    const cleanBase64 = rawImage.replace(/^data:[^;]+;base64,/, '').trim();
+
+    // Call Gemini generateContent WITHOUT ?key= in the URL, passing x-goog-api-key header
+    const geminiUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
+    const promptText = rawHint ? `${SYSTEM_PROMPT}\nUser hint / note: ${rawHint}` : SYSTEM_PROMPT;
 
     const response = await fetch(geminiUrl, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'x-goog-api-key': apiKey.trim(),
+      },
       body: JSON.stringify({
         contents: [
           {
@@ -128,8 +163,8 @@ export default async function handler(req: any, res: any) {
               { text: promptText },
               {
                 inlineData: {
-                  mimeType: mimeType || 'image/jpeg',
-                  data: imageBase64.replace(/^data:[^;]+;base64,/, ''),
+                  mimeType,
+                  data: cleanBase64,
                 },
               },
             ],
@@ -144,7 +179,25 @@ export default async function handler(req: any, res: any) {
 
     if (!response.ok) {
       const errText = await response.text();
-      return res.status(response.status).json({ error: `Gemini API error (${response.status}): ${errText.slice(0, 200)}` });
+      let parsedErr: any = null;
+      try {
+        parsedErr = JSON.parse(errText);
+      } catch {
+        // ignore
+      }
+      const upstreamMsg =
+        parsedErr?.error?.message || errText.slice(0, 300) || `HTTP ${response.status}`;
+      const isAuthError = response.status === 401 || response.status === 403;
+
+      return res.status(response.status).json({
+        error: `Gemini API error (${response.status}): ${upstreamMsg}`,
+        upstreamStatus: response.status,
+        ...(isAuthError
+          ? {
+              hint: 'Authentication failed. If using an API key from Google Cloud Console, ensure the Generative Language API is enabled and API key restrictions allow it.',
+            }
+          : {}),
+      });
     }
 
     const data = await response.json();
@@ -153,12 +206,23 @@ export default async function handler(req: any, res: any) {
       return res.status(502).json({ error: 'Empty response from Gemini Vision.' });
     }
 
-    const cleaned = rawContent.replace(/```json|```/g, '').trim();
-    const parsed = JSON.parse(cleaned);
+    // Safely extract JSON: strip markdown fences and find outermost { ... }
+    const stripped = rawContent.replace(/```json/gi, '').replace(/```/g, '').trim();
+    const firstBrace = stripped.indexOf('{');
+    const lastBrace = stripped.lastIndexOf('}');
+
+    if (firstBrace === -1 || lastBrace === -1 || lastBrace <= firstBrace) {
+      return res.status(502).json({
+        error: `Unable to locate JSON object in Gemini response: ${stripped.slice(0, 160)}`,
+      });
+    }
+
+    const jsonString = stripped.slice(firstBrace, lastBrace + 1);
+    const parsed = JSON.parse(jsonString);
 
     return res.status(200).json(parsed);
   } catch (err: any) {
     console.error('Analyze error:', err);
-    return res.status(500).json({ error: err.message || 'Internal server error' });
+    return res.status(500).json({ error: err?.message || 'Internal server error' });
   }
 }
