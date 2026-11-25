@@ -314,6 +314,58 @@ export const MepOverlayStudio: React.FC<MepOverlayStudioProps> = ({
                 </g>
               );
             })}
+
+            {/* MEP Schematic Conduit & Piping Connections */}
+            <g pointerEvents="none">
+              {/* Electrical Circuit Arcs from DB to Lights / AC */}
+              {project.mepNodes
+                .filter((n) => n.discipline === 'electrical' && n.type !== 'db')
+                .map((n) => {
+                  const db = project.mepNodes.find((d) => d.type === 'db');
+                  if (!db || !activeLayers.includes('E-LITE')) return null;
+                  const mx = (db.x + n.x) / 2;
+                  const my = Math.min(db.y, n.y) - 420;
+                  return (
+                    <path
+                      key={`elec-arc-${n.id}`}
+                      d={`M ${db.x} ${db.y} Q ${mx} ${my} ${n.x} ${n.y}`}
+                      fill="none"
+                      stroke="#eab308"
+                      strokeWidth="26"
+                      strokeDasharray="110 70"
+                      opacity="0.72"
+                    />
+                  );
+                })}
+
+              {/* Plumbing Slope Drainage Run */}
+              {activeLayers.includes('P-PIPE') && (() => {
+                const pNodes = project.mepNodes.filter((n) => n.discipline === 'plumbing');
+                if (pNodes.length < 2) return null;
+                return pNodes.slice(0, -1).map((n, idx) => {
+                  const nxt = pNodes[idx + 1];
+                  return (
+                    <g key={`pipe-run-${n.id}`}>
+                      <line x1={n.x} y1={n.y} x2={nxt.x} y2={nxt.y} stroke="#06b6d4" strokeWidth="32" strokeDasharray="160 60" opacity="0.7" />
+                      <text x={(n.x + nxt.x) / 2} y={(n.y + nxt.y) / 2 - 90} fontSize="110" fontWeight="bold" fill="#06b6d4" textAnchor="middle">
+                        SLOPE 1:60 →
+                      </text>
+                    </g>
+                  );
+                });
+              })()}
+            </g>
+
+            {/* On-Canvas MEP Legend Box */}
+            <g transform={`translate(${minX - 950}, ${maxY + 250})`}>
+              <rect x="0" y="0" width="5200" height="520" rx="90" fill={isDark ? '#141418' : '#ffffff'} fillOpacity="0.92" stroke={isDark ? '#3f3f46' : '#cbd5e1'} strokeWidth="25" />
+              <circle cx="320" cy="260" r="85" fill="#eab308" />
+              <text x="480" y="300" fontSize="145" fontWeight="bold" fill="currentColor">ELECTRICAL (E-LITE)</text>
+              <circle cx="2150" cy="260" r="85" fill="#06b6d4" />
+              <text x="2310" y="300" fontSize="145" fontWeight="bold" fill="currentColor">PLUMBING (P-PIPE)</text>
+              <rect x="3820" y="180" width="160" height="160" fill="none" stroke="#a855f7" strokeWidth="30" />
+              <text x="4060" y="300" fontSize="145" fontWeight="bold" fill="currentColor">HVAC (M-HVAC)</text>
+            </g>
           </svg>
         </div>
       </div>

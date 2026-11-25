@@ -21,6 +21,64 @@ interface FloorPlanStudioProps {
   activeLayers: CadLayerId[];
 }
 
+
+const renderRoomFurniture = (name: string, x: number, y: number, w: number, d: number, isDark: boolean) => {
+  const lower = name.toLowerCase();
+  const stroke = isDark ? 'rgba(228,228,231,0.35)' : 'rgba(15,23,42,0.35)';
+  const fill = isDark ? 'rgba(255,255,255,0.05)' : 'rgba(15,23,42,0.05)';
+  const cx = x + w / 2;
+  const cy = y + d / 2;
+
+  if (lower.includes('bed')) {
+    const bw = Math.min(1800, w * 0.48);
+    const bd = Math.min(2000, d * 0.5);
+    const bx = cx - bw / 2;
+    const by = y + 360;
+    return (
+      <g stroke={stroke} fill={fill} strokeWidth="22" pointerEvents="none">
+        <rect x={bx} y={by} width={bw} height={bd} rx="60" />
+        <rect x={bx + 120} y={by + 90} width={bw / 2 - 180} height={320} rx="50" />
+        <rect x={bx + bw / 2 + 60} y={by + 90} width={bw / 2 - 180} height={320} rx="50" />
+        <line x1={bx} y1={by + 560} x2={bx + bw} y2={by + 560} />
+      </g>
+    );
+  }
+  if (lower.includes('living') || lower.includes('hall')) {
+    const sw = Math.min(2200, w * 0.52);
+    return (
+      <g stroke={stroke} fill={fill} strokeWidth="22" pointerEvents="none">
+        {/* L-Sofa + Coffee Table */}
+        <rect x={x + 420} y={y + 420} width={sw} height={700} rx="80" />
+        <rect x={x + 420} y={y + 1120} width={700} height={1100} rx="80" />
+        <rect x={x + 1350} y={y + 1350} width={950} height={620} rx="60" />
+      </g>
+    );
+  }
+  if (lower.includes('kitchen')) {
+    return (
+      <g stroke={stroke} fill={fill} strokeWidth="22" pointerEvents="none">
+        {/* L-shaped Kitchen Counter + 4-Burner Hob + Sink */}
+        <path d={`M ${x + 280} ${y + 280} H ${x + w - 280} V ${y + 880} H ${x + 880} V ${y + d - 280} H ${x + 280} Z`} />
+        <circle cx={x + w - 700} cy={y + 520} r="90" />
+        <circle cx={x + w - 480} cy={y + 520} r="90" />
+        <circle cx={x + w - 700} cy={y + 720} r="90" />
+        <circle cx={x + w - 480} cy={y + 720} r="90" />
+        <rect x={x + 380} y={y + 1150} width={400} height={680} rx="40" />
+      </g>
+    );
+  }
+  if (lower.includes('bath') || lower.includes('toilet') || lower.includes('wc')) {
+    return (
+      <g stroke={stroke} fill={fill} strokeWidth="22" pointerEvents="none">
+        <rect x={x + 340} y={y + 340} width={380} height={220} rx="30" />
+        <ellipse cx={x + 530} cy={y + 760} rx="180" ry="240" />
+        <ellipse cx={x + w - 520} cy={y + 520} rx="220" ry="160" />
+      </g>
+    );
+  }
+  return null;
+};
+
 export const FloorPlanStudio: React.FC<FloorPlanStudioProps> = ({
   project,
   onUpdateProject,
@@ -381,6 +439,9 @@ export const FloorPlanStudio: React.FC<FloorPlanStudioProps> = ({
                         strokeWidth="30"
                         className="transition-colors"
                       />
+
+                      {/* Architectural Furniture & Fixture Vector Blocks */}
+                      {renderRoomFurniture(room.name, room.x, room.y, room.width, room.depth, isDark)}
 
                       {/* Exterior Wall Thickness Band */}
                       {showWalls && (

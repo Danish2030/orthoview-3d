@@ -355,6 +355,39 @@ export const ColumnGridStudio: React.FC<ColumnGridStudioProps> = ({
                 </text>
               </svg>
 
+              {/* 3D Isometric Footing & Column Pedestal Graphic */}
+              <div className="w-full max-w-sm mt-3 pt-3 border-t border-current/10">
+                <div className="text-[10px] font-mono uppercase tracking-wider opacity-60 mb-1.5 text-center">
+                  3D Isometric Pad Footing &amp; Column Stub
+                </div>
+                <svg viewBox="0 0 260 130" className="w-full h-28">
+                  {/* Concrete PCC Bed */}
+                  <polygon points="130,122 232,90 130,58 28,90" fill={isDark ? '#18181b' : '#e2e8f0'} stroke="#64748b" strokeWidth="1.5" />
+                  {/* Tapered RCC Footing Pad */}
+                  <polygon points="130,108 214,82 130,56 46,82" fill="rgba(239,68,68,0.14)" stroke="#ef4444" strokeWidth="1.6" />
+                  <polygon points="46,82 130,108 130,92 64,72" fill="rgba(239,68,68,0.22)" stroke="#ef4444" strokeWidth="1.3" />
+                  <polygon points="214,82 130,108 130,92 196,72" fill="rgba(239,68,68,0.12)" stroke="#ef4444" strokeWidth="1.3" />
+                  {/* Tapered Slopes up to Column Neck */}
+                  <polygon points="64,72 130,92 130,68 106,60" fill="rgba(56,189,248,0.12)" stroke="#ef4444" strokeWidth="1.3" />
+                  <polygon points="196,72 130,92 130,68 154,60" fill="rgba(56,189,248,0.08)" stroke="#ef4444" strokeWidth="1.3" />
+                  {/* Column Pedestal Stub */}
+                  <polygon points="106,60 130,68 130,22 106,14" fill={isDark ? '#27272a' : '#cbd5e1'} stroke="#ef4444" strokeWidth="1.5" />
+                  <polygon points="154,60 130,68 130,22 154,14" fill={isDark ? '#1f1f24' : '#e2e8f0'} stroke="#ef4444" strokeWidth="1.5" />
+                  <polygon points="130,22 154,14 130,6 106,14" fill="rgba(239,68,68,0.28)" stroke="#ef4444" strokeWidth="1.5" />
+                  {/* Starter Rebar Dowels */}
+                  {[116, 125, 135, 144].map((rx) => (
+                    <line key={rx} x1={rx} y1="14" x2={rx} y2="2" stroke="#38bdf8" strokeWidth="2" />
+                  ))}
+                  <text x="14" y="24" fontSize="9" fontFamily="monospace" fill="currentColor" opacity="0.7">
+                    FTG: {selectedCol?.footingWidthMm}×{selectedCol?.footingLengthMm}
+                  </text>
+                  <text x="14" y="38" fontSize="9" fontFamily="monospace" fill="#38bdf8">
+                    {selectedCol?.mainBarsCount}-Ø{selectedCol?.mainBarsDiaMm} Dowels
+                  </text>
+                </svg>
+              </div>
+
+
               {/* Steel Weight Summary Card */}
               <div className="w-full max-w-sm mt-3 p-3 rounded-2xl glass-card text-xs space-y-1">
                 <div className="flex items-center justify-between text-[11px] opacity-75">

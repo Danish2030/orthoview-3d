@@ -37,7 +37,7 @@ export const StaircaseStudio: React.FC<StaircaseStudioProps> = ({
   const canvas3dRef = useRef<HTMLCanvasElement | null>(null);
   const container3dRef = useRef<HTMLDivElement | null>(null);
 
-  // Computed Architectural Stair Calculations
+  // Computed Architectural Stair Calculations per Stair Type
   const calc = useMemo(() => {
     const H = stair.floorHeightMm;
     const R = Math.max(100, stair.riserMm);
@@ -45,27 +45,49 @@ export const StaircaseStudio: React.FC<StaircaseStudioProps> = ({
     const W = stair.flightWidthMm;
     const L = stair.landingWidthMm;
 
-    const totalRisers = Math.round(H / R);
+    const totalRisers = Math.max(8, Math.round(H / R));
     const actualRiser = H / totalRisers;
 
-    // Dog-legged: 2 equal flights
-    const risersFlight1 = Math.ceil(totalRisers / 2);
-    const risersFlight2 = totalRisers - risersFlight1;
-    const treadsFlight1 = risersFlight1 - 1;
-    const treadsFlight2 = risersFlight2 - 1;
+    let risersFlight1 = Math.ceil(totalRisers / 2);
+    let risersMid = 0;
+    let risersFlight2 = totalRisers - risersFlight1;
+
+    if (stair.type === 'open-well') {
+      risersMid = Math.max(3, Math.min(5, Math.round(totalRisers * 0.22)));
+      const rem = totalRisers - risersMid;
+      risersFlight1 = Math.ceil(rem / 2);
+      risersFlight2 = rem - risersFlight1;
+    }
+
+    const treadsFlight1 = Math.max(1, risersFlight1 - 1);
+    const treadsMid = stair.type === 'open-well' ? Math.max(1, risersMid - 1) : 0;
+    const treadsFlight2 = Math.max(1, risersFlight2 - 1);
 
     const goingFlight1 = treadsFlight1 * T;
-    const totalStaircaseLength = goingFlight1 + L; // exact shaft length: flight going + mid-landing
-    const totalStaircaseWidth = 2 * W + 100; // 100mm well space
+    const goingMid = treadsMid * T;
+    const goingFlight2 = treadsFlight2 * T;
 
-    const comfortMetric = 2 * actualRiser + T; // 600 - 650 mm
+    const wellGap = stair.type === 'open-well' ? Math.max(600, goingMid) : 100;
+
+    let totalStaircaseLength = goingFlight1 + L;
+    let totalStaircaseWidth = 2 * W + 100;
+
+    if (stair.type === 'l-shaped') {
+      totalStaircaseLength = goingFlight1 + W;
+      totalStaircaseWidth = W + goingFlight2;
+    } else if (stair.type === 'open-well') {
+      totalStaircaseLength = Math.max(goingFlight1, goingFlight2) + L;
+      totalStaircaseWidth = 2 * W + wellGap;
+    }
+
+    const comfortMetric = 2 * actualRiser + T;
     const comfortPass = comfortMetric >= 590 && comfortMetric <= 660;
 
     const pitchRad = Math.atan(actualRiser / T);
     const pitchDeg = (pitchRad * 180) / Math.PI;
 
-    // Headroom check: minimum vertical clearance to floor slab above
     const midLandingHeight = risersFlight1 * actualRiser;
+    const secondLandingHeight = (risersFlight1 + risersMid) * actualRiser;
     const headroomMm = Math.max(0, Math.round(H - stair.waistSlabMm - actualRiser * 2));
     const headroomPass = headroomMm >= 2100;
 
@@ -73,10 +95,15 @@ export const StaircaseStudio: React.FC<StaircaseStudioProps> = ({
       totalRisers,
       actualRiser,
       risersFlight1,
+      risersMid,
       risersFlight2,
       treadsFlight1,
+      treadsMid,
       treadsFlight2,
       goingFlight1,
+      goingMid,
+      goingFlight2,
+      wellGap,
       totalStaircaseLength,
       totalStaircaseWidth,
       comfortMetric,
@@ -85,6 +112,7 @@ export const StaircaseStudio: React.FC<StaircaseStudioProps> = ({
       headroomMm,
       headroomPass,
       midLandingHeight,
+      secondLandingHeight,
     };
   }, [stair]);
 
@@ -92,7 +120,7 @@ export const StaircaseStudio: React.FC<StaircaseStudioProps> = ({
     onUpdateProject({ ...project, staircase: updated });
   };
 
-  // 3D Three.js Staircase Preview
+  // True 3-Type 3D Three.js Staircase Model (Dog-Legged, L-Shaped 90°, Open-Well 3-Flight)
   useEffect(() => {
     if (viewMode !== '3d') return;
     const canvas = canvas3dRef.current;
@@ -103,78 +131,194 @@ export const StaircaseStudio: React.FC<StaircaseStudioProps> = ({
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.setSize(container.clientWidth, container.clientHeight);
     renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(isDark ? 0x09090b : 0xf8fafc);
+    scene.background = new THREE.Color(isDark ? 0x09090b : 0xf4f6f9);
 
-    const camera = new THREE.PerspectiveCamera(40, container.clientWidth / container.clientHeight, 0.1, 20000);
-    camera.position.set(4500, 3800, 4800);
-    camera.lookAt(1500, 1500, 1000);
+    const centerX = calc.totalStaircaseLength / 2;
+    const centerY = stair.floorHeightMm / 2;
+    const centerZ = calc.totalStaircaseWidth / 2;
+
+    const camera = new THREE.PerspectiveCamera(42, container.clientWidth / container.clientHeight, 10, 30000);
+    camera.position.set(centerX + 3800, stair.floorHeightMm + 2600, centerZ + 4200);
+    camera.lookAt(centerX, centerY, centerZ);
 
     const controls = new OrbitControls(camera, canvas);
     controls.enableDamping = true;
-    controls.dampingFactor = 0.05;
-    controls.target.set(1500, 1500, 1000);
+    controls.dampingFactor = 0.06;
+    controls.target.set(centerX, centerY, centerZ);
 
-    // Lights
-    const ambientLight = new THREE.AmbientLight(0xffffff, isDark ? 0.9 : 1.2);
+    // Architectural Studio Lighting
+    const ambientLight = new THREE.AmbientLight(0xffffff, isDark ? 0.75 : 1.0);
     scene.add(ambientLight);
-    const dirLight = new THREE.DirectionalLight(0xffffff, 1.4);
-    dirLight.position.set(3000, 6000, 4000);
+    const dirLight = new THREE.DirectionalLight(0xfffbeb, 1.35);
+    dirLight.position.set(centerX + 4000, 7500, centerZ + 3500);
+    dirLight.castShadow = true;
     scene.add(dirLight);
+    const fillLight = new THREE.DirectionalLight(0xbae6fd, 0.5);
+    fillLight.position.set(-3000, 3000, -3000);
+    scene.add(fillLight);
 
-    const stepMat = new THREE.MeshStandardMaterial({
-      color: isDark ? 0x334155 : 0xe2e8f0,
-      roughness: 0.4,
-      metalness: 0.1,
+    // Subtle Floor Reference Grid
+    const gridHelper = new THREE.GridHelper(12000, 24, isDark ? 0x3f3f46 : 0x94a3b8, isDark ? 0x18181b : 0xe2e8f0);
+    gridHelper.position.set(centerX, 0, centerZ);
+    scene.add(gridHelper);
+
+    const concreteMat = new THREE.MeshStandardMaterial({
+      color: isDark ? 0x3f4756 : 0xdbe2ea,
+      roughness: 0.65,
+      metalness: 0.08,
     });
+    const treadMat = new THREE.MeshStandardMaterial({
+      color: isDark ? 0x52525b : 0xf8fafc,
+      roughness: 0.35,
+      metalness: 0.12,
+    });
+    const accentColor = new THREE.Color(accentHex);
     const handrailMat = new THREE.MeshStandardMaterial({
-      color: 0x38bdf8,
-      roughness: 0.2,
-      metalness: 0.8,
+      color: accentColor,
+      roughness: 0.25,
+      metalness: 0.75,
+    });
+    const postMat = new THREE.MeshStandardMaterial({
+      color: isDark ? 0xa1a1aa : 0x475569,
+      roughness: 0.3,
+      metalness: 0.7,
     });
 
     const geoms: THREE.BufferGeometry[] = [];
-    const meshes: THREE.Mesh[] = [];
+    const addBox = (w: number, h: number, d: number, x: number, y: number, z: number, mat: THREE.Material) => {
+      const g = new THREE.BoxGeometry(w, h, d);
+      geoms.push(g);
+      const m = new THREE.Mesh(g, mat);
+      m.position.set(x, y, z);
+      m.castShadow = true;
+      m.receiveShadow = true;
+      scene.add(m);
+    };
+
+    const addRailSegment = (p1: THREE.Vector3, p2: THREE.Vector3) => {
+      const dir = new THREE.Vector3().subVectors(p2, p1);
+      const len = dir.length();
+      if (len < 10) return;
+      const g = new THREE.CylinderGeometry(24, 24, len, 10);
+      geoms.push(g);
+      const m = new THREE.Mesh(g, handrailMat);
+      m.position.copy(p1).add(p2).multiplyScalar(0.5);
+      m.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir.clone().normalize());
+      scene.add(m);
+
+      // Vertical balusters at start & end
+      [p1, p2].forEach((pt) => {
+        const pg = new THREE.CylinderGeometry(16, 16, 900, 8);
+        geoms.push(pg);
+        const pm = new THREE.Mesh(pg, postMat);
+        pm.position.set(pt.x, pt.y - 450, pt.z);
+        scene.add(pm);
+      });
+    };
 
     const W = stair.flightWidthMm;
     const T = stair.treadMm;
     const R = calc.actualRiser;
+    const L = stair.landingWidthMm;
+    const slabT = stair.waistSlabMm;
 
-    // Flight 1 Steps
+    // Flight 1 (Always starts at X=0, Z=[0..W], ascending along +X)
     for (let i = 0; i < calc.risersFlight1; i++) {
-      const stepGeom = new THREE.BoxGeometry(T, (i + 1) * R, W);
-      geoms.push(stepGeom);
-      const stepMesh = new THREE.Mesh(stepGeom, stepMat);
-      stepMesh.position.set(i * T + T / 2, ((i + 1) * R) / 2, W / 2);
-      scene.add(stepMesh);
-      meshes.push(stepMesh);
+      const stepTopY = (i + 1) * R;
+      const blockH = Math.min(stepTopY, slabT + R);
+      addBox(T, blockH, W, i * T + T / 2, stepTopY - blockH / 2, W / 2, concreteMat);
+      addBox(T + 18, 28, W + 10, i * T + T / 2, stepTopY + 14, W / 2, treadMat);
     }
-
-    // Mid Landing
-    const landingGeom = new THREE.BoxGeometry(stair.landingWidthMm, calc.midLandingHeight, 2 * W + 100);
-    geoms.push(landingGeom);
-    const landingMesh = new THREE.Mesh(landingGeom, stepMat);
-    landingMesh.position.set(
-      calc.goingFlight1 + stair.landingWidthMm / 2,
-      calc.midLandingHeight / 2,
-      W + 50
+    addRailSegment(
+      new THREE.Vector3(80, R + 900, W - 60),
+      new THREE.Vector3(calc.goingFlight1, calc.midLandingHeight + 900, W - 60)
     );
-    scene.add(landingMesh);
-    meshes.push(landingMesh);
 
-    // Flight 2 Steps (Going backwards in Z direction)
-    for (let i = 0; i < calc.risersFlight2; i++) {
-      const stepGeom = new THREE.BoxGeometry(T, (i + 1) * R, W);
-      geoms.push(stepGeom);
-      const stepMesh = new THREE.Mesh(stepGeom, stepMat);
-      stepMesh.position.set(
-        calc.goingFlight1 - (i * T + T / 2),
-        calc.midLandingHeight + ((i + 1) * R) / 2,
-        W + 100 + W / 2
+    if (stair.type === 'dog-legged') {
+      // Full-width Mid-Landing (180° U-turn)
+      addBox(L, slabT, 2 * W + 100, calc.goingFlight1 + L / 2, calc.midLandingHeight - slabT / 2, W + 50, concreteMat);
+      addBox(L, 28, 2 * W + 100, calc.goingFlight1 + L / 2, calc.midLandingHeight + 14, W + 50, treadMat);
+
+      // Flight 2 (Returns parallel along -X at Z=[W+100 .. 2W+100])
+      for (let i = 0; i < calc.risersFlight2; i++) {
+        const stepTopY = calc.midLandingHeight + (i + 1) * R;
+        const blockH = slabT + R;
+        const sx = calc.goingFlight1 - (i * T + T / 2);
+        const sz = W + 100 + W / 2;
+        addBox(T, blockH, W, sx, stepTopY - blockH / 2, sz, concreteMat);
+        addBox(T + 18, 28, W + 10, sx, stepTopY + 14, sz, treadMat);
+      }
+      addRailSegment(
+        new THREE.Vector3(calc.goingFlight1, calc.midLandingHeight + 900, W + 160),
+        new THREE.Vector3(80, stair.floorHeightMm + 900, W + 160)
       );
-      scene.add(stepMesh);
-      meshes.push(stepMesh);
+      addRailSegment(
+        new THREE.Vector3(calc.goingFlight1, calc.midLandingHeight + 900, W - 60),
+        new THREE.Vector3(calc.goingFlight1, calc.midLandingHeight + 900, W + 160)
+      );
+    } else if (stair.type === 'l-shaped') {
+      // Square Corner Landing (W x W) at X=[goingFlight1 .. goingFlight1+W], Z=[0..W]
+      addBox(W, slabT, W, calc.goingFlight1 + W / 2, calc.midLandingHeight - slabT / 2, W / 2, concreteMat);
+      addBox(W, 28, W, calc.goingFlight1 + W / 2, calc.midLandingHeight + 14, W / 2, treadMat);
+
+      // Flight 2 turns 90° along +Z at X=[goingFlight1 .. goingFlight1+W], Z=[W .. W+goingFlight2]
+      for (let i = 0; i < calc.risersFlight2; i++) {
+        const stepTopY = calc.midLandingHeight + (i + 1) * R;
+        const blockH = slabT + R;
+        const sx = calc.goingFlight1 + W / 2;
+        const sz = W + i * T + T / 2;
+        addBox(W, blockH, T, sx, stepTopY - blockH / 2, sz, concreteMat);
+        addBox(W + 10, 28, T + 18, sx, stepTopY + 14, sz, treadMat);
+      }
+      // Inner 90° L-turn handrail
+      addRailSegment(
+        new THREE.Vector3(calc.goingFlight1 + 60, calc.midLandingHeight + 900, W),
+        new THREE.Vector3(calc.goingFlight1 + 60, stair.floorHeightMm + 900, W + calc.goingFlight2)
+      );
+    } else {
+      // Open-Well (3-Flight U-Shape with Central Open Atrium)
+      const qL = L;
+      // Quarter-Landing 1 at top of Flight 1
+      addBox(qL, slabT, W, calc.goingFlight1 + qL / 2, calc.midLandingHeight - slabT / 2, W / 2, concreteMat);
+      addBox(qL, 28, W, calc.goingFlight1 + qL / 2, calc.midLandingHeight + 14, W / 2, treadMat);
+
+      // Middle Flight (ascending along +Z across the open well)
+      for (let i = 0; i < calc.risersMid; i++) {
+        const stepTopY = calc.midLandingHeight + (i + 1) * R;
+        const blockH = slabT + R;
+        const sx = calc.goingFlight1 + qL / 2;
+        const sz = W + i * T + T / 2;
+        addBox(qL, blockH, T, sx, stepTopY - blockH / 2, sz, concreteMat);
+        addBox(qL + 10, 28, T + 18, sx, stepTopY + 14, sz, treadMat);
+      }
+
+      // Quarter-Landing 2 at end of Middle Flight
+      const z2Start = W + calc.wellGap;
+      addBox(qL, slabT, W, calc.goingFlight1 + qL / 2, calc.secondLandingHeight - slabT / 2, z2Start + W / 2, concreteMat);
+      addBox(qL, 28, W, calc.goingFlight1 + qL / 2, calc.secondLandingHeight + 14, z2Start + W / 2, treadMat);
+
+      // Flight 3 (Returns along -X on the far side of the open well)
+      for (let i = 0; i < calc.risersFlight2; i++) {
+        const stepTopY = calc.secondLandingHeight + (i + 1) * R;
+        const blockH = slabT + R;
+        const sx = calc.goingFlight1 - (i * T + T / 2);
+        const sz = z2Start + W / 2;
+        addBox(T, blockH, W, sx, stepTopY - blockH / 2, sz, concreteMat);
+        addBox(T + 18, 28, W + 10, sx, stepTopY + 14, sz, treadMat);
+      }
+
+      // Open-Well Perimeter Handrails
+      addRailSegment(
+        new THREE.Vector3(calc.goingFlight1 + 60, calc.midLandingHeight + 900, W),
+        new THREE.Vector3(calc.goingFlight1 + 60, calc.secondLandingHeight + 900, z2Start)
+      );
+      addRailSegment(
+        new THREE.Vector3(calc.goingFlight1, calc.secondLandingHeight + 900, z2Start + 60),
+        new THREE.Vector3(80, stair.floorHeightMm + 900, z2Start + 60)
+      );
     }
 
     let animId: number;
@@ -202,23 +346,24 @@ export const StaircaseStudio: React.FC<StaircaseStudioProps> = ({
       cancelAnimationFrame(animId);
       controls.dispose();
       renderer.dispose();
-      stepMat.dispose();
+      concreteMat.dispose();
+      treadMat.dispose();
       handrailMat.dispose();
+      postMat.dispose();
       geoms.forEach((g) => g.dispose());
     };
-  }, [viewMode, stair, calc, isDark]);
+  }, [viewMode, stair, calc, isDark, accentHex]);
 
+  const planVbW = (calc.totalStaircaseLength + 1400) / zoom;
+  const planVbH = (calc.totalStaircaseWidth + 1450) / zoom;
+  const planVbX = calc.totalStaircaseLength / 2 - planVbW / 2;
+  const planVbY = calc.totalStaircaseWidth / 2 - planVbH / 2;
 
-  const planVbW = (calc.totalStaircaseLength + 1200) / zoom;
-  const planVbH = (calc.totalStaircaseWidth + 1300) / zoom;
-  const planVbX = (calc.totalStaircaseLength / 2) - planVbW / 2;
-  const planVbY = (calc.totalStaircaseWidth / 2) - planVbH / 2;
-
-  const secTotalX = calc.goingFlight1 + stair.landingWidthMm;
-  const secVbW = (secTotalX + 2000) / zoom;
+  const secTotalX = calc.goingFlight1 + (stair.type === 'l-shaped' ? stair.flightWidthMm : stair.landingWidthMm);
+  const secVbW = (secTotalX + 2100) / zoom;
   const secVbH = (stair.floorHeightMm + 1900) / zoom;
   const secVbX = secTotalX / 2 - secVbW / 2 + 250;
-  const secVbY = (3200 - stair.floorHeightMm / 2) - secVbH / 2 - 150;
+  const secVbY = 3200 - stair.floorHeightMm / 2 - secVbH / 2 - 150;
 
   return (
     <div className="w-full h-full flex flex-col lg:flex-row overflow-hidden relative">
@@ -254,7 +399,14 @@ export const StaircaseStudio: React.FC<StaircaseStudioProps> = ({
               </button>
             </div>
 
-            {/* Compliance Check Pill */}
+            <div className="px-2.5 py-1 rounded-full glass-pill text-[10px] font-mono uppercase tracking-wider font-bold">
+              {stair.type === 'dog-legged'
+                ? 'Dog-Legged (180°)'
+                : stair.type === 'l-shaped'
+                  ? 'L-Shaped (90° Turn)'
+                  : 'Open-Well (3-Flight)'}
+            </div>
+
             <div
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-bold border ${
                 calc.comfortPass
@@ -310,299 +462,267 @@ export const StaircaseStudio: React.FC<StaircaseStudioProps> = ({
 
         {/* Canvases */}
         <div className="flex-1 flex items-center justify-center h-full p-4 overflow-hidden">
-          {/* 2D Plan View SVG */}
+          {/* 2D Plan View SVG — Distinct Geometry for Dog-Legged, L-Shaped, and Open-Well */}
           {viewMode === '2d' && (
             <svg
               viewBox={`${planVbX} ${planVbY} ${planVbW} ${planVbH}`}
               preserveAspectRatio="xMidYMid meet"
               className="w-full h-full max-h-[82vh]"
             >
-              {/* Outer Staircase Shaft Wall (Flush with Going + Mid-Landing) */}
-              <rect
-                x="0"
-                y="0"
-                width={calc.totalStaircaseLength}
-                height={calc.totalStaircaseWidth}
-                fill={isDark ? '#141418' : '#ffffff'}
-                stroke={isDark ? '#e4e4e7' : '#0f172a'}
-                strokeWidth="55"
-              />
+              {/* === TYPE A: DOG-LEGGED (180° U-TURN) === */}
+              {stair.type === 'dog-legged' && (
+                <g>
+                  <rect
+                    x="0"
+                    y="0"
+                    width={calc.totalStaircaseLength}
+                    height={calc.totalStaircaseWidth}
+                    fill={isDark ? '#141418' : '#ffffff'}
+                    stroke={isDark ? '#e4e4e7' : '#0f172a'}
+                    strokeWidth="55"
+                  />
+                  <rect x="0" y={stair.flightWidthMm} width={calc.goingFlight1} height="100" fill={isDark ? '#3f3f46' : '#64748b'} />
 
-              {/* Central Stairwell Divider / Newel Wall */}
-              <rect
-                x="0"
-                y={stair.flightWidthMm}
-                width={calc.goingFlight1}
-                height="100"
-                fill={isDark ? '#3f3f46' : '#64748b'}
-              />
+                  {Array.from({ length: calc.treadsFlight1 }).map((_, i) => {
+                    const stepNum = i + 1;
+                    const isHov = hoveredStep === stepNum;
+                    return (
+                      <g key={`dl-f1-${i}`} onMouseEnter={() => setHoveredStep(stepNum)} onMouseLeave={() => setHoveredStep(null)} className="cursor-pointer">
+                        <rect x={i * stair.treadMm} y="0" width={stair.treadMm} height={stair.flightWidthMm} fill={isHov ? accentHex : 'transparent'} fillOpacity={isHov ? 0.2 : 0} />
+                        <line x1={(i + 1) * stair.treadMm} y1="0" x2={(i + 1) * stair.treadMm} y2={stair.flightWidthMm} stroke={isDark ? '#e4e4e7' : '#0f172a'} strokeWidth="18" />
+                        <text x={i * stair.treadMm + stair.treadMm / 2} y="135" fontSize="95" fontWeight="600" textAnchor="middle" fill={isDark ? '#a1a1aa' : '#475569'}>
+                          {stepNum}
+                        </text>
+                      </g>
+                    );
+                  })}
 
-              {/* Flight 1 Steps (Interactive Hover) */}
-              {Array.from({ length: calc.treadsFlight1 }).map((_, i) => {
-                const stepNum = i + 1;
-                const isHov = hoveredStep === stepNum;
-                return (
-                  <g
-                    key={`step1-${i}`}
-                    onMouseEnter={() => setHoveredStep(stepNum)}
-                    onMouseLeave={() => setHoveredStep(null)}
-                    className="cursor-pointer"
-                  >
-                    <rect
-                      x={i * stair.treadMm}
-                      y="0"
-                      width={stair.treadMm}
-                      height={stair.flightWidthMm}
-                      fill={isHov ? accentHex : 'transparent'}
-                      fillOpacity={isHov ? 0.18 : 0}
-                    />
-                    <line
-                      x1={(i + 1) * stair.treadMm}
-                      y1="0"
-                      x2={(i + 1) * stair.treadMm}
-                      y2={stair.flightWidthMm}
-                      stroke={isDark ? '#e4e4e7' : '#0f172a'}
-                      strokeWidth="18"
-                    />
-                    <text
-                      x={i * stair.treadMm + stair.treadMm / 2}
-                      y="135"
-                      fontSize="95"
-                      fontWeight="600"
-                      textAnchor="middle"
-                      fill={isDark ? '#a1a1aa' : '#475569'}
-                    >
-                      {stepNum}
-                    </text>
+                  <line x1="150" y1={stair.flightWidthMm * 0.56} x2={calc.goingFlight1 - 120} y2={stair.flightWidthMm * 0.56} stroke={accentHex} strokeWidth="26" />
+                  <circle cx="150" cy={stair.flightWidthMm * 0.56} r="40" fill={accentHex} />
+                  <polygon points={`${calc.goingFlight1 - 50},${stair.flightWidthMm * 0.56} ${calc.goingFlight1 - 165},${stair.flightWidthMm * 0.56 - 50} ${calc.goingFlight1 - 165},${stair.flightWidthMm * 0.56 + 50}`} fill={accentHex} />
+
+                  <rect x={calc.goingFlight1} y="0" width={stair.landingWidthMm} height={calc.totalStaircaseWidth} fill={isDark ? '#232329' : '#e2e8f0'} stroke={isDark ? '#e4e4e7' : '#0f172a'} strokeWidth="26" />
+                  <g transform={`translate(${calc.goingFlight1 + stair.landingWidthMm / 2}, ${calc.totalStaircaseWidth / 2}) rotate(-90)`}>
+                    <text x="0" y="-45" fontSize="110" fontWeight="800" textAnchor="middle" fill={isDark ? '#f4f4f6' : '#0f172a'}>MID-LANDING</text>
+                    <text x="0" y="95" fontSize="105" fontWeight="700" textAnchor="middle" fill={accentHex}>EL +{(calc.midLandingHeight / 1000).toFixed(2)} m</text>
                   </g>
-                );
-              })}
 
-              {/* Flight 1 UP Walkline Arrow + Pill Label */}
-              <line
-                x1="150"
-                y1={stair.flightWidthMm * 0.56}
-                x2={calc.goingFlight1 - 120}
-                y2={stair.flightWidthMm * 0.56}
-                stroke={accentHex}
-                strokeWidth="26"
-              />
-              <circle cx="150" cy={stair.flightWidthMm * 0.56} r="42" fill={accentHex} />
-              <polygon
-                points={`${calc.goingFlight1 - 50},${stair.flightWidthMm * 0.56} ${calc.goingFlight1 - 165},${stair.flightWidthMm * 0.56 - 52} ${calc.goingFlight1 - 165},${stair.flightWidthMm * 0.56 + 52}`}
-                fill={accentHex}
-              />
-              <rect
-                x={calc.goingFlight1 * 0.28}
-                y={stair.flightWidthMm * 0.56 - 145}
-                width="820"
-                height="125"
-                rx="24"
-                fill={isDark ? '#09090b' : '#ffffff'}
-                stroke={accentHex}
-                strokeWidth="14"
-              />
-              <text
-                x={calc.goingFlight1 * 0.28 + 410}
-                y={stair.flightWidthMm * 0.56 - 55}
-                fontSize="88"
-                fontWeight="700"
-                textAnchor="middle"
-                fill={accentHex}
-              >
-                UP • FLIGHT 1
-              </text>
+                  {Array.from({ length: calc.treadsFlight2 }).map((_, i) => {
+                    const stepNum = calc.risersFlight1 + i + 1;
+                    const xLeft = calc.goingFlight1 - (i + 1) * stair.treadMm;
+                    const isHov = hoveredStep === stepNum;
+                    return (
+                      <g key={`dl-f2-${i}`} onMouseEnter={() => setHoveredStep(stepNum)} onMouseLeave={() => setHoveredStep(null)} className="cursor-pointer">
+                        <rect x={xLeft} y={stair.flightWidthMm + 100} width={stair.treadMm} height={stair.flightWidthMm} fill={isHov ? accentHex : 'transparent'} fillOpacity={isHov ? 0.2 : 0} />
+                        <line x1={xLeft} y1={stair.flightWidthMm + 100} x2={xLeft} y2={calc.totalStaircaseWidth} stroke={isDark ? '#e4e4e7' : '#0f172a'} strokeWidth="18" />
+                        <text x={xLeft + stair.treadMm / 2} y={calc.totalStaircaseWidth - 65} fontSize="95" fontWeight="600" textAnchor="middle" fill={isDark ? '#a1a1aa' : '#475569'}>
+                          {stepNum}
+                        </text>
+                      </g>
+                    );
+                  })}
 
-              {/* Mid-Landing Slab (Fills exact right side cleanly, rotated label fits inside) */}
-              <rect
-                x={calc.goingFlight1}
-                y="0"
-                width={stair.landingWidthMm}
-                height={calc.totalStaircaseWidth}
-                fill={isDark ? '#232329' : '#e2e8f0'}
-                stroke={isDark ? '#e4e4e7' : '#0f172a'}
-                strokeWidth="26"
-              />
-              <g transform={`translate(${calc.goingFlight1 + stair.landingWidthMm / 2}, ${calc.totalStaircaseWidth / 2}) rotate(-90)`}>
-                <text
-                  x="0"
-                  y="-45"
-                  fontSize="110"
-                  fontWeight="800"
-                  textAnchor="middle"
-                  fill={isDark ? '#f4f4f6' : '#0f172a'}
-                >
-                  MID-LANDING
-                </text>
-                <text
-                  x="0"
-                  y="95"
-                  fontSize="105"
-                  fontWeight="700"
-                  textAnchor="middle"
-                  fill={accentHex}
-                >
-                  EL +{(calc.midLandingHeight / 1000).toFixed(2)} m
-                </text>
-              </g>
+                  <line x1={calc.goingFlight1 - 120} y1={stair.flightWidthMm + 100 + stair.flightWidthMm * 0.44} x2="150" y2={stair.flightWidthMm + 100 + stair.flightWidthMm * 0.44} stroke={accentHex} strokeWidth="26" />
+                  <polygon points={`65,${stair.flightWidthMm + 100 + stair.flightWidthMm * 0.44} 180,${stair.flightWidthMm + 100 + stair.flightWidthMm * 0.44 - 50} 180,${stair.flightWidthMm + 100 + stair.flightWidthMm * 0.44 + 50}`} fill={accentHex} />
+                </g>
+              )}
 
-              {/* Turn Arrow inside Mid-Landing */}
-              <path
-                d={`M ${calc.goingFlight1 + stair.landingWidthMm * 0.22} ${stair.flightWidthMm * 0.56} Q ${calc.goingFlight1 + stair.landingWidthMm * 0.42} ${calc.totalStaircaseWidth / 2} ${calc.goingFlight1 + stair.landingWidthMm * 0.22} ${stair.flightWidthMm + 100 + stair.flightWidthMm * 0.44}`}
-                fill="none"
-                stroke={accentHex}
-                strokeWidth="22"
-                strokeDasharray="45 25"
-              />
+              {/* === TYPE B: L-SHAPED (90° QUARTER-TURN) === */}
+              {stair.type === 'l-shaped' && (
+                <g>
+                  {/* L-Shaped Perimeter Shaft Wall */}
+                  <path
+                    d={`M 0 0 L ${calc.goingFlight1 + stair.flightWidthMm} 0 L ${calc.goingFlight1 + stair.flightWidthMm} ${stair.flightWidthMm + calc.goingFlight2} L ${calc.goingFlight1} ${stair.flightWidthMm + calc.goingFlight2} L ${calc.goingFlight1} ${stair.flightWidthMm} L 0 ${stair.flightWidthMm} Z`}
+                    fill={isDark ? '#141418' : '#ffffff'}
+                    stroke={isDark ? '#e4e4e7' : '#0f172a'}
+                    strokeWidth="55"
+                  />
 
-              {/* Flight 2 Steps (Interactive Hover) */}
-              {Array.from({ length: calc.treadsFlight2 }).map((_, i) => {
-                const stepNum = calc.risersFlight1 + i + 1;
-                const xLeft = calc.goingFlight1 - (i + 1) * stair.treadMm;
-                const isHov = hoveredStep === stepNum;
-                return (
-                  <g
-                    key={`step2-${i}`}
-                    onMouseEnter={() => setHoveredStep(stepNum)}
-                    onMouseLeave={() => setHoveredStep(null)}
-                    className="cursor-pointer"
-                  >
-                    <rect
-                      x={xLeft}
-                      y={stair.flightWidthMm + 100}
-                      width={stair.treadMm}
-                      height={stair.flightWidthMm}
-                      fill={isHov ? accentHex : 'transparent'}
-                      fillOpacity={isHov ? 0.18 : 0}
-                    />
-                    <line
-                      x1={xLeft}
-                      y1={stair.flightWidthMm + 100}
-                      x2={xLeft}
-                      y2={calc.totalStaircaseWidth}
-                      stroke={isDark ? '#e4e4e7' : '#0f172a'}
-                      strokeWidth="18"
-                    />
-                    <text
-                      x={xLeft + stair.treadMm / 2}
-                      y={calc.totalStaircaseWidth - 65}
-                      fontSize="95"
-                      fontWeight="600"
-                      textAnchor="middle"
-                      fill={isDark ? '#a1a1aa' : '#475569'}
-                    >
-                      {stepNum}
-                    </text>
-                  </g>
-                );
-              })}
+                  {/* Flight 1 Steps (+X) */}
+                  {Array.from({ length: calc.treadsFlight1 }).map((_, i) => {
+                    const stepNum = i + 1;
+                    const isHov = hoveredStep === stepNum;
+                    return (
+                      <g key={`ls-f1-${i}`} onMouseEnter={() => setHoveredStep(stepNum)} onMouseLeave={() => setHoveredStep(null)} className="cursor-pointer">
+                        <rect x={i * stair.treadMm} y="0" width={stair.treadMm} height={stair.flightWidthMm} fill={isHov ? accentHex : 'transparent'} fillOpacity={isHov ? 0.2 : 0} />
+                        <line x1={(i + 1) * stair.treadMm} y1="0" x2={(i + 1) * stair.treadMm} y2={stair.flightWidthMm} stroke={isDark ? '#e4e4e7' : '#0f172a'} strokeWidth="18" />
+                        <text x={i * stair.treadMm + stair.treadMm / 2} y="140" fontSize="95" fontWeight="600" textAnchor="middle" fill={isDark ? '#a1a1aa' : '#475569'}>
+                          {stepNum}
+                        </text>
+                      </g>
+                    );
+                  })}
 
-              {/* Flight 2 Return Walkline Arrow (Going Left to Upper Floor) */}
-              <line
-                x1={calc.goingFlight1 - 120}
-                y1={stair.flightWidthMm + 100 + stair.flightWidthMm * 0.44}
-                x2="150"
-                y2={stair.flightWidthMm + 100 + stair.flightWidthMm * 0.44}
-                stroke={accentHex}
-                strokeWidth="26"
-              />
-              <polygon
-                points={`65,${stair.flightWidthMm + 100 + stair.flightWidthMm * 0.44} 180,${stair.flightWidthMm + 100 + stair.flightWidthMm * 0.44 - 52} 180,${stair.flightWidthMm + 100 + stair.flightWidthMm * 0.44 + 52}`}
-                fill={accentHex}
-              />
-              <rect
-                x={calc.goingFlight1 * 0.28}
-                y={stair.flightWidthMm + 100 + stair.flightWidthMm * 0.44 + 35}
-                width="860"
-                height="125"
-                rx="24"
-                fill={isDark ? '#09090b' : '#ffffff'}
-                stroke={accentHex}
-                strokeWidth="14"
-              />
-              <text
-                x={calc.goingFlight1 * 0.28 + 430}
-                y={stair.flightWidthMm + 100 + stair.flightWidthMm * 0.44 + 125}
-                fontSize="88"
-                fontWeight="700"
-                textAnchor="middle"
-                fill={accentHex}
-              >
-                FLIGHT 2 • TO UPPER
-              </text>
+                  {/* Square 90° Quarter-Turn Corner Landing */}
+                  <rect
+                    x={calc.goingFlight1}
+                    y="0"
+                    width={stair.flightWidthMm}
+                    height={stair.flightWidthMm}
+                    fill={isDark ? '#232329' : '#e2e8f0'}
+                    stroke={isDark ? '#e4e4e7' : '#0f172a'}
+                    strokeWidth="26"
+                  />
+                  <text x={calc.goingFlight1 + stair.flightWidthMm / 2} y={stair.flightWidthMm / 2 - 40} fontSize="105" fontWeight="800" textAnchor="middle" fill={isDark ? '#f4f4f6' : '#0f172a'}>
+                    90° LANDING
+                  </text>
+                  <text x={calc.goingFlight1 + stair.flightWidthMm / 2} y={stair.flightWidthMm / 2 + 90} fontSize="95" fontWeight="700" textAnchor="middle" fill={accentHex}>
+                    +{(calc.midLandingHeight / 1000).toFixed(2)} m
+                  </text>
 
-              {/* Standard Architectural Cut-Line Break across Flight 2 */}
-              <line
-                x1={calc.goingFlight1 * 0.42}
-                y1={stair.flightWidthMm + 80}
-                x2={calc.goingFlight1 * 0.58}
-                y2={calc.totalStaircaseWidth + 20}
-                stroke={isDark ? '#f4f4f6' : '#0f172a'}
-                strokeWidth="20"
-                strokeDasharray="80 35"
-              />
+                  {/* Flight 2 Steps (+Y / 90° downward turn) */}
+                  {Array.from({ length: calc.treadsFlight2 }).map((_, i) => {
+                    const stepNum = calc.risersFlight1 + i + 1;
+                    const yTop = stair.flightWidthMm + i * stair.treadMm;
+                    const isHov = hoveredStep === stepNum;
+                    return (
+                      <g key={`ls-f2-${i}`} onMouseEnter={() => setHoveredStep(stepNum)} onMouseLeave={() => setHoveredStep(null)} className="cursor-pointer">
+                        <rect x={calc.goingFlight1} y={yTop} width={stair.flightWidthMm} height={stair.treadMm} fill={isHov ? accentHex : 'transparent'} fillOpacity={isHov ? 0.2 : 0} />
+                        <line x1={calc.goingFlight1} y1={yTop + stair.treadMm} x2={calc.goingFlight1 + stair.flightWidthMm} y2={yTop + stair.treadMm} stroke={isDark ? '#e4e4e7' : '#0f172a'} strokeWidth="18" />
+                        <text x={calc.goingFlight1 + stair.flightWidthMm - 110} y={yTop + stair.treadMm / 2 + 30} fontSize="95" fontWeight="600" textAnchor="middle" fill={isDark ? '#a1a1aa' : '#475569'}>
+                          {stepNum}
+                        </text>
+                      </g>
+                    );
+                  })}
 
-              {/* Overall Dimension Chains (Top: Going + Landing, Left: Shaft Width) */}
-              <g fill={isDark ? '#cbd5e1' : '#334155'} stroke={isDark ? '#64748b' : '#64748b'} strokeWidth="14">
-                {/* Going dimension */}
-                <line x1="0" y1="-220" x2={calc.goingFlight1} y2="-220" />
-                <line x1="0" y1="-280" x2="0" y2="-140" />
-                <line x1={calc.goingFlight1} y1="-280" x2={calc.goingFlight1} y2="-140" />
-                <text x={calc.goingFlight1 / 2} y="-270" fontSize="105" fontWeight="700" textAnchor="middle" stroke="none">
-                  GOING: {calc.goingFlight1} mm ({calc.treadsFlight1}T × {stair.treadMm})
-                </text>
+                  {/* Continuous 90° Walkline Arrow */}
+                  <polyline
+                    points={`150,${stair.flightWidthMm / 2} ${calc.goingFlight1 + stair.flightWidthMm / 2},${stair.flightWidthMm / 2} ${calc.goingFlight1 + stair.flightWidthMm / 2},${stair.flightWidthMm + calc.goingFlight2 - 140}`}
+                    fill="none"
+                    stroke={accentHex}
+                    strokeWidth="26"
+                  />
+                  <circle cx="150" cy={stair.flightWidthMm / 2} r="42" fill={accentHex} />
+                  <polygon
+                    points={`${calc.goingFlight1 + stair.flightWidthMm / 2},${stair.flightWidthMm + calc.goingFlight2 - 50} ${calc.goingFlight1 + stair.flightWidthMm / 2 - 55},${stair.flightWidthMm + calc.goingFlight2 - 175} ${calc.goingFlight1 + stair.flightWidthMm / 2 + 55},${stair.flightWidthMm + calc.goingFlight2 - 175}`}
+                    fill={accentHex}
+                  />
+                </g>
+              )}
 
-                {/* Landing dimension */}
-                <line x1={calc.goingFlight1} y1="-220" x2={calc.totalStaircaseLength} y2="-220" />
-                <line x1={calc.totalStaircaseLength} y1="-280" x2={calc.totalStaircaseLength} y2="-140" />
-                <text x={calc.goingFlight1 + stair.landingWidthMm / 2} y="-270" fontSize="105" fontWeight="700" textAnchor="middle" stroke="none">
-                  LANDING: {stair.landingWidthMm}
-                </text>
+              {/* === TYPE C: OPEN-WELL (3-FLIGHT U-SHAPE WITH OPEN ATRIUM) === */}
+              {stair.type === 'open-well' && (
+                <g>
+                  <rect
+                    x="0"
+                    y="0"
+                    width={calc.totalStaircaseLength}
+                    height={calc.totalStaircaseWidth}
+                    fill={isDark ? '#141418' : '#ffffff'}
+                    stroke={isDark ? '#e4e4e7' : '#0f172a'}
+                    strokeWidth="55"
+                  />
 
-                {/* Overall bottom length */}
+                  {/* Central Open-Well Atrium Box */}
+                  <rect
+                    x="0"
+                    y={stair.flightWidthMm}
+                    width={calc.goingFlight1}
+                    height={calc.wellGap}
+                    fill={isDark ? '#09090b' : '#f1f5f9'}
+                    stroke={accentHex}
+                    strokeWidth="28"
+                    strokeDasharray="70 40"
+                  />
+                  <line x1="0" y1={stair.flightWidthMm} x2={calc.goingFlight1} y2={stair.flightWidthMm + calc.wellGap} stroke={isDark ? '#3f3f46' : '#cbd5e1'} strokeWidth="14" strokeDasharray="50 30" />
+                  <line x1={calc.goingFlight1} y1={stair.flightWidthMm} x2="0" y2={stair.flightWidthMm + calc.wellGap} stroke={isDark ? '#3f3f46' : '#cbd5e1'} strokeWidth="14" strokeDasharray="50 30" />
+                  <text x={calc.goingFlight1 / 2} y={stair.flightWidthMm + calc.wellGap / 2 + 35} fontSize="125" fontWeight="800" textAnchor="middle" fill={accentHex}>
+                    OPEN WELL ATRIUM
+                  </text>
+
+                  {/* Flight 1 (+X) */}
+                  {Array.from({ length: calc.treadsFlight1 }).map((_, i) => {
+                    const stepNum = i + 1;
+                    const isHov = hoveredStep === stepNum;
+                    return (
+                      <g key={`ow-f1-${i}`} onMouseEnter={() => setHoveredStep(stepNum)} onMouseLeave={() => setHoveredStep(null)} className="cursor-pointer">
+                        <rect x={i * stair.treadMm} y="0" width={stair.treadMm} height={stair.flightWidthMm} fill={isHov ? accentHex : 'transparent'} fillOpacity={isHov ? 0.2 : 0} />
+                        <line x1={(i + 1) * stair.treadMm} y1="0" x2={(i + 1) * stair.treadMm} y2={stair.flightWidthMm} stroke={isDark ? '#e4e4e7' : '#0f172a'} strokeWidth="18" />
+                        <text x={i * stair.treadMm + stair.treadMm / 2} y="140" fontSize="95" fontWeight="600" textAnchor="middle" fill={isDark ? '#a1a1aa' : '#475569'}>{stepNum}</text>
+                      </g>
+                    );
+                  })}
+
+                  {/* Quarter-Landing 1 */}
+                  <rect x={calc.goingFlight1} y="0" width={stair.landingWidthMm} height={stair.flightWidthMm} fill={isDark ? '#232329' : '#e2e8f0'} stroke={isDark ? '#e4e4e7' : '#0f172a'} strokeWidth="24" />
+                  <text x={calc.goingFlight1 + stair.landingWidthMm / 2} y={stair.flightWidthMm / 2 + 30} fontSize="95" fontWeight="800" textAnchor="middle" fill={accentHex}>L1 +{(calc.midLandingHeight / 1000).toFixed(2)}m</text>
+
+                  {/* Middle Flight (Across Open Well along +Y) */}
+                  {Array.from({ length: calc.treadsMid }).map((_, i) => {
+                    const stepNum = calc.risersFlight1 + i + 1;
+                    const yTop = stair.flightWidthMm + i * stair.treadMm;
+                    const isHov = hoveredStep === stepNum;
+                    return (
+                      <g key={`ow-mid-${i}`} onMouseEnter={() => setHoveredStep(stepNum)} onMouseLeave={() => setHoveredStep(null)} className="cursor-pointer">
+                        <rect x={calc.goingFlight1} y={yTop} width={stair.landingWidthMm} height={stair.treadMm} fill={isHov ? accentHex : 'transparent'} fillOpacity={isHov ? 0.2 : 0} />
+                        <line x1={calc.goingFlight1} y1={yTop + stair.treadMm} x2={calc.totalStaircaseLength} y2={yTop + stair.treadMm} stroke={isDark ? '#e4e4e7' : '#0f172a'} strokeWidth="18" />
+                        <text x={calc.totalStaircaseLength - 120} y={yTop + stair.treadMm / 2 + 30} fontSize="95" fontWeight="600" textAnchor="middle" fill={isDark ? '#a1a1aa' : '#475569'}>{stepNum}</text>
+                      </g>
+                    );
+                  })}
+
+                  {/* Quarter-Landing 2 */}
+                  <rect x={calc.goingFlight1} y={stair.flightWidthMm + calc.wellGap} width={stair.landingWidthMm} height={stair.flightWidthMm} fill={isDark ? '#232329' : '#e2e8f0'} stroke={isDark ? '#e4e4e7' : '#0f172a'} strokeWidth="24" />
+                  <text x={calc.goingFlight1 + stair.landingWidthMm / 2} y={stair.flightWidthMm + calc.wellGap + stair.flightWidthMm / 2 + 30} fontSize="95" fontWeight="800" textAnchor="middle" fill={accentHex}>L2 +{(calc.secondLandingHeight / 1000).toFixed(2)}m</text>
+
+                  {/* Flight 3 (-X return) */}
+                  {Array.from({ length: calc.treadsFlight2 }).map((_, i) => {
+                    const stepNum = calc.risersFlight1 + calc.risersMid + i + 1;
+                    const xLeft = calc.goingFlight1 - (i + 1) * stair.treadMm;
+                    const yBase = stair.flightWidthMm + calc.wellGap;
+                    const isHov = hoveredStep === stepNum;
+                    return (
+                      <g key={`ow-f3-${i}`} onMouseEnter={() => setHoveredStep(stepNum)} onMouseLeave={() => setHoveredStep(null)} className="cursor-pointer">
+                        <rect x={xLeft} y={yBase} width={stair.treadMm} height={stair.flightWidthMm} fill={isHov ? accentHex : 'transparent'} fillOpacity={isHov ? 0.2 : 0} />
+                        <line x1={xLeft} y1={yBase} x2={xLeft} y2={calc.totalStaircaseWidth} stroke={isDark ? '#e4e4e7' : '#0f172a'} strokeWidth="18" />
+                        <text x={xLeft + stair.treadMm / 2} y={calc.totalStaircaseWidth - 65} fontSize="95" fontWeight="600" textAnchor="middle" fill={isDark ? '#a1a1aa' : '#475569'}>{stepNum}</text>
+                      </g>
+                    );
+                  })}
+
+                  {/* 3-Flight Walkline Polyline */}
+                  <polyline
+                    points={`150,${stair.flightWidthMm / 2} ${calc.goingFlight1 + stair.landingWidthMm / 2},${stair.flightWidthMm / 2} ${calc.goingFlight1 + stair.landingWidthMm / 2},${stair.flightWidthMm + calc.wellGap + stair.flightWidthMm / 2} 150,${stair.flightWidthMm + calc.wellGap + stair.flightWidthMm / 2}`}
+                    fill="none"
+                    stroke={accentHex}
+                    strokeWidth="26"
+                  />
+                  <circle cx="150" cy={stair.flightWidthMm / 2} r="42" fill={accentHex} />
+                  <polygon
+                    points={`65,${stair.flightWidthMm + calc.wellGap + stair.flightWidthMm / 2} 185,${stair.flightWidthMm + calc.wellGap + stair.flightWidthMm / 2 - 52} 185,${stair.flightWidthMm + calc.wellGap + stair.flightWidthMm / 2 + 52}`}
+                    fill={accentHex}
+                  />
+                </g>
+              )}
+
+              {/* Overall Bottom Dimension Chain */}
+              <g fill={isDark ? '#cbd5e1' : '#334155'} stroke="#64748b" strokeWidth="14">
                 <line x1="0" y1={calc.totalStaircaseWidth + 240} x2={calc.totalStaircaseLength} y2={calc.totalStaircaseWidth + 240} />
                 <line x1="0" y1={calc.totalStaircaseWidth + 160} x2="0" y2={calc.totalStaircaseWidth + 300} />
                 <line x1={calc.totalStaircaseLength} y1={calc.totalStaircaseWidth + 160} x2={calc.totalStaircaseLength} y2={calc.totalStaircaseWidth + 300} />
-                <text x={calc.totalStaircaseLength / 2} y={calc.totalStaircaseWidth + 380} fontSize="110" fontWeight="800" textAnchor="middle" stroke="none">
-                  TOTAL SHAFT LENGTH: {(calc.totalStaircaseLength / 1000).toFixed(2)} m • WIDTH: {(calc.totalStaircaseWidth / 1000).toFixed(2)} m
+                <text x={calc.totalStaircaseLength / 2} y={calc.totalStaircaseWidth + 390} fontSize="110" fontWeight="800" textAnchor="middle" stroke="none">
+                  SHAFT FOOTPRINT: {(calc.totalStaircaseLength / 1000).toFixed(2)} m × {(calc.totalStaircaseWidth / 1000).toFixed(2)} m
                 </text>
               </g>
             </svg>
           )}
 
-          {/* Longitudinal Vertical Section SVG (Complete 2-Flight Dog-Legged Profile) */}
+          {/* Longitudinal Vertical Section SVG */}
           {viewMode === 'section' && (
             <svg
               viewBox={`${secVbX} ${secVbY} ${secVbW} ${secVbH}`}
               preserveAspectRatio="xMidYMid meet"
               className="w-full h-full max-h-[82vh]"
             >
-              {/* Ground / Plinth Floor Slab */}
-              <rect
-                x="-350"
-                y="3200"
-                width={secTotalX + 900}
-                height="160"
-                fill={isDark ? '#27272a' : '#cbd5e1'}
-                stroke={isDark ? '#e4e4e7' : '#0f172a'}
-                strokeWidth="22"
-              />
+              <rect x="-350" y="3200" width={secTotalX + 900} height="160" fill={isDark ? '#27272a' : '#cbd5e1'} stroke={isDark ? '#e4e4e7' : '#0f172a'} strokeWidth="22" />
               <text x="-300" y="3490" fontSize="110" fill={isDark ? '#94a3b8' : '#334155'} fontWeight="700">
                 FINISHED FLOOR LEVEL (FFL ±0.00 m)
               </text>
 
-              {/* Upper Floor Slab */}
-              <rect
-                x="-350"
-                y={3200 - stair.floorHeightMm}
-                width="450"
-                height={stair.waistSlabMm}
-                fill={isDark ? '#27272a' : '#cbd5e1'}
-                stroke={isDark ? '#e4e4e7' : '#0f172a'}
-                strokeWidth="22"
-              />
+              <rect x="-350" y={3200 - stair.floorHeightMm} width="450" height={stair.waistSlabMm} fill={isDark ? '#27272a' : '#cbd5e1'} stroke={isDark ? '#e4e4e7' : '#0f172a'} strokeWidth="22" />
 
-              {/* Flight 1 Inclined Waist Slab + Mid-Landing Slab */}
+              {/* Flight 1 Inclined Waist Slab + Landing */}
               <polygon
                 points={`0,3200 ${calc.goingFlight1},${3200 - calc.midLandingHeight} ${secTotalX},${3200 - calc.midLandingHeight} ${secTotalX},${3200 - calc.midLandingHeight + stair.waistSlabMm} ${calc.goingFlight1},${3200 - calc.midLandingHeight + stair.waistSlabMm} 0,${3200 + stair.waistSlabMm}`}
                 fill={isDark ? 'rgba(56, 189, 248, 0.16)' : 'rgba(2, 132, 199, 0.14)'}
@@ -610,7 +730,6 @@ export const StaircaseStudio: React.FC<StaircaseStudioProps> = ({
                 strokeWidth="24"
               />
 
-              {/* Flight 1 Steps Profile */}
               {Array.from({ length: calc.risersFlight1 }).map((_, i) => (
                 <path
                   key={`sec-f1-${i}`}
@@ -621,75 +740,63 @@ export const StaircaseStudio: React.FC<StaircaseStudioProps> = ({
                 />
               ))}
 
-              {/* Flight 2 Returning Waist Slab (Mid-Landing back up to Upper Floor) */}
-              <polygon
-                points={`${calc.goingFlight1},${3200 - calc.midLandingHeight} 0,${3200 - stair.floorHeightMm} 0,${3200 - stair.floorHeightMm + stair.waistSlabMm} ${calc.goingFlight1},${3200 - calc.midLandingHeight + stair.waistSlabMm}`}
-                fill={isDark ? 'rgba(161, 161, 170, 0.12)' : 'rgba(100, 116, 139, 0.12)'}
-                stroke={isDark ? '#94a3b8' : '#475569'}
-                strokeWidth="20"
-                strokeDasharray="60 30"
-              />
+              {/* Upper Flight Representation (varies by type) */}
+              {stair.type === 'l-shaped' ? (
+                <g>
+                  {/* 90-deg Flight 2 seen in front elevation rising from corner landing */}
+                  {Array.from({ length: calc.risersFlight2 }).map((_, i) => (
+                    <rect
+                      key={`sec-ls-f2-${i}`}
+                      x={calc.goingFlight1}
+                      y={3200 - calc.midLandingHeight - (i + 1) * calc.actualRiser}
+                      width={stair.flightWidthMm}
+                      height={calc.actualRiser}
+                      fill={isDark ? 'rgba(148,163,184,0.12)' : 'rgba(100,116,139,0.12)'}
+                      stroke={isDark ? '#94a3b8' : '#475569'}
+                      strokeWidth="18"
+                    />
+                  ))}
+                  <text x={calc.goingFlight1 + stair.flightWidthMm / 2} y={3200 - calc.midLandingHeight - (stair.floorHeightMm - calc.midLandingHeight) / 2} fontSize="95" fontWeight="700" textAnchor="middle" fill={accentHex}>
+                    FLIGHT 2 (90° TURN)
+                  </text>
+                </g>
+              ) : (
+                <g>
+                  <polygon
+                    points={`${calc.goingFlight1},${3200 - (stair.type === 'open-well' ? calc.secondLandingHeight : calc.midLandingHeight)} 0,${3200 - stair.floorHeightMm} 0,${3200 - stair.floorHeightMm + stair.waistSlabMm} ${calc.goingFlight1},${3200 - (stair.type === 'open-well' ? calc.secondLandingHeight : calc.midLandingHeight) + stair.waistSlabMm}`}
+                    fill={isDark ? 'rgba(161, 161, 170, 0.12)' : 'rgba(100, 116, 139, 0.12)'}
+                    stroke={isDark ? '#94a3b8' : '#475569'}
+                    strokeWidth="20"
+                    strokeDasharray="60 30"
+                  />
+                  {Array.from({ length: calc.risersFlight2 }).map((_, i) => {
+                    const baseH = stair.type === 'open-well' ? calc.secondLandingHeight : calc.midLandingHeight;
+                    return (
+                      <path
+                        key={`sec-f2-${i}`}
+                        d={`M ${calc.goingFlight1 - i * stair.treadMm} ${3200 - baseH - i * calc.actualRiser} L ${calc.goingFlight1 - i * stair.treadMm} ${3200 - baseH - (i + 1) * calc.actualRiser} L ${calc.goingFlight1 - (i + 1) * stair.treadMm} ${3200 - baseH - (i + 1) * calc.actualRiser}`}
+                        fill="none"
+                        stroke={isDark ? '#94a3b8' : '#64748b'}
+                        strokeWidth="20"
+                        strokeDasharray="45 25"
+                      />
+                    );
+                  })}
+                </g>
+              )}
 
-              {/* Flight 2 Steps Profile (Dashed background elevation) */}
-              {Array.from({ length: calc.risersFlight2 }).map((_, i) => (
-                <path
-                  key={`sec-f2-${i}`}
-                  d={`M ${calc.goingFlight1 - i * stair.treadMm} ${3200 - calc.midLandingHeight - i * calc.actualRiser} L ${calc.goingFlight1 - i * stair.treadMm} ${3200 - calc.midLandingHeight - (i + 1) * calc.actualRiser} L ${calc.goingFlight1 - (i + 1) * stair.treadMm} ${3200 - calc.midLandingHeight - (i + 1) * calc.actualRiser}`}
-                  fill="none"
-                  stroke={isDark ? '#94a3b8' : '#64748b'}
-                  strokeWidth="20"
-                  strokeDasharray="45 25"
-                />
-              ))}
+              {/* Handrails */}
+              <line x1="0" y1={3200 - 900} x2={calc.goingFlight1} y2={3200 - calc.midLandingHeight - 900} stroke="#f59e0b" strokeWidth="28" />
+              <line x1={calc.goingFlight1} y1={3200 - calc.midLandingHeight - 900} x2={secTotalX} y2={3200 - calc.midLandingHeight - 900} stroke="#f59e0b" strokeWidth="28" />
 
-              {/* Handrails (900 mm above nosing line) */}
-              <line
-                x1="0"
-                y1={3200 - 900}
-                x2={calc.goingFlight1}
-                y2={3200 - calc.midLandingHeight - 900}
-                stroke="#f59e0b"
-                strokeWidth="28"
-              />
-              <line
-                x1={calc.goingFlight1}
-                y1={3200 - calc.midLandingHeight - 900}
-                x2={secTotalX}
-                y2={3200 - calc.midLandingHeight - 900}
-                stroke="#f59e0b"
-                strokeWidth="28"
-              />
-
-              {/* Level Reference Lines & Markers */}
-              <line
-                x1={secTotalX}
-                y1={3200 - calc.midLandingHeight}
-                x2={secTotalX + 900}
-                y2={3200 - calc.midLandingHeight}
-                stroke={accentHex}
-                strokeWidth="18"
-                strokeDasharray="45 25"
-              />
+              <line x1={secTotalX} y1={3200 - calc.midLandingHeight} x2={secTotalX + 900} y2={3200 - calc.midLandingHeight} stroke={accentHex} strokeWidth="18" strokeDasharray="45 25" />
               <text x={secTotalX + 80} y={3200 - calc.midLandingHeight - 40} fontSize="105" fontWeight="800" fill={accentHex}>
-                MID-LANDING (+{(calc.midLandingHeight / 1000).toFixed(2)} m)
+                LANDING 1 (+{(calc.midLandingHeight / 1000).toFixed(2)} m)
               </text>
 
-              <line
-                x1="0"
-                y1={3200 - stair.floorHeightMm}
-                x2={secTotalX + 900}
-                y2={3200 - stair.floorHeightMm}
-                stroke="#ef4444"
-                strokeWidth="18"
-                strokeDasharray="45 25"
-              />
+              <line x1="0" y1={3200 - stair.floorHeightMm} x2={secTotalX + 900} y2={3200 - stair.floorHeightMm} stroke="#ef4444" strokeWidth="18" strokeDasharray="45 25" />
               <text x={secTotalX + 80} y={3200 - stair.floorHeightMm - 40} fontSize="105" fontWeight="800" fill="#ef4444">
                 UPPER FLOOR (+{(stair.floorHeightMm / 1000).toFixed(2)} m)
-              </text>
-
-              {/* Slope Angle & Waist Slab Callout */}
-              <text x={calc.goingFlight1 * 0.45} y={3200 - calc.midLandingHeight * 0.35 + 260} fontSize="100" fontWeight="700" fill={accentHex}>
-                Pitch {calc.pitchDeg.toFixed(1)}° • Waist {stair.waistSlabMm} mm
               </text>
             </svg>
           )}
@@ -698,12 +805,14 @@ export const StaircaseStudio: React.FC<StaircaseStudioProps> = ({
           {viewMode === '3d' && (
             <div ref={container3dRef} className="w-full h-full relative">
               <canvas ref={canvas3dRef} className="w-full h-full block cursor-grab active:cursor-grabbing" />
+              <div className="absolute bottom-3 left-4 px-3 py-1 rounded-full glass-pill text-[10px] font-mono opacity-80 pointer-events-none">
+                Drag to orbit • Scroll to zoom • {stair.type.toUpperCase()} 3D Model
+              </div>
             </div>
           )}
         </div>
       </div>
 
-      {/* Right Parametric Inspector */}
       <aside className="w-full lg:w-80 border-t lg:border-t-0 lg:border-l border-current/10 glass-panel p-4 flex flex-col gap-4 overflow-y-auto shrink-0 custom-scrollbar">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -821,7 +930,7 @@ export const StaircaseStudio: React.FC<StaircaseStudioProps> = ({
           <div className="p-3 rounded-2xl glass-card space-y-1.5">
             <div className="flex items-center justify-between text-[11px]">
               <span className="opacity-75">Total Steps / Risers:</span>
-              <span className="font-bold">{calc.totalRisers} nos. ({calc.risersFlight1} + {calc.risersFlight2})</span>
+              <span className="font-bold">{calc.totalRisers} nos. ({stair.type === 'open-well' ? `${calc.risersFlight1} + ${calc.risersMid} + ${calc.risersFlight2}` : `${calc.risersFlight1} + ${calc.risersFlight2}`})</span>
             </div>
             <div className="flex items-center justify-between text-[11px]">
               <span className="opacity-75">Actual Rise per Step:</span>

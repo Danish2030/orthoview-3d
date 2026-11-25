@@ -264,6 +264,49 @@ export const BoqScheduleStudio: React.FC<BoqScheduleStudioProps> = ({
                 </div>
               </div>
 
+
+              {/* Visual Cost & Material Breakdown Graphic */}
+              <div className="p-4 rounded-2xl border border-current/15 glass-card space-y-3">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-bold uppercase tracking-wider opacity-70">Cost Distribution Breakdown</span>
+                  <span className="font-mono opacity-65">{takeoff.rows.length} Work Packages</span>
+                </div>
+
+                {/* Stacked Proportional Cost Bar */}
+                <div className="w-full h-4 rounded-full overflow-hidden flex bg-current/10">
+                  {takeoff.rows.map((row, idx) => {
+                    const pct = takeoff.grandTotal > 0 ? (row.amount / takeoff.grandTotal) * 100 : 0;
+                    const palette = ['#38bdf8', '#ef4444', '#f59e0b', '#10b981', '#a855f7', '#ec4899'];
+                    return (
+                      <div
+                        key={`bar-${row.itemNo}`}
+                        style={{ width: `${pct}%`, backgroundColor: palette[idx % palette.length] }}
+                        title={`${row.desc.slice(0, 32)}: ${pct.toFixed(1)}%`}
+                        className="h-full transition-all duration-300"
+                      />
+                    );
+                  })}
+                </div>
+
+                {/* Legend Pills with Percentages */}
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-[11px]">
+                  {takeoff.rows.map((row, idx) => {
+                    const pct = takeoff.grandTotal > 0 ? (row.amount / takeoff.grandTotal) * 100 : 0;
+                    const palette = ['#38bdf8', '#ef4444', '#f59e0b', '#10b981', '#a855f7', '#ec4899'];
+                    const shortName = row.desc.split(' ')[0] + ' ' + (row.desc.split(' ')[1] || '');
+                    return (
+                      <div key={`leg-${row.itemNo}`} className="flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-xl bg-current/[0.03] border border-current/10">
+                        <span className="flex items-center gap-1.5 truncate">
+                          <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: palette[idx % palette.length] }} />
+                          <span className="truncate font-medium">{shortName}</span>
+                        </span>
+                        <span className="font-mono font-bold tabular-nums">{pct.toFixed(0)}%</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
               <div className="rounded-2xl border border-current/15 overflow-hidden">
                 <table className="w-full text-left text-xs">
                   <thead className={isDark ? 'bg-zinc-900/80' : 'bg-slate-100'}>

@@ -35,6 +35,93 @@ interface ProDashboardProps {
   onOpenModule: (moduleId: ProModuleId) => void;
 }
 
+
+const renderModuleGraphic = (id: ProModuleId, color: string) => {
+  switch (id) {
+    case 'floor-plan':
+      return (
+        <svg viewBox="0 0 180 70" className="w-full h-16">
+          <rect x="14" y="8" width="152" height="54" fill="none" stroke={color} strokeWidth="2.2" />
+          <line x1="82" y1="8" x2="82" y2="62" stroke={color} strokeWidth="1.6" />
+          <line x1="82" y1="36" x2="166" y2="36" stroke={color} strokeWidth="1.6" />
+          <path d="M 42 62 A 14 14 0 0 1 56 48 L 56 62" fill="none" stroke="#f59e0b" strokeWidth="1.4" />
+          <rect x="22" y="16" width="26" height="16" rx="2" fill={color} fillOpacity="0.18" stroke={color} strokeWidth="1" />
+          <rect x="92" y="14" width="32" height="16" rx="2" fill={color} fillOpacity="0.18" stroke={color} strokeWidth="1" />
+        </svg>
+      );
+    case 'column-grid':
+      return (
+        <svg viewBox="0 0 180 70" className="w-full h-16">
+          {[36, 90, 144].map((x) => (
+            <line key={x} x1={x} y1="12" x2={x} y2="62" stroke={color} strokeDasharray="3 3" strokeOpacity="0.55" strokeWidth="1.2" />
+          ))}
+          {[22, 48].map((y) => (
+            <line key={y} x1="16" y1={y} x2="164" y2={y} stroke={color} strokeDasharray="3 3" strokeOpacity="0.55" strokeWidth="1.2" />
+          ))}
+          {[36, 90, 144].map((x) =>
+            [22, 48].map((y) => (
+              <g key={`${x}-${y}`}>
+                <rect x={x - 9} y={y - 7} width="18" height="14" fill="none" stroke={color} strokeOpacity="0.45" strokeDasharray="2 2" strokeWidth="1" />
+                <rect x={x - 4} y={y - 4} width="8" height="8" fill={color} />
+              </g>
+            ))
+          )}
+        </svg>
+      );
+    case 'staircase':
+      return (
+        <svg viewBox="0 0 180 70" className="w-full h-16">
+          <path d="M 18 58 L 38 58 L 38 48 L 58 48 L 58 38 L 78 38 L 78 28 L 98 28 L 98 18 L 158 18" fill="none" stroke={color} strokeWidth="2.2" />
+          <line x1="18" y1="62" x2="104" y2="24" stroke={color} strokeOpacity="0.45" strokeWidth="3" />
+          <line x1="18" y1="42" x2="98" y2="6" stroke="#f59e0b" strokeWidth="1.5" />
+          <line x1="98" y1="6" x2="158" y2="6" stroke="#f59e0b" strokeWidth="1.5" />
+        </svg>
+      );
+    case 'elevation-section':
+      return (
+        <svg viewBox="0 0 180 70" className="w-full h-16">
+          <line x1="10" y1="60" x2="170" y2="60" stroke="#64748b" strokeWidth="2" />
+          <rect x="34" y="16" width="112" height="44" fill={color} fillOpacity="0.1" stroke={color} strokeWidth="1.8" />
+          <rect x="28" y="13" width="124" height="5" fill={color} fillOpacity="0.35" stroke={color} strokeWidth="1.2" />
+          <rect x="78" y="34" width="22" height="26" fill="#f59e0b" fillOpacity="0.22" stroke="#f59e0b" strokeWidth="1.3" />
+          <rect x="44" y="28" width="22" height="16" fill={color} fillOpacity="0.22" stroke={color} strokeWidth="1.2" />
+          <rect x="112" y="28" width="22" height="16" fill={color} fillOpacity="0.22" stroke={color} strokeWidth="1.2" />
+        </svg>
+      );
+    case 'mep-overlay':
+      return (
+        <svg viewBox="0 0 180 70" className="w-full h-16">
+          <rect x="16" y="10" width="148" height="50" fill="none" stroke="currentColor" strokeOpacity="0.25" strokeWidth="1.4" />
+          <path d="M 32 34 Q 65 14 96 34 T 148 34" fill="none" stroke="#eab308" strokeDasharray="4 2" strokeWidth="1.6" />
+          <line x1="28" y1="50" x2="150" y2="50" stroke="#06b6d4" strokeWidth="1.8" />
+          <circle cx="32" cy="34" r="5" fill="#eab308" />
+          <circle cx="96" cy="34" r="5" fill="#eab308" />
+          <circle cx="148" cy="34" r="5" fill="#a855f7" />
+          <circle cx="144" cy="50" r="4.5" fill="#06b6d4" />
+        </svg>
+      );
+    case 'site-far':
+      return (
+        <svg viewBox="0 0 180 70" className="w-full h-16">
+          <rect x="16" y="6" width="148" height="12" fill="currentColor" fillOpacity="0.1" stroke="#64748b" strokeWidth="1" />
+          <line x1="16" y1="12" x2="164" y2="12" stroke="#f59e0b" strokeDasharray="6 4" strokeWidth="1.2" />
+          <rect x="34" y="22" width="112" height="42" fill="none" stroke="#ef4444" strokeWidth="1.6" />
+          <rect x="48" y="30" width="84" height="26" fill={color} fillOpacity="0.16" stroke={color} strokeDasharray="4 2" strokeWidth="1.4" />
+        </svg>
+      );
+    case 'boq-schedule':
+      return (
+        <svg viewBox="0 0 180 70" className="w-full h-16">
+          <rect x="20" y="38" width="20" height="24" rx="3" fill="#38bdf8" />
+          <rect x="48" y="20" width="20" height="42" rx="3" fill="#ef4444" />
+          <rect x="76" y="28" width="20" height="34" rx="3" fill="#f59e0b" />
+          <rect x="104" y="44" width="20" height="18" rx="3" fill="#10b981" />
+          <circle cx="148" cy="38" r="18" fill="none" stroke={color} strokeWidth="6" strokeDasharray="72 45" />
+        </svg>
+      );
+  }
+};
+
 export const ProDashboard: React.FC<ProDashboardProps> = ({
   project,
   onUpdateProject,
@@ -376,6 +463,10 @@ export const ProDashboard: React.FC<ProDashboardProps> = ({
                       <span className="text-[10px] px-2.5 py-1 rounded-full font-bold uppercase tracking-wider border border-current/15 opacity-75">
                         {card.badge}
                       </span>
+                    </div>
+
+                    <div className="rounded-2xl bg-black/[0.03] dark:bg-white/[0.03] border border-current/10 p-2 overflow-hidden">
+                      {renderModuleGraphic(card.id, card.color)}
                     </div>
 
                     <div>
