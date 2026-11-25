@@ -531,7 +531,15 @@ export function App() {
           onOpenTheory={() => setIsTheoryOpen(true)}
           onOpenQuiz={() => setIsQuizOpen(true)}
           onLoadRecord={handleLoadRecord}
+          onDeleteRecord={(id) => setSavedQuestions((prev) => prev.filter((r) => r.id !== id))}
           onQuickSolveQuestion={handleQuickSolveFromDashboard}
+          onSelectSolidAndOpen={(type) => {
+            handleSelectSolid(type);
+            setActiveModule('orthographic');
+            setPhase2Banner(null);
+            setView('studio');
+          }}
+          onOpenExport={handleExportSheet}
         />
       )}
 
