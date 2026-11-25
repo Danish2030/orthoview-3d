@@ -13,7 +13,7 @@ import {
   X,
 } from 'lucide-react';
 import { ViewCube } from './ViewCube';
-import { AccentId } from '../utils/accentTheme';
+import { AccentId, getAccentConfig } from '../utils/accentTheme';
 import { DisplayOptions, HighlightTarget, SolidDimensions, SolidRotation, ThemeMode } from '../types';
 
 interface Viewport3DProps {
@@ -37,12 +37,17 @@ export const Viewport3D: React.FC<Viewport3DProps> = ({
   displayOptions,
   onResetRotation,
   onUpdateDisplayOptions,
+  accentId = 'mono',
   hoveredTarget,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const controlsRef = useRef<OrbitControls | null>(null);
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
+  const savedCamPosRef = useRef<THREE.Vector3 | null>(null);
+  const savedTargetRef = useRef<THREE.Vector3 | null>(null);
+  const isUserDraggingRef = useRef<boolean>(false);
+  const prevGeometryRef = useRef<THREE.BufferGeometry | null>(null);
 
   const [cameraMode, setCameraMode] = useState<'isometric' | 'front' | 'top' | 'side' | 'free'>('isometric');
   const [isUnfoldPlaying, setIsUnfoldPlaying] = useState<boolean>(false);
@@ -109,8 +114,11 @@ export const Viewport3D: React.FC<Viewport3DProps> = ({
       2500
     );
     const isoDist = 185;
-    camera.position.set(isoDist, isoDist * 0.85, isoDist * 1.15);
-    camera.lookAt(0, 0, 0);
+    if (savedCamPosRef.current) {
+      camera.position.copy(savedCamPosRef.current);
+    } else {
+      camera.position.set(isoDist, isoDist * 0.85, isoDist * 1.15);
+    }
     cameraRef.current = camera;
 
     // Orbit Controls
@@ -119,7 +127,20 @@ export const Viewport3D: React.FC<Viewport3DProps> = ({
     controls.dampingFactor = 0.05;
     controls.maxDistance = 750;
     controls.minDistance = 50;
-    controls.target.set(0, 0, 0);
+    if (savedTargetRef.current) {
+      controls.target.copy(savedTargetRef.current);
+    } else {
+      controls.target.set(0, 0, 0);
+    }
+    camera.lookAt(controls.target);
+    const onControlStart = () => {
+      isUserDraggingRef.current = true;
+    };
+    const onControlEnd = () => {
+      isUserDraggingRef.current = false;
+    };
+    controls.addEventListener('start', onControlStart);
+    controls.addEventListener('end', onControlEnd);
     controlsRef.current = controls;
 
     // 4-Point CAD Studio Lighting Rig
@@ -409,11 +430,16 @@ export const Viewport3D: React.FC<Viewport3DProps> = ({
       solidMaterial.depthWrite = false;
     }
 
+    // Synced accent color for Section Cut & 3D Highlighting
+    const accentColorHex = accentId === 'mono' ? (isDark ? '#38bdf8' : '#0284c7') : getAccentConfig(accentId).hex;
+    const accentThreeColor = new THREE.Color(accentColorHex);
+
     // Disposable Section Cut Plane & Hatching Geometries
     let cutPlaneGeom: THREE.PlaneGeometry | null = null;
     let cutPlaneMat: THREE.MeshBasicMaterial | null = null;
     let hatchGeom: THREE.BufferGeometry | null = null;
     let hatchMat: THREE.LineBasicMaterial | null = null;
+    let activeClipPlanes: THREE.Plane[] = [];
 
     if (sectionAxis !== 'off') {
       geometry.computeBoundingBox();
@@ -443,7 +469,8 @@ export const Viewport3D: React.FC<Viewport3DProps> = ({
 
       const clipPlane = new THREE.Plane();
       clipPlane.setFromNormalAndCoplanarPoint(normal, planeCenter);
-      solidMaterial.clippingPlanes = [clipPlane];
+      activeClipPlanes = [clipPlane];
+      solidMaterial.clippingPlanes = activeClipPlanes;
       solidMaterial.clipShadows = true;
       solidMaterial.side = THREE.DoubleSide;
 
@@ -451,7 +478,7 @@ export const Viewport3D: React.FC<Viewport3DProps> = ({
       const cutPlaneSize = Math.max(dimensions.length, dimensions.width, dimensions.height) * 1.5;
       cutPlaneGeom = new THREE.PlaneGeometry(cutPlaneSize, cutPlaneSize);
       cutPlaneMat = new THREE.MeshBasicMaterial({
-        color: isDark ? 0x38bdf8 : 0x0284c7,
+        color: accentThreeColor,
         transparent: true,
         opacity: 0.16,
         side: THREE.DoubleSide,
@@ -475,9 +502,9 @@ export const Viewport3D: React.FC<Viewport3DProps> = ({
       }
       hatchGeom = new THREE.BufferGeometry().setFromPoints(hatchPoints);
       hatchMat = new THREE.LineBasicMaterial({
-        color: isDark ? 0x38bdf8 : 0x0284c7,
+        color: accentThreeColor,
         transparent: true,
-        opacity: 0.45,
+        opacity: 0.48,
       });
       const hatchLines = new THREE.LineSegments(hatchGeom, hatchMat);
       hatchLines.position.copy(planeCenter);
@@ -495,6 +522,7 @@ export const Viewport3D: React.FC<Viewport3DProps> = ({
     const edgesMaterial = new THREE.LineBasicMaterial({
       color: isDark ? 0xf4f4f6 : 0x0d0d10,
       linewidth: 2,
+      clippingPlanes: activeClipPlanes,
     });
     const edgeLines = new THREE.LineSegments(edgesGeom, edgesMaterial);
     solidGroup.add(edgeLines);
@@ -508,6 +536,7 @@ export const Viewport3D: React.FC<Viewport3DProps> = ({
         gapSize: 2,
         depthFunc: THREE.GreaterDepth,
         depthWrite: false,
+        clippingPlanes: activeClipPlanes,
       });
       const hiddenLines = new THREE.LineSegments(hiddenGeom, dashedMat);
       hiddenLines.computeLineDistances();
@@ -575,7 +604,7 @@ export const Viewport3D: React.FC<Viewport3DProps> = ({
       }
       barGeom = new THREE.BufferGeometry().setFromPoints([p1, p2]);
       barMat = new THREE.LineBasicMaterial({
-        color: 0x38bdf8,
+        color: accentThreeColor,
         linewidth: 3,
       });
       const barLine = new THREE.Line(barGeom, barMat);
@@ -588,6 +617,8 @@ export const Viewport3D: React.FC<Viewport3DProps> = ({
     }
 
     // Animation Loop with Solid Switch Spring Transition & Auto-Spin
+    const shouldAnimateScale = prevGeometryRef.current !== geometry;
+    prevGeometryRef.current = geometry;
     const solidAnimStartTime = performance.now();
     let animId: number;
     let lastMatrixUpdate = 0;
@@ -595,14 +626,16 @@ export const Viewport3D: React.FC<Viewport3DProps> = ({
     const animate = (time: number) => {
       animId = requestAnimationFrame(animate);
 
-      // Smooth Solid-Switch Transition Scale (0.92 -> 1.0)
-      const elapsed = performance.now() - solidAnimStartTime;
-      const progress = Math.min(1, Math.max(0, elapsed / 260));
-      const smoothScale = 0.92 + 0.08 * (1 - Math.pow(1 - progress, 3));
-      solidGroup.scale.set(smoothScale, smoothScale, smoothScale);
+      // Smooth Solid-Switch Transition Scale (0.92 -> 1.0) only on solid change
+      if (shouldAnimateScale) {
+        const elapsed = performance.now() - solidAnimStartTime;
+        const progress = Math.min(1, Math.max(0, elapsed / 260));
+        const smoothScale = 0.92 + 0.08 * (1 - Math.pow(1 - progress, 3));
+        solidGroup.scale.set(smoothScale, smoothScale, smoothScale);
+      }
 
-      // Auto-Spin 3D Solid when idle
-      if (isAutoSpin && controlsRef.current && (controlsRef.current as any).state === -1) {
+      // Auto-Spin 3D Solid when user is not dragging
+      if (isAutoSpin && !isUserDraggingRef.current) {
         solidGroup.rotation.y += 0.008;
       }
 
@@ -633,6 +666,10 @@ export const Viewport3D: React.FC<Viewport3DProps> = ({
     resizeObserver.observe(container);
 
     return () => {
+      savedCamPosRef.current = camera.position.clone();
+      savedTargetRef.current = controls.target.clone();
+      controls.removeEventListener('start', onControlStart);
+      controls.removeEventListener('end', onControlEnd);
       resizeObserver.disconnect();
       cancelAnimationFrame(animId);
       renderer.dispose();
@@ -667,6 +704,7 @@ export const Viewport3D: React.FC<Viewport3DProps> = ({
     sectionAxis,
     sectionFlip,
     sectionOffsetPct,
+    accentId,
     hoveredTarget,
   ]);
 
