@@ -67,7 +67,7 @@ export const PlanometricStudio: React.FC<PlanometricStudioProps> = ({
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `OrthoView3D_Planometric_${params.baseX}x${params.baseY}.svg`;
+    a.download = `VectorDesk_Planometric_${params.baseX}x${params.baseY}.svg`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);

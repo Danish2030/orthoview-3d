@@ -1641,7 +1641,7 @@ export async function exportSheetInFormat(
   params: SheetExportParams
 ): Promise<void> {
   const safeName = params.solidName.replace(/[^a-zA-Z0-9]+/g, '_').replace(/^_|_$/g, '');
-  const baseFilename = `OrthoView3D_${safeName}_${params.dimensions.length}x${params.dimensions.width}x${params.dimensions.height}`;
+  const baseFilename = `VectorDesk_${safeName}_${params.dimensions.length}x${params.dimensions.width}x${params.dimensions.height}`;
 
   if (format === 'dxf') {
     const dxf = buildAutoCADDXF(params);

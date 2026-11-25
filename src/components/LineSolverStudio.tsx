@@ -89,7 +89,7 @@ export const LineSolverStudio: React.FC<LineSolverStudioProps> = ({
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `OrthoView3D_LineSolver_TL${params.trueLength}.svg`;
+    a.download = `VectorDesk_LineSolver_TL${params.trueLength}.svg`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);

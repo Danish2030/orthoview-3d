@@ -199,7 +199,7 @@ export const TheoryModal: React.FC<TheoryModalProps> = ({ isOpen, onClose, theme
                     <th className="pb-2">Line Style</th>
                     <th className="pb-2">Standard Name</th>
                     <th className="pb-2">Thickness</th>
-                    <th className="pb-2">Application in OrthoView3D</th>
+                    <th className="pb-2">Application in VectorDesk</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800">
