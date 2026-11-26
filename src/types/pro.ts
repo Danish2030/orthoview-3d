@@ -412,8 +412,6 @@ export function sanitizeProProject(raw: unknown): ProProjectState {
   const columnGrid: ColumnGridConfig = {
     ...DEFAULT_PRO_PROJECT.columnGrid,
     ...rawCols,
-    xAxes: Array.isArray(rawCols?.xAxes) && rawCols.xAxes.length > 0 ? rawCols.xAxes : DEFAULT_PRO_PROJECT.columnGrid.xAxes,
-    yAxes: Array.isArray(rawCols?.yAxes) && rawCols.yAxes.length > 0 ? rawCols.yAxes : DEFAULT_PRO_PROJECT.columnGrid.yAxes,
     columns: Array.isArray(rawCols?.columns) && rawCols.columns.length > 0 ? rawCols.columns : DEFAULT_PRO_PROJECT.columnGrid.columns,
   };
 

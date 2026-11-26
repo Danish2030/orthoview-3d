@@ -14,6 +14,7 @@ import { LandingPage } from './components/LandingPage';
 import { Dashboard } from './components/Dashboard';
 import { AuthModal } from './components/AuthModal';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { sanitizeProProject } from './types/pro';
 import { ProDashboard } from './components/pro/ProDashboard';
 import { ProWorkspace } from './components/pro/ProWorkspace';
 import { createSolidGeometry, DEFAULT_SLOTTED_CYLINDER_SPEC, SOLID_PRESETS } from './utils/geometryGenerators';
