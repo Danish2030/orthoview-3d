@@ -372,3 +372,86 @@ export const DEFAULT_PRO_PROJECT: ProProjectState = {
     cementBagRate: 420,
   },
 };
+
+
+export function sanitizeProProject(raw: unknown): ProProjectState {
+  if (!raw || typeof raw !== 'object') {
+    return DEFAULT_PRO_PROJECT;
+  }
+  const obj = raw as Partial<ProProjectState>;
+  const unitSystem: UnitSystem = obj.unitSystem === 'imperial' ? 'imperial' : 'metric';
+  const validLayerIds = new Set<CadLayerId>(DEFAULT_CAD_LAYERS.map((l) => l.id));
+
+  const layers =
+    Array.isArray(obj.layers) && obj.layers.length > 0
+      ? DEFAULT_CAD_LAYERS.map((def) => {
+          const found = obj.layers?.find((l) => l && l.id === def.id);
+          return found ? { ...def, ...found } : def;
+        })
+      : DEFAULT_CAD_LAYERS;
+
+  const activeLayerIds =
+    Array.isArray(obj.activeLayerIds)
+      ? obj.activeLayerIds.filter((id): id is CadLayerId => validLayerIds.has(id))
+      : DEFAULT_PRO_PROJECT.activeLayerIds;
+
+  const rooms =
+    Array.isArray(obj.rooms) && obj.rooms.length > 0
+      ? obj.rooms.map((r, idx) => ({
+          ...DEFAULT_PRO_PROJECT.rooms[0],
+          ...r,
+          id: r?.id || `room-recovered-${idx + 1}`,
+          doors: Array.isArray(r?.doors) ? r.doors : [],
+          windows: Array.isArray(r?.windows) ? r.windows : [],
+        }))
+      : DEFAULT_PRO_PROJECT.rooms;
+
+  const mepNodes = Array.isArray(obj.mepNodes) ? obj.mepNodes : DEFAULT_PRO_PROJECT.mepNodes;
+
+  const rawCols = obj.columnGrid && typeof obj.columnGrid === 'object' ? obj.columnGrid : undefined;
+  const columnGrid: ColumnGridConfig = {
+    ...DEFAULT_PRO_PROJECT.columnGrid,
+    ...rawCols,
+    xAxes: Array.isArray(rawCols?.xAxes) && rawCols.xAxes.length > 0 ? rawCols.xAxes : DEFAULT_PRO_PROJECT.columnGrid.xAxes,
+    yAxes: Array.isArray(rawCols?.yAxes) && rawCols.yAxes.length > 0 ? rawCols.yAxes : DEFAULT_PRO_PROJECT.columnGrid.yAxes,
+    columns: Array.isArray(rawCols?.columns) && rawCols.columns.length > 0 ? rawCols.columns : DEFAULT_PRO_PROJECT.columnGrid.columns,
+  };
+
+  const rawGfc = obj.gfcMeta && typeof obj.gfcMeta === 'object' ? obj.gfcMeta : undefined;
+  const gfcMeta: GfcSheetMeta = {
+    ...DEFAULT_PRO_PROJECT.gfcMeta,
+    ...rawGfc,
+    revisions:
+      Array.isArray(rawGfc?.revisions) && rawGfc.revisions.length > 0
+        ? rawGfc.revisions
+        : DEFAULT_PRO_PROJECT.gfcMeta.revisions,
+  };
+
+  return {
+    id: typeof obj.id === 'string' && obj.id ? obj.id : DEFAULT_PRO_PROJECT.id,
+    name: typeof obj.name === 'string' && obj.name ? obj.name : DEFAULT_PRO_PROJECT.name,
+    unitSystem,
+    activeLayerIds,
+    layers,
+    rooms,
+    buildingLevels: {
+      ...DEFAULT_PRO_PROJECT.buildingLevels,
+      ...(obj.buildingLevels && typeof obj.buildingLevels === 'object' ? obj.buildingLevels : {}),
+    },
+    columnGrid,
+    staircase: {
+      ...DEFAULT_PRO_PROJECT.staircase,
+      ...(obj.staircase && typeof obj.staircase === 'object' ? obj.staircase : {}),
+    },
+    sitePlot: {
+      ...DEFAULT_PRO_PROJECT.sitePlot,
+      ...(obj.sitePlot && typeof obj.sitePlot === 'object' ? obj.sitePlot : {}),
+    },
+    mepNodes,
+    gfcMeta,
+    boqSettings: {
+      ...DEFAULT_PRO_PROJECT.boqSettings,
+      ...(obj.boqSettings && typeof obj.boqSettings === 'object' ? obj.boqSettings : {}),
+    },
+  };
+}

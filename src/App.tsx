@@ -13,6 +13,7 @@ import { ExportModal } from './components/ExportModal';
 import { LandingPage } from './components/LandingPage';
 import { Dashboard } from './components/Dashboard';
 import { AuthModal } from './components/AuthModal';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { ProDashboard } from './components/pro/ProDashboard';
 import { ProWorkspace } from './components/pro/ProWorkspace';
 import { createSolidGeometry, DEFAULT_SLOTTED_CYLINDER_SPEC, SOLID_PRESETS } from './utils/geometryGenerators';
@@ -267,7 +268,7 @@ export function App() {
   const [proProject, setProProject] = useState<ProProjectState>(() => {
     try {
       const saved = localStorage.getItem('vectordesk-pro-project');
-      if (saved) return JSON.parse(saved);
+      if (saved) return sanitizeProProject(JSON.parse(saved));
     } catch {
       // ignore
     }
@@ -275,6 +276,22 @@ export function App() {
   });
 
   const [activeProModule, setActiveProModule] = useState<ProModuleId>('floor-plan');
+  const [isDesktop, setIsDesktop] = useState<boolean>(() => (typeof window !== 'undefined' ? window.innerWidth >= 1024 : true));
+
+  useEffect(() => {
+    const onResize = () => setIsDesktop(window.innerWidth >= 1024);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
+
+  const handleResetProProject = () => {
+    setProProject(DEFAULT_PRO_PROJECT);
+    try {
+      localStorage.setItem('vectordesk-pro-project', JSON.stringify(DEFAULT_PRO_PROJECT));
+    } catch {
+      // ignore
+    }
+  };
 
   useEffect(() => {
     try {
@@ -742,24 +759,26 @@ export function App() {
                 {(studioLayout === 'split' || studioLayout === '3d') && (
                   <section
                     style={
-                      studioLayout === 'split'
+                      studioLayout === 'split' && isDesktop
                         ? { width: `${splitPct}%` }
                         : { width: '100%' }
                     }
                     className="h-full relative overflow-hidden flex flex-col transition-[width] duration-75"
                   >
-                    <Viewport3D
-                      geometry={geometry}
-                      dimensions={dimensions}
-                      rotation={rotation}
-                      theme={theme}
-                      displayOptions={displayOptions}
-                      onResetRotation={handleResetRotation}
-                      onUpdateDisplayOptions={setDisplayOptions}
-                      accentId={accentId}
-                      hoveredTarget={hoveredTarget}
-                      onHoverTarget={setHoveredTarget}
-                    />
+                    <ErrorBoundary moduleName="3D Viewport">
+                      <Viewport3D
+                        geometry={geometry}
+                        dimensions={dimensions}
+                        rotation={rotation}
+                        theme={theme}
+                        displayOptions={displayOptions}
+                        onResetRotation={handleResetRotation}
+                        onUpdateDisplayOptions={setDisplayOptions}
+                        accentId={accentId}
+                        hoveredTarget={hoveredTarget}
+                        onHoverTarget={setHoveredTarget}
+                      />
+                    </ErrorBoundary>
                   </section>
                 )}
 
@@ -777,28 +796,30 @@ export function App() {
                 {(studioLayout === 'split' || studioLayout === '2d') && (
                   <section
                     style={
-                      studioLayout === 'split'
+                      studioLayout === 'split' && isDesktop
                         ? { width: `${100 - splitPct}%` }
                         : { width: '100%' }
                     }
                     className="h-full relative overflow-hidden flex flex-col transition-[width] duration-75"
                   >
-                    <OrthographicSheet
-                      geometry={geometry}
-                      dimensions={dimensions}
-                      rotation={rotation}
-                      theme={theme}
-                      displayOptions={displayOptions}
-                      solidName={customPartName || currentPreset.name}
-                      titleBlockMeta={titleBlockMeta}
-                      onUpdateTitleBlockMeta={setTitleBlockMeta}
-                      accentId={accentId}
-                      hoveredTarget={hoveredTarget}
-                      onHoverTarget={setHoveredTarget}
-                      onCanvasesReady={(canvases) => {
-                        canvasesRef.current = canvases;
-                      }}
-                    />
+                    <ErrorBoundary moduleName="2D Orthographic Sheet">
+                      <OrthographicSheet
+                        geometry={geometry}
+                        dimensions={dimensions}
+                        rotation={rotation}
+                        theme={theme}
+                        displayOptions={displayOptions}
+                        solidName={customPartName || currentPreset.name}
+                        titleBlockMeta={titleBlockMeta}
+                        onUpdateTitleBlockMeta={setTitleBlockMeta}
+                        accentId={accentId}
+                        hoveredTarget={hoveredTarget}
+                        onHoverTarget={setHoveredTarget}
+                        onCanvasesReady={(canvases) => {
+                          canvasesRef.current = canvases;
+                        }}
+                      />
+                    </ErrorBoundary>
                   </section>
                 )}
               </main>
@@ -809,31 +830,35 @@ export function App() {
 
       {view === 'pro-dashboard' && (
         <div className="animate-view-enter">
-          <ProDashboard
-            project={proProject}
-            onUpdateProject={setProProject}
-            theme={theme}
-            onToggleTheme={handleToggleTheme}
-            accentId={accentId}
-            onSelectAccent={handleSelectAccent}
-            onBackToHome={() => setView('landing')}
-            onOpenModule={handleOpenProModule}
-          />
+          <ErrorBoundary moduleName="Professional Sub-Dashboard" onResetData={handleResetProProject}>
+            <ProDashboard
+              project={proProject}
+              onUpdateProject={setProProject}
+              theme={theme}
+              onToggleTheme={handleToggleTheme}
+              accentId={accentId}
+              onSelectAccent={handleSelectAccent}
+              onBackToHome={() => setView('dashboard')}
+              onOpenModule={handleOpenProModule}
+            />
+          </ErrorBoundary>
         </div>
       )}
 
       {view === 'pro-studio' && (
         <div className="animate-view-enter">
-          <ProWorkspace
-            project={proProject}
-            onUpdateProject={setProProject}
-            initialModule={activeProModule}
-            theme={theme}
-            onToggleTheme={handleToggleTheme}
-            accentId={accentId}
-            onSelectAccent={handleSelectAccent}
-            onBackToProDashboard={() => setView('pro-dashboard')}
-          />
+          <ErrorBoundary moduleName="Professional CAD Workspace" onResetData={handleResetProProject}>
+            <ProWorkspace
+              project={proProject}
+              onUpdateProject={setProProject}
+              initialModule={activeProModule}
+              theme={theme}
+              onToggleTheme={handleToggleTheme}
+              accentId={accentId}
+              onSelectAccent={handleSelectAccent}
+              onBackToProDashboard={() => setView('pro-dashboard')}
+            />
+          </ErrorBoundary>
         </div>
       )}
 

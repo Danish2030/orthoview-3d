@@ -35,6 +35,8 @@ import {
   exportBoqAsCsv,
   printGfcSheet,
 } from '../../utils/proExport';
+import { ErrorBoundary } from '../ErrorBoundary';
+import { DEFAULT_PRO_PROJECT } from '../../types/pro';
 import { FloorPlanStudio } from './FloorPlanStudio';
 import { ColumnGridStudio } from './ColumnGridStudio';
 import { StaircaseStudio } from './StaircaseStudio';
@@ -135,7 +137,7 @@ export const ProWorkspace: React.FC<ProWorkspaceProps> = ({
         </div>
 
         {/* Center: Module Switcher Tabs (Scrollable on small screens) */}
-        <nav className="flex items-center gap-1 overflow-x-auto max-w-[50vw] sm:max-w-none px-2 py-1 scrollbar-none">
+        <nav className="hidden lg:flex items-center gap-1 overflow-x-auto px-2 py-1 scrollbar-none">
           {PRO_MODULE_TABS.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeModule === tab.id;
@@ -299,7 +301,7 @@ export const ProWorkspace: React.FC<ProWorkspaceProps> = ({
                 setIsLayerMenuOpen(false);
                 setIsSheetSettingsOpen(false);
               }}
-              className="px-3 py-1.5 rounded-xl bg-white text-black hover:bg-zinc-200 dark:bg-white dark:text-black dark:hover:bg-zinc-200 text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer shadow-sm"
+              className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer shadow-sm ${isDark ? 'bg-white text-black hover:bg-zinc-200' : 'bg-[#0d0d10] text-white hover:bg-zinc-800'}`}
             >
               <Download className="w-3.5 h-3.5" />
               <span>Export</span>
@@ -390,8 +392,49 @@ export const ProWorkspace: React.FC<ProWorkspaceProps> = ({
         </div>
       </header>
 
+      {/* Mobile & Tablet Scrollable Module Switcher Strip */}
+      <nav className="flex lg:hidden items-center gap-1.5 overflow-x-auto px-3 py-2 border-b border-current/10 glass-panel scrollbar-none shrink-0 z-30">
+        {PRO_MODULE_TABS.map((tab) => {
+          const Icon = tab.icon;
+          const isActive = activeModule === tab.id;
+          return (
+            <button
+              key={`mob-${tab.id}`}
+              type="button"
+              onClick={() => setActiveModule(tab.id)}
+              className={`px-3 py-1.5 rounded-full text-xs font-medium shrink-0 flex items-center gap-1.5 transition-all cursor-pointer ${
+                isActive
+                  ? 'glass-pill-active shadow-sm'
+                  : isDark
+                  ? 'text-white/65 hover:text-white hover:bg-white/5'
+                  : 'text-black/65 hover:text-black hover:bg-black/5'
+              }`}
+            >
+              <Icon className="w-3.5 h-3.5" />
+              <span>{tab.shortLabel}</span>
+            </button>
+          );
+        })}
+      </nav>
+
+      {/* Click-outside backdrop for open Layer/Export dropdowns */}
+      {(isLayerMenuOpen || isExportMenuOpen) && (
+        <div
+          className="fixed inset-0 z-30"
+          onClick={() => {
+            setIsLayerMenuOpen(false);
+            setIsExportMenuOpen(false);
+          }}
+        />
+      )}
+
       {/* Main Studio Viewport */}
       <main className="flex-1 overflow-hidden relative">
+        <ErrorBoundary
+          key={activeModule}
+          moduleName={PRO_MODULE_TABS.find((t) => t.id === activeModule)?.label || 'Pro Studio'}
+          onResetData={() => onUpdateProject(DEFAULT_PRO_PROJECT)}
+        >
         {activeModule === 'floor-plan' && (
           <FloorPlanStudio
             project={project}
@@ -461,6 +504,7 @@ export const ProWorkspace: React.FC<ProWorkspaceProps> = ({
             activeLayers={activeLayers}
           />
         )}
+        </ErrorBoundary>
       </main>
 
       {/* GFC Title Block & Sheet Setup Modal */}
