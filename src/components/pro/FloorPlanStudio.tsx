@@ -189,10 +189,16 @@ export const FloorPlanStudio: React.FC<FloorPlanStudioProps> = ({
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(isDark ? 0x09090b : 0xf8fafc);
 
-    const camera = new THREE.PerspectiveCamera(40, container.clientWidth / container.clientHeight, 0.1, 50000);
+    const handleContextLost = (e: Event) => {
+      e.preventDefault();
+    };
+    canvas.addEventListener('webglcontextlost', handleContextLost, false);
+
+    const spanMax = Math.max(4000, maxX - minX, maxY - minY);
+    const camera = new THREE.PerspectiveCamera(40, container.clientWidth / container.clientHeight, 50, 80000);
     const centerX = (minX + maxX) / 2;
     const centerY = (minY + maxY) / 2;
-    camera.position.set(centerX + 8000, 11000, centerY + 13000);
+    camera.position.set(centerX + spanMax * 0.95, spanMax * 1.1, centerY + spanMax * 1.25);
     camera.lookAt(centerX, 0, centerY);
 
     const controls = new OrbitControls(camera, canvas);
@@ -226,6 +232,9 @@ export const FloorPlanStudio: React.FC<FloorPlanStudioProps> = ({
       color: isDark ? 0x1e293b : 0xe2e8f0,
       roughness: 0.6,
       metalness: 0.1,
+      polygonOffset: true,
+      polygonOffsetFactor: 1,
+      polygonOffsetUnits: 1,
     });
 
     const wallHeight = project.buildingLevels.floorHeightMm || 3000;
@@ -248,7 +257,7 @@ export const FloorPlanStudio: React.FC<FloorPlanStudioProps> = ({
       const nGeom = new THREE.BoxGeometry(r.width, wallHeight, t);
       geomsToDispose.push(nGeom);
       const nMesh = new THREE.Mesh(nGeom, wallMaterial);
-      nMesh.position.set(r.x + r.width / 2, wallHeight / 2, r.y + r.depth - t / 2);
+      nMesh.position.set(r.x + r.width / 2, 100 + wallHeight / 2, r.y + r.depth - t / 2);
       nMesh.castShadow = true;
       nMesh.receiveShadow = true;
       scene.add(nMesh);
@@ -258,7 +267,7 @@ export const FloorPlanStudio: React.FC<FloorPlanStudioProps> = ({
       const sGeom = new THREE.BoxGeometry(r.width, wallHeight, t);
       geomsToDispose.push(sGeom);
       const sMesh = new THREE.Mesh(sGeom, wallMaterial);
-      sMesh.position.set(r.x + r.width / 2, wallHeight / 2, r.y + t / 2);
+      sMesh.position.set(r.x + r.width / 2, 100 + wallHeight / 2, r.y + t / 2);
       sMesh.castShadow = true;
       sMesh.receiveShadow = true;
       scene.add(sMesh);
@@ -268,7 +277,7 @@ export const FloorPlanStudio: React.FC<FloorPlanStudioProps> = ({
       const wGeom = new THREE.BoxGeometry(t, wallHeight, Math.max(0, r.depth - 2 * t));
       geomsToDispose.push(wGeom);
       const wMesh = new THREE.Mesh(wGeom, wallMaterial);
-      wMesh.position.set(r.x + t / 2, wallHeight / 2, r.y + r.depth / 2);
+      wMesh.position.set(r.x + t / 2, 100 + wallHeight / 2, r.y + r.depth / 2);
       wMesh.castShadow = true;
       wMesh.receiveShadow = true;
       scene.add(wMesh);
@@ -278,7 +287,7 @@ export const FloorPlanStudio: React.FC<FloorPlanStudioProps> = ({
       const eGeom = new THREE.BoxGeometry(t, wallHeight, Math.max(0, r.depth - 2 * t));
       geomsToDispose.push(eGeom);
       const eMesh = new THREE.Mesh(eGeom, wallMaterial);
-      eMesh.position.set(r.x + r.width - t / 2, wallHeight / 2, r.y + r.depth / 2);
+      eMesh.position.set(r.x + r.width - t / 2, 100 + wallHeight / 2, r.y + r.depth / 2);
       eMesh.castShadow = true;
       eMesh.receiveShadow = true;
       scene.add(eMesh);
@@ -306,6 +315,7 @@ export const FloorPlanStudio: React.FC<FloorPlanStudioProps> = ({
     observer.observe(container);
 
     return () => {
+      canvas.removeEventListener('webglcontextlost', handleContextLost);
       observer.disconnect();
       cancelAnimationFrame(animId);
       controls.dispose();

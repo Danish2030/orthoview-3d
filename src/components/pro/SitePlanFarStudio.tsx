@@ -11,7 +11,7 @@ import {
 import { CadLayerId, ProProjectState, SitePlotParams } from '../../types/pro';
 import { ThemeMode } from '../../types';
 import { AccentId, getAccentConfig } from '../../utils/accentTheme';
-import { formatLength, formatPlotArea } from '../../utils/proUnits';
+import { formatArea, formatLength, formatPlotArea } from '../../utils/proUnits';
 
 interface SitePlanFarStudioProps {
   project: ProProjectState;
@@ -46,7 +46,7 @@ export const SitePlanFarStudio: React.FC<SitePlanFarStudioProps> = ({
     const buildableFootprintSqM = (bW * bD) / 1000000;
 
     const groundCoveragePct = plotAreaSqM > 0 ? (buildableFootprintSqM / plotAreaSqM) * 100 : 0;
-    const totalBuiltUpSqM = buildableFootprintSqM * site.proposedFloors;
+    const totalBuiltUpSqM = buildableFootprintSqM * Math.max(1, site.proposedFloors || 1);
     const achievedFar = plotAreaSqM > 0 ? totalBuiltUpSqM / plotAreaSqM : 0;
 
     const farCompliant = achievedFar <= site.maxPermissibleFar;
@@ -272,7 +272,7 @@ export const SitePlanFarStudio: React.FC<SitePlanFarStudioProps> = ({
                 {formatLength(calc.bW, project.unitSystem)} × {formatLength(calc.bD, project.unitSystem)}
               </text>
               <text y="560" fontSize="260" fontWeight="800" fill={accentHex}>
-                {calc.buildableFootprintSqM.toFixed(1)} m² ({calc.groundCoveragePct.toFixed(1)}% Ground Coverage)
+                {formatArea(calc.buildableFootprintSqM, project.unitSystem)} ({calc.groundCoveragePct.toFixed(1)}% Ground Coverage)
               </text>
             </g>
 

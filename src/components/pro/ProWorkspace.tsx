@@ -429,7 +429,7 @@ export const ProWorkspace: React.FC<ProWorkspaceProps> = ({
       )}
 
       {/* Main Studio Viewport */}
-      <main className="flex-1 overflow-hidden relative">
+      <main id="pro-active-stage" className="flex-1 overflow-hidden relative">
         <ErrorBoundary
           key={activeModule}
           moduleName={PRO_MODULE_TABS.find((t) => t.id === activeModule)?.label || 'Pro Studio'}
