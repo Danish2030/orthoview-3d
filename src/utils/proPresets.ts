@@ -1,0 +1,341 @@
+import { DEFAULT_PRO_PROJECT, ProProjectState } from '../types/pro';
+
+export type ProPresetId = '1bhk-compact' | '2bhk-villa' | '3bhk-duplex' | 'commercial-shop';
+
+export interface ProPresetMeta {
+  id: ProPresetId;
+  shortLabel: string;
+  label: string;
+  areaHint: string;
+}
+
+export const PRO_STARTER_PRESETS: ProPresetMeta[] = [
+  { id: '1bhk-compact', shortLabel: '1BHK', label: '1BHK Compact', areaHint: '~54 m²' },
+  { id: '2bhk-villa', shortLabel: '2BHK', label: '2BHK Villa', areaHint: '~98 m²' },
+  { id: '3bhk-duplex', shortLabel: '3BHK', label: '3BHK Duplex', areaHint: '~142 m²' },
+  { id: 'commercial-shop', shortLabel: 'Shop', label: 'Commercial Shopfront', areaHint: '~79 m²' },
+];
+
+export function applyStarterPreset(current: ProProjectState, presetId: ProPresetId): ProProjectState {
+  const basePreserve = {
+    unitSystem: current.unitSystem,
+    activeLayerIds: current.activeLayerIds,
+    layers: current.layers,
+    boqSettings: current.boqSettings,
+  };
+
+  if (presetId === '2bhk-villa') {
+    return {
+      ...DEFAULT_PRO_PROJECT,
+      ...basePreserve,
+    };
+  }
+
+  if (presetId === '1bhk-compact') {
+    return {
+      ...current,
+      ...basePreserve,
+      id: 'proj-1bhk-compact',
+      name: 'Compact Studio (1BHK)',
+      rooms: [
+        {
+          id: 'c1-sitout',
+          name: 'Entry Sit-Out',
+          x: 0,
+          y: 0,
+          width: 3600,
+          depth: 1500,
+          wallExtMm: 230,
+          wallIntMm: 115,
+          doors: [{ id: 'd-c1-main', wall: 'S', offset: 1200, widthMm: 1000, tag: 'D-Main' }],
+          windows: [],
+          floorType: 'granite',
+        },
+        {
+          id: 'c1-living',
+          name: 'Living & Dining',
+          x: 0,
+          y: 1500,
+          width: 3600,
+          depth: 4200,
+          wallExtMm: 230,
+          wallIntMm: 115,
+          doors: [{ id: 'd-c1-liv', wall: 'S', offset: 1200, widthMm: 1000, tag: 'D1' }],
+          windows: [{ id: 'w-c1-liv', wall: 'W', offset: 1300, widthMm: 1500, sillMm: 900, heightMm: 1200, tag: 'W1' }],
+          floorType: 'vitrified',
+        },
+        {
+          id: 'c1-kitchen',
+          name: 'Modular Kitchen',
+          x: 3600,
+          y: 1500,
+          width: 3000,
+          depth: 3000,
+          wallExtMm: 230,
+          wallIntMm: 115,
+          doors: [{ id: 'd-c1-kit', wall: 'W', offset: 900, widthMm: 900, tag: 'D2' }],
+          windows: [{ id: 'w-c1-kit', wall: 'E', offset: 850, widthMm: 1200, sillMm: 1050, heightMm: 1050, tag: 'W2' }],
+          floorType: 'vitrified',
+        },
+        {
+          id: 'c1-bed',
+          name: 'Master Bedroom',
+          x: 0,
+          y: 5700,
+          width: 3600,
+          depth: 3600,
+          wallExtMm: 230,
+          wallIntMm: 115,
+          doors: [{ id: 'd-c1-bed', wall: 'S', offset: 500, widthMm: 900, tag: 'D2' }],
+          windows: [{ id: 'w-c1-bed', wall: 'N', offset: 1000, widthMm: 1500, sillMm: 900, heightMm: 1200, tag: 'W1' }],
+          floorType: 'hardwood',
+        },
+        {
+          id: 'c1-bath',
+          name: 'Common Bath & WC',
+          x: 3600,
+          y: 4500,
+          width: 2400,
+          depth: 1800,
+          wallExtMm: 230,
+          wallIntMm: 115,
+          doors: [{ id: 'd-c1-bath', wall: 'W', offset: 450, widthMm: 750, tag: 'D3' }],
+          windows: [{ id: 'v-c1-bath', wall: 'E', offset: 600, widthMm: 600, sillMm: 1500, heightMm: 600, tag: 'V1' }],
+          floorType: 'anti-skid',
+        },
+      ],
+      buildingLevels: {
+        ...current.buildingLevels,
+        numFloors: 1,
+      },
+      mepNodes: [
+        { id: 'm1-db', roomId: 'c1-living', type: 'db', discipline: 'electrical', x: 300, y: 1900, tag: 'DB-1', specs: '6-Way Single Phase DB' },
+        { id: 'm1-l1', roomId: 'c1-living', type: 'light', discipline: 'electrical', x: 1800, y: 3600, tag: 'L1', specs: '18W LED Panel' },
+        { id: 'm1-ac', roomId: 'c1-bed', type: 'ac', discipline: 'electrical', x: 1800, y: 7400, tag: 'AC-1', specs: '1.5T Split AC' },
+        { id: 'm1-sink', roomId: 'c1-kitchen', type: 'tap', discipline: 'plumbing', x: 5600, y: 2400, tag: 'SINK-1', specs: 'SS Kitchen Sink' },
+        { id: 'm1-wc', roomId: 'c1-bath', type: 'drain', discipline: 'plumbing', x: 4800, y: 5400, tag: 'IC-1', specs: '110mm Soil Line' },
+      ],
+      gfcMeta: {
+        ...current.gfcMeta,
+        projectTitle: 'COMPACT 1BHK RESIDENCE',
+        drawingNo: 'VD-ARC-101',
+      },
+    };
+  }
+
+  if (presetId === '3bhk-duplex') {
+    return {
+      ...current,
+      ...basePreserve,
+      id: 'proj-3bhk-duplex',
+      name: 'Grand 3BHK Duplex (G+1)',
+      rooms: [
+        {
+          id: 'd3-sitout',
+          name: 'Front Porch / Sit-Out',
+          x: 0,
+          y: 0,
+          width: 5000,
+          depth: 2000,
+          wallExtMm: 230,
+          wallIntMm: 115,
+          doors: [{ id: 'd-3-main', wall: 'S', offset: 1800, widthMm: 1200, tag: 'D-Main' }],
+          windows: [],
+          floorType: 'granite',
+        },
+        {
+          id: 'd3-living',
+          name: 'Grand Living & Dining Hall',
+          x: 0,
+          y: 2000,
+          width: 5000,
+          depth: 5400,
+          wallExtMm: 230,
+          wallIntMm: 115,
+          doors: [{ id: 'd-3-liv', wall: 'S', offset: 1800, widthMm: 1200, tag: 'D1' }],
+          windows: [{ id: 'w-3-liv', wall: 'W', offset: 1600, widthMm: 1800, sillMm: 900, heightMm: 1350, tag: 'W1' }],
+          floorType: 'vitrified',
+        },
+        {
+          id: 'd3-kitchen',
+          name: 'Kitchen & Work Area',
+          x: 5000,
+          y: 2000,
+          width: 4200,
+          depth: 3600,
+          wallExtMm: 230,
+          wallIntMm: 115,
+          doors: [{ id: 'd-3-kit', wall: 'W', offset: 1100, widthMm: 900, tag: 'D2' }],
+          windows: [{ id: 'w-3-kit', wall: 'E', offset: 1100, widthMm: 1400, sillMm: 1050, heightMm: 1050, tag: 'W2' }],
+          floorType: 'vitrified',
+        },
+        {
+          id: 'd3-bed1',
+          name: 'Master Bedroom 1',
+          x: 0,
+          y: 7400,
+          width: 4500,
+          depth: 4200,
+          wallExtMm: 230,
+          wallIntMm: 115,
+          doors: [{ id: 'd-3-b1', wall: 'S', offset: 700, widthMm: 900, tag: 'D2' }],
+          windows: [{ id: 'w-3-b1', wall: 'N', offset: 1400, widthMm: 1500, sillMm: 900, heightMm: 1200, tag: 'W1' }],
+          floorType: 'hardwood',
+        },
+        {
+          id: 'd3-bed2',
+          name: 'Bedroom 2',
+          x: 4500,
+          y: 7400,
+          width: 4200,
+          depth: 4200,
+          wallExtMm: 230,
+          wallIntMm: 115,
+          doors: [{ id: 'd-3-b2', wall: 'S', offset: 600, widthMm: 900, tag: 'D2' }],
+          windows: [{ id: 'w-3-b2', wall: 'N', offset: 1200, widthMm: 1500, sillMm: 900, heightMm: 1200, tag: 'W1' }],
+          floorType: 'vitrified',
+        },
+        {
+          id: 'd3-bed3',
+          name: 'Guest Bedroom 3',
+          x: 5000,
+          y: 5600,
+          width: 4200,
+          depth: 1800,
+          wallExtMm: 230,
+          wallIntMm: 115,
+          doors: [{ id: 'd-3-b3', wall: 'W', offset: 400, widthMm: 900, tag: 'D2' }],
+          windows: [{ id: 'w-3-b3', wall: 'E', offset: 400, widthMm: 1200, sillMm: 900, heightMm: 1200, tag: 'W2' }],
+          floorType: 'vitrified',
+        },
+        {
+          id: 'd3-bath1',
+          name: 'Master Bath',
+          x: 8700,
+          y: 7400,
+          width: 2400,
+          depth: 2100,
+          wallExtMm: 230,
+          wallIntMm: 115,
+          doors: [{ id: 'd-3-bt1', wall: 'W', offset: 500, widthMm: 750, tag: 'D3' }],
+          windows: [{ id: 'v-3-bt1', wall: 'E', offset: 650, widthMm: 600, sillMm: 1500, heightMm: 600, tag: 'V1' }],
+          floorType: 'anti-skid',
+        },
+        {
+          id: 'd3-bath2',
+          name: 'Common Bath',
+          x: 8700,
+          y: 9500,
+          width: 2400,
+          depth: 2100,
+          wallExtMm: 230,
+          wallIntMm: 115,
+          doors: [{ id: 'd-3-bt2', wall: 'W', offset: 500, widthMm: 750, tag: 'D3' }],
+          windows: [{ id: 'v-3-bt2', wall: 'E', offset: 650, widthMm: 600, sillMm: 1500, heightMm: 600, tag: 'V1' }],
+          floorType: 'anti-skid',
+        },
+      ],
+      buildingLevels: {
+        ...current.buildingLevels,
+        numFloors: 2,
+      },
+      mepNodes: [
+        { id: 'm3-db', roomId: 'd3-living', type: 'db', discipline: 'electrical', x: 350, y: 2400, tag: 'DB-1', specs: '12-Way 3-Phase DB' },
+        { id: 'm3-l1', roomId: 'd3-living', type: 'light', discipline: 'electrical', x: 2500, y: 4600, tag: 'L1', specs: '24W Chandelier + Cove' },
+        { id: 'm3-ac1', roomId: 'd3-bed1', type: 'ac', discipline: 'electrical', x: 2200, y: 9400, tag: 'AC-1', specs: '1.5T Inverter AC' },
+        { id: 'm3-ac2', roomId: 'd3-bed2', type: 'ac', discipline: 'electrical', x: 6600, y: 9400, tag: 'AC-2', specs: '1.5T Inverter AC' },
+        { id: 'm3-sink', roomId: 'd3-kitchen', type: 'tap', discipline: 'plumbing', x: 7800, y: 3100, tag: 'SINK-1', specs: 'Double Bowl Sink' },
+        { id: 'm3-ic', roomId: 'd3-bath1', type: 'drain', discipline: 'plumbing', x: 9800, y: 8600, tag: 'IC-1', specs: '110mm Soil Header' },
+        { id: 'm3-hvac', roomId: 'd3-living', type: 'diffuser', discipline: 'hvac', x: 2500, y: 3400, tag: 'DIFF-1', specs: 'Linear Supply Grille' },
+      ],
+      gfcMeta: {
+        ...current.gfcMeta,
+        projectTitle: 'GRAND 3BHK DUPLEX VILLA',
+        drawingNo: 'VD-ARC-301',
+      },
+    };
+  }
+
+  // commercial-shop
+  return {
+    ...current,
+    ...basePreserve,
+    id: 'proj-commercial-shop',
+    name: 'Commercial Retail Shopfront',
+    rooms: [
+      {
+        id: 'cs-showroom',
+        name: 'Main Retail Showroom Hall',
+        x: 0,
+        y: 0,
+        width: 8400,
+        depth: 6200,
+        wallExtMm: 230,
+        wallIntMm: 115,
+        doors: [{ id: 'd-cs-main', wall: 'S', offset: 3100, widthMm: 2200, tag: 'D-Glass' }],
+        windows: [
+          { id: 'w-cs-f1', wall: 'S', offset: 500, widthMm: 2200, sillMm: 300, heightMm: 2100, tag: 'W-Show1' },
+          { id: 'w-cs-f2', wall: 'S', offset: 5700, widthMm: 2200, sillMm: 300, heightMm: 2100, tag: 'W-Show2' },
+        ],
+        floorType: 'granite',
+      },
+      {
+        id: 'cs-office',
+        name: 'Manager Back Office',
+        x: 0,
+        y: 6200,
+        width: 4200,
+        depth: 3200,
+        wallExtMm: 230,
+        wallIntMm: 115,
+        doors: [{ id: 'd-cs-off', wall: 'S', offset: 1400, widthMm: 1000, tag: 'D1' }],
+        windows: [{ id: 'w-cs-off', wall: 'N', offset: 1200, widthMm: 1500, sillMm: 900, heightMm: 1200, tag: 'W1' }],
+        floorType: 'vitrified',
+      },
+      {
+        id: 'cs-store',
+        name: 'Inventory Storage',
+        x: 4200,
+        y: 6200,
+        width: 2400,
+        depth: 3200,
+        wallExtMm: 230,
+        wallIntMm: 115,
+        doors: [{ id: 'd-cs-st', wall: 'S', offset: 700, widthMm: 1000, tag: 'D2' }],
+        windows: [],
+        floorType: 'vitrified',
+      },
+      {
+        id: 'cs-wc',
+        name: 'Staff Toilet & Utility',
+        x: 6600,
+        y: 6200,
+        width: 1800,
+        depth: 3200,
+        wallExtMm: 230,
+        wallIntMm: 115,
+        doors: [{ id: 'd-cs-wc', wall: 'S', offset: 500, widthMm: 750, tag: 'D3' }],
+        windows: [{ id: 'v-cs-wc', wall: 'N', offset: 600, widthMm: 600, sillMm: 1500, heightMm: 600, tag: 'V1' }],
+        floorType: 'anti-skid',
+      },
+    ],
+    buildingLevels: {
+      ...current.buildingLevels,
+      floorHeightMm: 3600,
+      numFloors: 1,
+    },
+    mepNodes: [
+      { id: 'ms-db', roomId: 'cs-office', type: 'db', discipline: 'electrical', x: 400, y: 6600, tag: 'DB-COM', specs: '3-Phase Commercial Panel' },
+      { id: 'ms-l1', roomId: 'cs-showroom', type: 'light', discipline: 'electrical', x: 2400, y: 3100, tag: 'TRK-1', specs: 'Commercial Track Spotlights' },
+      { id: 'ms-l2', roomId: 'cs-showroom', type: 'light', discipline: 'electrical', x: 6000, y: 3100, tag: 'TRK-2', specs: 'Commercial Track Spotlights' },
+      { id: 'ms-ac', roomId: 'cs-showroom', type: 'ac', discipline: 'electrical', x: 4200, y: 1200, tag: 'CAS-AC', specs: '3-Ton Ceiling Cassette AC' },
+      { id: 'ms-hvac', roomId: 'cs-showroom', type: 'diffuser', discipline: 'hvac', x: 4200, y: 3400, tag: 'DIFF-1', specs: '4-Way Supply Diffuser' },
+      { id: 'ms-wc', roomId: 'cs-wc', type: 'drain', discipline: 'plumbing', x: 7500, y: 7800, tag: 'IC-1', specs: '110mm Commercial Drain' },
+    ],
+    gfcMeta: {
+      ...current.gfcMeta,
+      projectTitle: 'COMMERCIAL RETAIL SHOWROOM',
+      drawingNo: 'VD-COM-401',
+    },
+  };
+}

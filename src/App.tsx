@@ -285,8 +285,43 @@ export function App() {
     return () => window.removeEventListener('resize', onResize);
   }, []);
 
+  const [proHistoryPast, setProHistoryPast] = useState<ProProjectState[]>([]);
+  const [proHistoryFuture, setProHistoryFuture] = useState<ProProjectState[]>([]);
+
+  const handleUpdateProProject = (next: ProProjectState) => {
+    setProProject((prev) => {
+      setProHistoryPast((past) => [...past.slice(-39), prev]);
+      setProHistoryFuture([]);
+      return next;
+    });
+  };
+
+  const handleUndoPro = () => {
+    setProHistoryPast((past) => {
+      if (past.length === 0) return past;
+      const previous = past[past.length - 1];
+      setProProject((current) => {
+        setProHistoryFuture((future) => [current, ...future.slice(0, 39)]);
+        return previous;
+      });
+      return past.slice(0, -1);
+    });
+  };
+
+  const handleRedoPro = () => {
+    setProHistoryFuture((future) => {
+      if (future.length === 0) return future;
+      const nextState = future[0];
+      setProProject((current) => {
+        setProHistoryPast((past) => [...past.slice(-39), current]);
+        return nextState;
+      });
+      return future.slice(1);
+    });
+  };
+
   const handleResetProProject = () => {
-    setProProject(DEFAULT_PRO_PROJECT);
+    handleUpdateProProject(DEFAULT_PRO_PROJECT);
     try {
       localStorage.setItem('vectordesk-pro-project', JSON.stringify(DEFAULT_PRO_PROJECT));
     } catch {
@@ -834,7 +869,7 @@ export function App() {
           <ErrorBoundary moduleName="Professional Sub-Dashboard" onResetData={handleResetProProject}>
             <ProDashboard
               project={proProject}
-              onUpdateProject={setProProject}
+              onUpdateProject={handleUpdateProProject}
               theme={theme}
               onToggleTheme={handleToggleTheme}
               accentId={accentId}
@@ -851,13 +886,17 @@ export function App() {
           <ErrorBoundary moduleName="Professional CAD Workspace" onResetData={handleResetProProject}>
             <ProWorkspace
               project={proProject}
-              onUpdateProject={setProProject}
+              onUpdateProject={handleUpdateProProject}
               initialModule={activeProModule}
               theme={theme}
               onToggleTheme={handleToggleTheme}
               accentId={accentId}
               onSelectAccent={handleSelectAccent}
               onBackToProDashboard={() => setView('pro-dashboard')}
+              canUndo={proHistoryPast.length > 0}
+              canRedo={proHistoryFuture.length > 0}
+              onUndo={handleUndoPro}
+              onRedo={handleRedoPro}
             />
           </ErrorBoundary>
         </div>

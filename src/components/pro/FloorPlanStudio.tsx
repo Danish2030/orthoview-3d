@@ -7,10 +7,12 @@ import {
   Box,
   DoorOpen,
   Sliders,
+  LayoutTemplate,
 } from 'lucide-react';
 import { CadLayerId, ProProjectState, ProRoom } from '../../types/pro';
 import { ThemeMode } from '../../types';
-import { AccentId } from '../../utils/accentTheme';
+import { AccentId, getAccentConfig } from '../../utils/accentTheme';
+import { PRO_STARTER_PRESETS, ProPresetId, applyStarterPreset } from '../../utils/proPresets';
 import { formatLength, formatArea } from '../../utils/proUnits';
 
 interface FloorPlanStudioProps {
@@ -82,9 +84,11 @@ export const FloorPlanStudio: React.FC<FloorPlanStudioProps> = ({
   project,
   onUpdateProject,
   theme,
+  accentId,
   activeLayers,
 }) => {
   const isDark = theme === 'blueprint';
+  const accentHex = accentId === 'mono' ? (isDark ? '#38bdf8' : '#0284c7') : getAccentConfig(accentId).hex;
   const [selectedRoomId, setSelectedRoomId] = useState<string>(project.rooms[0]?.id || '');
   const [viewMode, setViewMode] = useState<'2d' | 'split' | '3d'>('split');
   const [zoomLevel, setZoomLevel] = useState<number>(1);
@@ -251,7 +255,8 @@ export const FloorPlanStudio: React.FC<FloorPlanStudioProps> = ({
       scene.add(floorMesh);
       meshesToDispose.push(floorMesh);
 
-      // 4 Perimeter Extruded Walls
+      // 4 Perimeter Extruded Walls (Synced with A-WALL CAD layer)
+      if (!activeLayers.includes('A-WALL')) return;
       const t = r.wallExtMm;
       // North Wall
       const nGeom = new THREE.BoxGeometry(r.width, wallHeight, t);
@@ -324,7 +329,7 @@ export const FloorPlanStudio: React.FC<FloorPlanStudioProps> = ({
       floorMaterial.dispose();
       geomsToDispose.forEach((g) => g.dispose());
     };
-  }, [viewMode, project.rooms, project.buildingLevels.floorHeightMm, isDark, minX, maxX, minY, maxY]);
+  }, [viewMode, project.rooms, project.buildingLevels.floorHeightMm, isDark, minX, maxX, minY, maxY, activeLayers]);
 
   // 2D Viewport Bounding
   const svgWidth = Math.max(10000, maxX - minX + 2500);
@@ -339,43 +344,78 @@ export const FloorPlanStudio: React.FC<FloorPlanStudioProps> = ({
     <div className="w-full h-full flex flex-col lg:flex-row overflow-hidden relative">
       {/* Center Drafting & 3D Stage */}
       <div className="flex-1 flex flex-col h-full overflow-hidden relative">
-        {/* Top Floating Mini-Bar */}
-        <div className="absolute top-4 left-4 z-20 flex items-center gap-2">
-          {/* 2D / Split / 3D Mode Selector */}
-          <div className="p-1 rounded-full glass-pill flex items-center gap-1 text-[11px] font-semibold shadow-lg">
-            <button
-              onClick={() => setViewMode('2d')}
-              className={`px-3 py-1 rounded-full transition-all cursor-pointer ${
-                viewMode === '2d' ? 'glass-pill-active' : 'opacity-65 hover:opacity-100'
-              }`}
-            >
-              2D CAD Plan
-            </button>
-            <button
-              onClick={() => setViewMode('split')}
-              className={`px-3 py-1 rounded-full transition-all cursor-pointer ${
-                viewMode === 'split' ? 'glass-pill-active' : 'opacity-65 hover:opacity-100'
-              }`}
-            >
-              Split 2D / 3D
-            </button>
-            <button
-              onClick={() => setViewMode('3d')}
-              className={`px-3 py-1 rounded-full transition-all cursor-pointer ${
-                viewMode === '3d' ? 'glass-pill-active' : 'opacity-65 hover:opacity-100'
-              }`}
-            >
-              3D Extruded Model
-            </button>
+        {/* Dedicated Top Controls & Starter Presets Strip (Zero Canvas Overlap) */}
+        <div className="px-4 pt-3 pb-2 z-20 flex flex-wrap items-center justify-between gap-2 border-b border-current/10 bg-current/[0.02]">
+          <div className="flex flex-wrap items-center gap-2">
+            {/* 2D / Split / 3D Mode Selector */}
+            <div className="p-1 rounded-full glass-pill flex items-center gap-1 text-[11px] font-semibold shadow-sm">
+              <button
+                onClick={() => setViewMode('2d')}
+                className={`px-3 py-1 rounded-full transition-all cursor-pointer ${
+                  viewMode === '2d' ? 'glass-pill-active' : 'opacity-65 hover:opacity-100'
+                }`}
+              >
+                2D CAD Plan
+              </button>
+              <button
+                onClick={() => setViewMode('split')}
+                className={`px-3 py-1 rounded-full transition-all cursor-pointer ${
+                  viewMode === 'split' ? 'glass-pill-active' : 'opacity-65 hover:opacity-100'
+                }`}
+              >
+                Split 2D / 3D
+              </button>
+              <button
+                onClick={() => setViewMode('3d')}
+                className={`px-3 py-1 rounded-full transition-all cursor-pointer ${
+                  viewMode === '3d' ? 'glass-pill-active' : 'opacity-65 hover:opacity-100'
+                }`}
+              >
+                3D Model
+              </button>
+            </div>
+
+            {/* Area Metric Badge */}
+            <div className="hidden xl:flex items-center gap-2 px-3 py-1.5 rounded-full glass-pill text-[11px] font-medium">
+              <span className="opacity-65">Carpet:</span>
+              <span style={{ color: accentHex }} className="font-bold tabular-nums">{formatArea(carpetAreaSqM, project.unitSystem)}</span>
+              <span className="opacity-30">•</span>
+              <span className="opacity-65">Built-Up:</span>
+              <span className="font-bold tabular-nums">{formatArea(builtUpAreaSqM, project.unitSystem)}</span>
+            </div>
           </div>
 
-          {/* Area Metric Badge */}
-          <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full glass-pill text-[11px] font-medium shadow-md">
-            <span className="opacity-60">Carpet:</span>
-            <span className="font-bold text-[var(--accent-hex)]">{formatArea(carpetAreaSqM, project.unitSystem)}</span>
-            <span className="opacity-30">•</span>
-            <span className="opacity-60">Built-Up:</span>
-            <span className="font-bold">{formatArea(builtUpAreaSqM, project.unitSystem)}</span>
+          {/* 1-Tap Starter Presets */}
+          <div className="flex items-center gap-1 p-1 rounded-full glass-pill text-[11px]">
+            <span className="hidden sm:flex items-center gap-1 pl-2 pr-1 text-[10px] font-mono uppercase opacity-60">
+              <LayoutTemplate className="w-3 h-3" />
+              Templates
+            </span>
+            {PRO_STARTER_PRESETS.map((preset) => {
+              const handleSelectPreset = (id: ProPresetId) => {
+                const nextProj = applyStarterPreset(project, id);
+                onUpdateProject(nextProj);
+                if (nextProj.rooms.length > 0) {
+                  setSelectedRoomId(nextProj.rooms[0].id);
+                }
+              };
+              const isCurrent =
+                (preset.id === '2bhk-villa' && project.id === 'proj-default-2bhk') ||
+                project.id === `proj-${preset.id}`;
+              return (
+                <button
+                  key={preset.id}
+                  type="button"
+                  onClick={() => handleSelectPreset(preset.id)}
+                  title={`${preset.label} (${preset.areaHint})`}
+                  className={`px-2.5 py-1 rounded-full font-semibold transition-all cursor-pointer ${
+                    isCurrent ? 'glass-pill-active' : 'opacity-65 hover:opacity-100 hover:bg-current/5'
+                  }`}
+                >
+                  {preset.shortLabel}
+                </button>
+              );
+            })}
           </div>
         </div>
 

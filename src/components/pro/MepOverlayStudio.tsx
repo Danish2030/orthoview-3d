@@ -322,7 +322,7 @@ export const MepOverlayStudio: React.FC<MepOverlayStudioProps> = ({
                 .filter((n) => n.discipline === 'electrical' && n.type !== 'db')
                 .map((n) => {
                   const db = project.mepNodes.find((d) => d.type === 'db');
-                  if (!db || !activeLayers.includes('E-LITE')) return null;
+                  if (!db || !showElec) return null;
                   const mx = (db.x + n.x) / 2;
                   const my = Math.min(db.y, n.y) - 420;
                   return (
@@ -339,7 +339,7 @@ export const MepOverlayStudio: React.FC<MepOverlayStudioProps> = ({
                 })}
 
               {/* Plumbing Slope Drainage Run */}
-              {activeLayers.includes('P-PIPE') && (() => {
+              {showPlumb && (() => {
                 const pNodes = project.mepNodes.filter((n) => n.discipline === 'plumbing');
                 if (pNodes.length < 2) return null;
                 return pNodes.slice(0, -1).map((n, idx) => {

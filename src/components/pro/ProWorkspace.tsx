@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   ArrowLeft,
   Layers,
@@ -20,6 +20,8 @@ import {
   X,
   FileCode,
   FileText,
+  Undo2,
+  Redo2,
 } from 'lucide-react';
 import {
   ProProjectState,
@@ -54,6 +56,10 @@ export interface ProWorkspaceProps {
   accentId: AccentId;
   onSelectAccent: (id: AccentId) => void;
   onBackToProDashboard: () => void;
+  canUndo?: boolean;
+  canRedo?: boolean;
+  onUndo?: () => void;
+  onRedo?: () => void;
 }
 
 const PRO_MODULE_TABS: { id: ProModuleId; label: string; shortLabel: string; icon: React.FC<{ className?: string }> }[] = [
@@ -75,12 +81,46 @@ export const ProWorkspace: React.FC<ProWorkspaceProps> = ({
   accentId,
   onSelectAccent,
   onBackToProDashboard,
+  canUndo = false,
+  canRedo = false,
+  onUndo,
+  onRedo,
 }) => {
   const isDark = theme === 'blueprint';
   const [activeModule, setActiveModule] = useState<ProModuleId>(initialModule);
   const [isLayerMenuOpen, setIsLayerMenuOpen] = useState(false);
   const [isSheetSettingsOpen, setIsSheetSettingsOpen] = useState(false);
   const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
+
+  useEffect(() => {
+    setActiveModule(initialModule);
+  }, [initialModule]);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      const tag = target?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || target?.isContentEditable) {
+        return;
+      }
+      const isMod = e.ctrlKey || e.metaKey;
+      if (!isMod) return;
+      const key = e.key.toLowerCase();
+      if (key === 'z' && !e.shiftKey) {
+        if (canUndo && onUndo) {
+          e.preventDefault();
+          onUndo();
+        }
+      } else if (key === 'y' || (key === 'z' && e.shiftKey)) {
+        if (canRedo && onRedo) {
+          e.preventDefault();
+          onRedo();
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [canUndo, canRedo, onUndo, onRedo]);
 
   const activeLayers = project.activeLayerIds || ['A-WALL', 'A-DOOR', 'S-COLS', 'E-LITE', 'P-PIPE', 'M-HVAC', 'A-DIMS'];
 
@@ -164,14 +204,54 @@ export const ProWorkspace: React.FC<ProWorkspaceProps> = ({
 
         {/* Right: Controls & Actions */}
         <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-          {/* Unit Toggle Button */}
+          {/* Undo / Redo Controls (Ctrl+Z / Ctrl+Y) */}
+          {(onUndo || onRedo) && (
+            <div className={`flex items-center rounded-xl border p-0.5 ${isDark ? 'border-white/10 bg-white/[0.03]' : 'border-black/10 bg-black/[0.03]'}`}>
+              <button
+                type="button"
+                onClick={onUndo}
+                disabled={!canUndo}
+                title="Undo (Ctrl+Z)"
+                className={`p-1.5 rounded-lg transition-colors ${
+                  canUndo
+                    ? isDark
+                      ? 'hover:bg-white/10 cursor-pointer'
+                      : 'hover:bg-black/10 cursor-pointer'
+                    : 'opacity-30 cursor-not-allowed'
+                }`}
+              >
+                <Undo2 className="w-3.5 h-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={onRedo}
+                disabled={!canRedo}
+                title="Redo (Ctrl+Y)"
+                className={`p-1.5 rounded-lg transition-colors ${
+                  canRedo
+                    ? isDark
+                      ? 'hover:bg-white/10 cursor-pointer'
+                      : 'hover:bg-black/10 cursor-pointer'
+                    : 'opacity-30 cursor-not-allowed'
+                }`}
+              >
+                <Redo2 className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )}
+
+          {/* Unit Toggle Button (High Contrast in Dark & Light Modes) */}
           <button
             type="button"
             onClick={handleToggleUnit}
             className={`px-2.5 py-1 rounded-full text-[11px] font-mono uppercase font-semibold transition-colors cursor-pointer border ${
               project.unitSystem === 'metric'
-                ? 'border-sky-500/30 bg-sky-500/10 text-sky-400'
-                : 'border-amber-500/30 bg-amber-500/10 text-amber-400'
+                ? isDark
+                  ? 'border-sky-500/35 bg-sky-500/15 text-sky-300'
+                  : 'border-sky-600/35 bg-sky-500/15 text-sky-800'
+                : isDark
+                  ? 'border-amber-500/35 bg-amber-500/15 text-amber-300'
+                  : 'border-amber-600/35 bg-amber-500/15 text-amber-800'
             }`}
             title={`Active: ${project.unitSystem === 'metric' ? 'Metric (mm / m²)' : 'Imperial (ft-in / sq.ft)'} — Click to switch`}
           >
